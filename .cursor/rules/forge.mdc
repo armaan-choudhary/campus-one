@@ -1,0 +1,13 @@
+---
+description: Forge Collaboration Protocol for Cursor Agent
+globs: *
+alwaysApply: true
+---
+
+# Forge Collaboration Guidelines
+
+When modifying files in this workspace:
+- Query `forge_context` via Forge MCP to check active teammate claims and compiler diagnostics.
+- Claim paths with `forge_claim_paths` before making large multi-file edits.
+- Respect proximity alerts and decisions recorded in the Forge Context Ledger.
+- Record completed work with `forge_create_handoff`.

@@ -1,0 +1,56 @@
+# CampusOne
+
+<div align="center">
+  <img src="assets/branding/campusone_logo_concept2.jpg" alt="CampusOne Logo" width="180" />
+  <h3>One Front Door for Everything</h3>
+  <p><em>Ask once. Get routed right. Get it resolved.</em></p>
+</div>
+
+---
+
+## 🏛️ About CampusOne
+
+**CampusOne** is an enterprise-grade university orchestration platform and conversational single front door. Universities are notoriously fragmented into bureaucratic silos: IT Helpdesks, Student Accounts/Finance, Campus Facilities, Academic Registrars, and Administrative Directorates. 
+
+CampusOne replaces disjointed chatbots, confusing portal links, and bouncing email threads with a single conversational entry point powered by:
+- **Margin-Guarded Intent Routing** ($\Delta \ge 0.15$) with Negative Semantic Anchors
+- **Isolated Domain Skills** backed by pgvector + PostgreSQL Full-Text Hybrid Retrieval (RRF)
+- **Strict Grounding & Verifiable Citations** (zero hallucination, mandatory source attribution)
+- **Deterministic Multi-Domain Synthesis** and turn-based Redis concurrency locks
+- **Autonomous Zero-Downtime Replay Circuit Breaker** for bulletproof live demonstrations
+
+---
+
+## 📚 Architectural Specification Suite
+
+The project includes an exhaustive, implementation-ready 19-document specification suite:
+
+| Document | Description |
+| :--- | :--- |
+| [`docs/00_Project_Overview.md`](docs/00_Project_Overview.md) | Vision, scope, personas, and brand identity |
+| [`docs/01_Product_Requirements.md`](docs/01_Product_Requirements.md) | Complete PRD and functional requirements (FR-AUTH through FR-KB) |
+| [`docs/02_System_Architecture.md`](docs/02_System_Architecture.md) | Modular monolith architecture, interfaces, and system boundaries |
+| [`docs/03_Routing_Engine.md`](docs/03_Routing_Engine.md) | Margin Guard, Negative Anchors, and two-stage classification |
+| [`docs/04_Domain_Skills.md`](docs/04_Domain_Skills.md) | Pluggable skill interfaces and domain specifications |
+| [`docs/05_RAG_and_Knowledge_Base.md`](docs/05_RAG_and_Knowledge_Base.md) | Hybrid RRF retrieval, chunking, and seed corpus strategy |
+| [`docs/06_Conversation_Orchestration.md`](docs/06_Conversation_Orchestration.md) | Turn state machine and multi-domain resolution matrix |
+| [`docs/07_Fallback_and_Handoff.md`](docs/07_Fallback_and_Handoff.md) | Clarification dialogs, handoff tickets, and queue routing |
+| [`docs/08_Database_Design.md`](docs/08_Database_Design.md) | 14 relational tables, pgvector HNSW indexes, and migrations |
+| [`docs/09_API_Reference.md`](docs/09_API_Reference.md) | Comprehensive REST and SSE streaming API contracts |
+| [`docs/10_Frontend_Architecture.md`](docs/10_Frontend_Architecture.md) | Next.js architecture, responsive layouts, and accessibility specs |
+| [`docs/11_Analytics_and_Evaluation.md`](docs/11_Analytics_and_Evaluation.md) | Metrics, evaluation dataset, and mathematical formulas |
+| [`docs/12_Security.md`](docs/12_Security.md) | Auth abstractions, RBAC matrix, and prompt injection defense |
+| [`docs/13_Testing_Strategy.md`](docs/13_Testing_Strategy.md) | Test hierarchy, automated suites, and CI verification gates |
+| [`docs/14_Deployment.md`](docs/14_Deployment.md) | Docker Compose infrastructure and operations |
+| [`docs/15_Demo_Runbook.md`](docs/15_Demo_Runbook.md) | 15-minute live hackathon presentation playbook and script |
+| [`docs/16_Implementation_Plan.md`](docs/16_Implementation_Plan.md) | Sequential 14-phase, 18-task implementation roadmap |
+| [`docs/17_Engineering_Decisions.md`](docs/17_Engineering_Decisions.md) | 15 Architecture Decision Records (ADRs) |
+| [`docs/18_Engineering_Bible.md`](docs/18_Engineering_Bible.md) | Master reference and the 12 non-negotiable system invariants |
+
+---
+
+## 🎨 Brand Identity
+
+- **Official Mark:** Concept 2 — The Integrated Monogram (`assets/branding/campusone_logo_concept2.jpg`)
+- **Visual Thesis:** Minimalist monochrome university gateway arch framing an integrated numeral "1" (One Front Door for Everything).
+- **Design Tokens:** High-contrast white (`#FFFFFF`) on obsidian dark (`#0B0D13`).
