@@ -2,63 +2,48 @@
 
 ## 1. Technology and principles
 
-Use Next.js App Router with TypeScript, React, CSS modules or Tailwind, and TanStack Query for server state. The browser talks to the versioned FastAPI API; it never calls OpenAI, PostgreSQL, or the vector store. The UI exposes one assistant identity and uses domain indicators only as helpful context, never as a bot switcher.
+Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Google DM Sans**. The browser client talks to the versioned FastAPI API or operates against verified runbook fixtures in demo mode. The UI presents **one unified conversational front door** for students while providing specialized operational workspaces for departmental staff, knowledge managers, and university evaluators.
 
-## 2. Routes
+- **Primary Typography:** **Google DM Sans** (`--font-dm-sans`) with root font scale calibrated to `16.5px` and conversational prose scaled to `15px/16px` for natural reading comfort.
+- **Monospace Typography:** **JetBrains Mono** (`--font-mono`) for operational telemetry, transaction IDs, latency benchmarks, and vector hashes.
+- **Design System:** Google Material Design 3 surface tokens with balanced vertical breathing room, generous touch targets, and full WCAG 2.1 AA accessibility.
+- **Theme Engine:** Instant switching between **Dark Mode** (deep obsidian surface `#131314`) and **Light Mode** (`#f8f9fa`) with automatic transparent logo adaptation.
 
-| Route | Audience | Purpose |
-|---|---|---|
-| `/login` | unauthenticated | mock login and future OIDC redirect |
-| `/chat` | student/staff | conversation list and new conversation |
-| `/chat/[conversationId]` | owner/agent | unified chat experience |
-| `/admin/analytics` | analyst/admin | routing and resolution metrics |
-| `/admin/knowledge` | knowledge_admin/admin | document status and publishing |
-| `/admin/evaluation` | analyst/admin | dataset and evaluation runs |
-| `/handoffs` | support_agent/admin | agent queue |
+## 2. Multi-Persona Workspaces & Roles
 
-Unauthorised users are redirected to `/login`; API responses remain the source of truth for access decisions.
+The frontend provides dedicated, role-tailored workspaces toggled dynamically via the TopNav persona selector:
+
+| Role Key | Persona Name | Audience & Purpose | Key UI Features |
+|---|---|---|---|
+| `student` | **Alex Rivera** (3rd Year CS) | Undergraduates & graduates resolving tuition dues, Wi-Fi certs, course registration, dorm repairs | Pure conversational stream, zero corporate stats, action checklists, inline citations, floating pill composer |
+| `agent` | **Sarah Jenkins** (Support Specialist) | Departmental specialists receiving pre-packaged escalations | Live triage queue, urgency SLA indicators (15m window), conversational context, 1-click template replies |
+| `knowledge_admin` | **Dr. Patricia Cole** (University Registrar) | Officers authoring and versioning approved university policy documents | Policy registry catalog, pgvector chunk inspection, document upload & embedding workflow |
+| `executive` | **Dr. Marcus Vance** (VP Academic Evaluation) | Leadership monitoring institutional metrics & routing health | Executive Telemetry KPIs (88.4% accuracy, 76.2% auto-resolution), 5×5 confusion matrix, live edge audit log |
 
 ## 3. Repository structure
 
 ```text
 frontend/
-  app/
-    (auth)/login/page.tsx
-    (student)/chat/page.tsx
-    (student)/chat/[conversationId]/page.tsx
-    (admin)/analytics/page.tsx
-    (admin)/knowledge/page.tsx
-    (admin)/evaluation/page.tsx
-    (agent)/handoffs/page.tsx
-    layout.tsx
-    error.tsx
-    loading.tsx
-  components/
-    chat/ChatShell.tsx
-    chat/MessageList.tsx
-    chat/MessageComposer.tsx
-    chat/CitationCard.tsx
-    chat/ClarificationCard.tsx
-    chat/HandoffCard.tsx
-    chat/ProcessingState.tsx
-    navigation/Sidebar.tsx
-    analytics/MetricCard.tsx
-    analytics/MetricFilters.tsx
-    analytics/RoutingErrorsTable.tsx
-    knowledge/DocumentTable.tsx
-  lib/
-    api/client.ts
-    api/types.ts
-    auth/session.ts
-    query/provider.tsx
-    formatters.ts
-    validation.ts
-  hooks/
-    useConversation.ts
-    useSendMessage.ts
-    useStreamingMessage.ts
-    useCurrentUser.ts
-  styles/globals.css
+  public/
+    logo.png               # Transparent white archway mark (Dark Mode)
+    logo-dark.png          # Transparent deep slate archway mark (Light Mode)
+    wordmark.png           # High-resolution branding lockups
+  src/
+    app/
+      layout.tsx           # Google DM Sans & JetBrains Mono root configuration
+      globals.css          # Tailwind v4 theme tokens, Material 3 surfaces, .dark variant
+      page.tsx             # Master orchestrator switching between the 4 persona dashboards
+    components/
+      TopNav.tsx           # Header with transparent standalone logo, persona switcher & theme toggle
+      Sidebar.tsx          # Collapsible navigation drawer with inquiry history & student profile
+      MessageBubble.tsx    # Conversational turns, action checklists, citations, TTS audio & feedback
+      MessageComposer.tsx  # Floating pill input with voice recording simulation & attachment trigger
+      CitationDrawer.tsx   # Slide-out verified institutional handbook reader with grounding scores
+      AgentQueueView.tsx   # Departmental escalation triage queue with SLA tracking & templates
+      KnowledgeAdminView.tsx # Registrar policy management & pgvector embedding publishing console
+      AnalyticsView.tsx    # Executive Telemetry dashboard & 5×5 cross-department confusion matrix
+    lib/
+      demoFixtures.ts      # Authoritative runbook test cases, persona profiles & telemetry mocks
 ```
 
 ## 4. State management
@@ -133,7 +118,7 @@ API types are generated manually from the contracts for the prototype and should
 
 ### Desktop (≥ 1024px)
 
-- **Header (56px):** CampusOne official logo mark (`assets/branding/campusone_logo_concept2.jpg`, scaled to 32px height) + "CampusOne" wordmark left, current user avatar + role badge center-right, `+ New conversation` button right. The logo mark uses Concept 2 (The Integrated Monogram: minimalist monochrome architectural arch with integrated numeral "1").
+- **Header (64px / h-16):** CampusOne official standalone transparent logo mark (`public/logo.png` / `public/logo-dark.png`, 32px height) + "CampusOne" title with active operational beacon ("Single Front Door") left, persona switcher dropdown (`Alex Rivera`, `Sarah Jenkins`, `Dr. Patricia Cole`, `Dr. Marcus Vance`) center, Google Material theme toggle (Dark / Light) and `+ New Inquiry` button right.
 - **Sidebar (280px, collapsible):** conversation history sorted by `updated_at desc`, status filters (open/resolved/handed_off), optional `What can I ask?` starter prompts from different domains.
 - **Main (fluid):** message list with bottom-anchored composer. Max content width 720px centered within the main area for readability.
 - **Message metadata:** timestamp, small domain pill only when useful, citation markers as inline badges.

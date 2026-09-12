@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Light Theme (Google Material 3 Light) */
+  --background: #f8f9fa;
+  --foreground: #202124;
+  --surface-1: #ffffff;
+  --surface-2: #f1f3f4;
+  --surface-3: #e8eaed;
+  --border-subtle: #dadce0;
+  --border-medium: #bdc1c6;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-tertiary: #80868b;
+  --accent: #1a73e8;
+  --accent-hover: #1557b0;
+  --accent-soft: #e8f0fe;
+}
+
+.dark {
+  /* Dark Theme (Google Material 3 Dark) */
+  --background: #131314;
+  --foreground: #e3e3e3;
+  --surface-1: #1e1f20;
+  --surface-2: #28292a;
+  --surface-3: #303134;
+  --border-subtle: #3c4043;
+  --border-medium: #5f6368;
+  --text-primary: #e3e3e3;
+  --text-secondary: #9aa0a6;
+  --text-tertiary: #80868b;
+  --accent: #8ab4f8;
+  --accent-hover: #aecbfa;
+  --accent-soft: #1e293b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-medium: var(--border-medium);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: var(--font-dm-sans), 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: var(--font-mono), monospace;
+}
+
+html {
+  font-size: 16.5px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Material smooth scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-medium);
+}

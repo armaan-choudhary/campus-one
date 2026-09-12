@@ -1,7 +1,7 @@
 # CampusOne
 
 <div align="center">
-  <img src="assets/branding/campusone_logo_concept2.jpg" alt="CampusOne Logo" width="180" />
+  <img src="assets/branding/logo.png" alt="CampusOne Logo" width="140" />
   <h3>One Front Door for Everything</h3>
   <p><em>Ask once. Get routed right. Get it resolved.</em></p>
 </div>
@@ -18,6 +18,25 @@ CampusOne replaces disjointed chatbots, confusing portal links, and bouncing ema
 - **Strict Grounding & Verifiable Citations** (zero hallucination, mandatory source attribution)
 - **Deterministic Multi-Domain Synthesis** and turn-based Redis concurrency locks
 - **Autonomous Zero-Downtime Replay Circuit Breaker** for bulletproof live demonstrations
+
+---
+
+## 💻 Frontend UI & Multi-Persona Architecture
+
+The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Google DM Sans**:
+
+- **Students (Alex Rivera — Primary Audience):** Clean, distraction-free conversational stream with zero corporate clutter. Features interactive action checklists, inline citation badges, clarification dialogs, and a floating pill composer.
+- **Campus Support Agents (Sarah Jenkins):** Departmental escalation triage queue with SLA indicators (Urgent 15m window), full conversational context, and 1-click resolution templates.
+- **Knowledge Administrators (Dr. Patricia Cole):** Institutional policy catalog, pgvector chunk inspection, and vector corpus publishing workflows.
+- **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix.
+- **Theme System:** Full native support for Google Material 3 **Dark Mode** and **Light Mode**, with antialiased transparent branding marks that seamlessly adapt to the active surface.
+
+```bash
+# Start Frontend Development Server
+cd frontend
+npm install
+npm run dev # Launches on http://localhost:3000
+```
 
 ---
 
@@ -51,6 +70,7 @@ The project includes an exhaustive, implementation-ready 19-document specificati
 
 ## 🎨 Brand Identity
 
-- **Official Mark:** Concept 2 — The Integrated Monogram (`assets/branding/campusone_logo_concept2.jpg`)
-- **Visual Thesis:** Minimalist monochrome university gateway arch framing an integrated numeral "1" (One Front Door for Everything).
-- **Design Tokens:** High-contrast white (`#FFFFFF`) on obsidian dark (`#0B0D13`).
+- **Official Mark:** Minimalist monochrome university gateway arch framing an integrated numeral "1" (One Front Door for Everything).
+- **Assets:** Transparent antialiased mark in `assets/branding/logo.png` (white for dark mode) and `assets/branding/logo-dark.png` (deep slate for light mode).
+- **Typography:** **Google DM Sans** as primary interface typeface, paired with JetBrains Mono for telemetry and identifiers.
+- **Design Tokens:** Google Material Design 3 surface tokens with balanced vertical breathing room and accessible WCAG 2.1 AA contrast.

@@ -5,8 +5,7 @@
 - **Hackathon:** Bennett University Hackathon 2026
 - **Track / Scenario:** One Front Door for Everything — All-in-One Campus Assistant
 - **Target Time:** 5 Minutes (Pitch + Live Interaction + Dashboard Proof)
-- **Primary Objective:** Prove to judges that CampusOne is an enterprise-grade orchestration layer and single front door for fragmented university systems—not merely a generic wrapper around an LLM.
-- **Brand & Visual Identity:** Features the minimalist monochrome **Concept 2 (The Integrated Monogram)** logo (`assets/branding/campusone_logo_concept2.jpg`), combining the architectural campus archway with an embedded numeral "1".
+- **Brand & Visual Identity:** Features the minimalist monochrome archway monogram (`assets/branding/logo.png` / `logo-dark.png`) with transparent background, Google DM Sans typography, and dual-theme Google Material Design 3 surfaces.
 
 ### Key Differentiators to Demonstrate
 1. **Intelligent Intent Routing:** Understands varied campus topics without forcing the student to pick a department.

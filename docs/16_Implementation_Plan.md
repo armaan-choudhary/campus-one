@@ -303,7 +303,7 @@ gantt
 ### TASK-11-FRONTEND-CHAT: Unified Next.js Chat Interface
 - **Objective:** Build the modern, responsive student chat experience with domain badges, source citations, clarification pills, and loading states.
 - **Files to Create or Modify:**
-  - `assets/branding/campusone_logo_concept2.jpg` (Official Concept 2 monochrome logo)
+  - `assets/branding/logo.png` (Official monochrome logo mark with transparent background)
   - `frontend/src/app/chat/page.tsx`
   - `frontend/src/components/chat/ChatContainer.tsx`
   - `frontend/src/components/chat/MessageHistory.tsx`

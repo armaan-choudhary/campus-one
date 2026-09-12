@@ -522,9 +522,9 @@ The user experience and visual perception of CampusOne are critical to establish
 ### Decision
 We adopt **Concept 2 (The Integrated Monogram)** as the canonical logo mark:
 - **Visual Structure:** A minimalist architectural archway (representing the campus gateway / front door) with an integrated numeral "1" embedded directly within the inner aperture and vertical pillar line.
-- **Palette:** Pure monochrome (stark white emblem `#FFFFFF` on dark obsidian background `#0B0D13`).
-- **Asset Location:** Stored in `assets/branding/campusone_logo_concept2.jpg`.
-- **Display Specifications:** 32px height in standard 56px application headers; 32×32px / 64×64px square crops for browser favicons.
+- **Palette:** Dual-theme monochrome adaptation (white emblem `#FFFFFF` for dark surfaces, deep slate `#111827` for light surfaces, with transparent background).
+- **Asset Location:** Stored in `assets/branding/logo.png` (dark mode) and `assets/branding/logo-dark.png` (light mode), mirrored to `frontend/public/`.
+- **Display Specifications:** 32px height in standard 64px (`h-16`) application headers; rendered standalone alongside Google DM Sans typography.
 
 ### Consequences
 - **Positive:**
