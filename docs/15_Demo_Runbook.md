@@ -5,7 +5,7 @@
 - **Hackathon:** Bennett University Hackathon 2026
 - **Track / Scenario:** One Front Door for Everything — All-in-One Campus Assistant
 - **Target Time:** 5 Minutes (Pitch + Live Interaction + Dashboard Proof)
-- **Brand & Visual Identity:** Features the minimalist monochrome archway monogram (`assets/branding/logo.png` / `logo-dark.png`) with transparent background, Google DM Sans typography, and dual-theme Google Material Design 3 surfaces.
+- **Brand & Visual Identity:** Features the minimalist monochrome archway monogram (`assets/branding/logo.png` / `logo-dark.png`) with transparent background, Inter typography, custom SVG vector suite, and deep neutral dark surfaces with electric indigo accent.
 
 ### Key Differentiators to Demonstrate
 1. **Intelligent Intent Routing:** Understands varied campus topics without forcing the student to pick a department.

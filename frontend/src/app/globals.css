@@ -3,37 +3,44 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Light Theme (Google Material 3 Light) */
-  --background: #f8f9fa;
-  --foreground: #202124;
-  --surface-1: #ffffff;
-  --surface-2: #f1f3f4;
-  --surface-3: #e8eaed;
-  --border-subtle: #dadce0;
-  --border-medium: #bdc1c6;
-  --text-primary: #202124;
-  --text-secondary: #5f6368;
-  --text-tertiary: #80868b;
-  --accent: #1a73e8;
-  --accent-hover: #1557b0;
-  --accent-soft: #e8f0fe;
+  /* Light Theme: Ultra-Clean Minimal White with Refined Sapphire Accent */
+  --background: #ffffff;
+  --foreground: #09090b;
+  --surface-1: #fafafa;
+  --surface-2: #f4f4f5;
+  --surface-3: #e4e4e7;
+  --border-subtle: #e4e4e7;
+  --border-medium: #d4d4d8;
+  --text-primary: #09090b;
+  --text-secondary: #71717a;
+  --text-tertiary: #a1a1aa;
+  --accent: #4f46e5;
+  --accent-foreground: #ffffff;
+  --accent-hover: #4338ca;
+  --accent-soft: rgba(79, 70, 229, 0.08);
+  --accent-border: rgba(79, 70, 229, 0.22);
+  --bubble-user: #f4f4f5;
 }
 
 .dark {
-  /* Dark Theme (Google Material 3 Dark) */
-  --background: #131314;
-  --foreground: #e3e3e3;
-  --surface-1: #1e1f20;
-  --surface-2: #28292a;
-  --surface-3: #303134;
-  --border-subtle: #3c4043;
-  --border-medium: #5f6368;
-  --text-primary: #e3e3e3;
-  --text-secondary: #9aa0a6;
-  --text-tertiary: #80868b;
-  --accent: #8ab4f8;
-  --accent-hover: #aecbfa;
-  --accent-soft: #1e293b;
+  /* Dark Theme: Premium Deep Neutral Black with Electric Indigo Accent */
+  --background: #09090b;
+  --foreground: #fafafa;
+  --surface-1: #121215;
+  --surface-2: #18181b;
+  --surface-3: #27272a;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #52525b;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --accent-hover: #818cf8;
+  --accent-soft: rgba(99, 102, 241, 0.12);
+  --accent-border: rgba(99, 102, 241, 0.28);
+  --accent-glow: rgba(99, 102, 241, 0.35);
+  --bubble-user: #18181b;
 }
 
 @theme inline {
@@ -48,13 +55,16 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
-  --font-sans: var(--font-dm-sans), 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --color-accent-border: var(--accent-border);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: var(--font-mono), monospace;
 }
 
 html {
-  font-size: 16.5px;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -64,13 +74,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  letter-spacing: -0.01em;
 }
 
-/* Material smooth scrollbars */
+/* Minimalist scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -80,7 +90,6 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 9999px;
-  border: 2px solid var(--background);
 }
 
 ::-webkit-scrollbar-thumb:hover {

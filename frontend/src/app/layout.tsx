@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -16,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CampusOne — One Front Door for Everything",
-  description: "Enterprise university conversational single front door. Ask once. Get routed right. Get it resolved.",
+  title: "CampusOne",
+  description: "Campus conversational single front door. Ask once. Get routed right. Get it resolved.",
 };
 
 export default function RootLayout({
@@ -26,8 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${jetbrainsMono.variable} dark h-full antialiased`}>
-      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans selection:bg-[var(--accent)]/20 selection:text-[var(--accent)]">
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
+    >
+      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans selection:bg-white/20 selection:text-white">
         {children}
       </body>
     </html>

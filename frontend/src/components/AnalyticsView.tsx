@@ -12,13 +12,71 @@ import {
   Layers,
   ShieldCheck,
   RefreshCw,
-  Clock,
   Sparkles,
   Download,
   CheckCircle2,
-  HelpCircle,
   BarChart2,
+  X,
+  FileCheck,
 } from 'lucide-react';
+
+interface DiagnosticPrompt {
+  query: string;
+  actual: string;
+  pred: string;
+  confidence: number;
+  deltaMargin: number;
+  outcome: string;
+}
+
+const SAMPLE_DIAGNOSTICS: Record<string, DiagnosticPrompt[]> = {
+  'IT-Finance': [
+    {
+      query: 'Where do I pay for my replacement RFID student identity card?',
+      actual: 'IT',
+      pred: 'Finance',
+      confidence: 0.58,
+      deltaMargin: 0.06,
+      outcome: 'Targeted Disambiguation Triggered (IT vs Finance)',
+    },
+    {
+      query: 'Student portal login fee receipt missing from dashboard',
+      actual: 'IT',
+      pred: 'Finance',
+      confidence: 0.52,
+      deltaMargin: 0.04,
+      outcome: 'Clarification Dialog Prompted',
+    },
+  ],
+  'Facilities-IT': [
+    {
+      query: 'Lab 402 smart projector ethernet wall jack is dead and power LED is red',
+      actual: 'Facilities',
+      pred: 'IT',
+      confidence: 0.61,
+      deltaMargin: 0.08,
+      outcome: 'Routed to Facilities with IT Co-Notification',
+    },
+  ],
+  'Finance-Finance': [
+    {
+      query: 'When does late semester tuition fee surcharge kick in for Fall 2026?',
+      actual: 'Finance',
+      pred: 'Finance',
+      confidence: 0.97,
+      deltaMargin: 0.42,
+      outcome: 'Direct Grounded Answer with §3.2 Citation',
+    },
+    {
+      query: 'How to verify bank UTR transfer clearance in SIS ledger',
+      actual: 'Finance',
+      pred: 'Finance',
+      confidence: 0.94,
+      deltaMargin: 0.38,
+      outcome: 'Direct Grounded Answer with Action Checklist',
+    },
+  ],
+};
 
 export const AnalyticsView: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'semester'>('7d');
@@ -56,7 +114,6 @@ export const AnalyticsView: React.FC = () => {
     showToast(`Telemetry report exported as campusone_telemetry_${timeRange}.csv`);
   };
 
-  // Adjust display metrics slightly per time range
   const accuracyMap = {
     '24h': { acc: '89.6%', res: '78.1%', clar: '10.4%', sess: 54 },
     '7d': { acc: '88.4%', res: '76.2%', clar: '11.8%', sess: 42 },
@@ -66,8 +123,36 @@ export const AnalyticsView: React.FC = () => {
 
   const currentStats = accuracyMap[timeRange];
 
+  const getDiagnosticCases = () => {
+    if (!selectedCell) return [];
+    const key = `${selectedCell.actual}-${selectedCell.pred}`;
+    if (SAMPLE_DIAGNOSTICS[key]) return SAMPLE_DIAGNOSTICS[key];
+    if (selectedCell.actual === selectedCell.pred) {
+      return [
+        {
+          query: `Sample authoritative ${selectedCell.actual} inquiry passing Δ ≥ 0.15 threshold`,
+          actual: selectedCell.actual,
+          pred: selectedCell.pred,
+          confidence: 0.95,
+          deltaMargin: 0.35,
+          outcome: 'Direct Grounded Answer with Evidence Citation',
+        },
+      ];
+    }
+    return [
+      {
+        query: `Cross-boundary query spanning ${selectedCell.actual} policy and ${selectedCell.pred} processes`,
+        actual: selectedCell.actual,
+        pred: selectedCell.pred,
+        confidence: 0.54,
+        deltaMargin: 0.07,
+        outcome: 'Disambiguation Prompted to Student',
+      },
+    ];
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-6xl mx-auto space-y-6 transition-all">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-[1440px] mx-auto space-y-6 transition-all">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-8 right-8 z-50 bg-[var(--surface-1)] border border-[var(--accent)] text-[var(--foreground)] px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
@@ -77,48 +162,44 @@ export const AnalyticsView: React.FC = () => {
       )}
 
       {/* Header & Filter Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
         <div className="space-y-1.5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[var(--surface-2)] flex items-center justify-center text-[var(--accent)] shadow-xs">
               <BarChart2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">
-                  Executive Telemetry & Evaluation
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl sm:text-2xl font-semibold text-[var(--foreground)] tracking-tight">
+                  Executive Telemetry &amp; Evaluation
                 </h2>
-                <span className="text-xs font-medium text-[var(--accent)] bg-[var(--surface-2)] px-3 py-1 rounded-full border border-[var(--border-subtle)]">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--foreground)] bg-[var(--surface-2)] px-2.5 py-1 rounded-full border border-[var(--border-subtle)] whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Live Observability
                 </span>
               </div>
             </div>
           </div>
           <p className="text-xs sm:text-[13px] text-[var(--text-secondary)] pl-0.5">
-            Macro evaluation auditing margin guards (Δ ≥ 0.15), autonomous resolution rates, and confusion heatmaps
+            Macro evaluation auditing margin guards (&Delta; &ge; 0.15), autonomous resolution rates, and confusion heatmaps
           </p>
         </div>
 
         {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {/* Time Range Pills */}
           <div className="flex items-center bg-[var(--surface-2)] p-1 rounded-full text-xs border border-[var(--border-subtle)]">
-            {[
-              { id: '24h', label: '24H' },
-              { id: '7d', label: '7D' },
-              { id: '30d', label: '30D' },
-              { id: 'semester', label: 'Semester' },
-            ].map((t) => (
+            {(['24h', '7d', '30d', 'semester'] as const).map((t) => (
               <button
-                key={t.id}
-                onClick={() => setTimeRange(t.id as any)}
+                key={t}
+                onClick={() => setTimeRange(t)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                  timeRange === t.id
+                  timeRange === t
                     ? 'bg-[var(--surface-1)] text-[var(--foreground)] font-semibold shadow-xs'
                     : 'text-[var(--text-secondary)] hover:text-[var(--foreground)]'
                 }`}
               >
-                {t.label}
+                {t.toUpperCase()}
               </button>
             ))}
           </div>
@@ -134,7 +215,7 @@ export const AnalyticsView: React.FC = () => {
 
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 text-xs font-semibold px-4.5 py-2.5 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[#131314] transition-colors shadow-md cursor-pointer"
+            className="flex items-center gap-2 text-xs font-semibold px-4.5 py-2.5 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-foreground)] transition-colors shadow-md cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Export CSV</span>
@@ -142,92 +223,111 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 5 KPI Metric Cards with Generous Spacing */}
+      {/* 5 KPI Metric Cards with Quality Gate Badges */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1 */}
-        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 flex flex-col justify-between shadow-xs space-y-3">
-          <span className="text-xs text-[var(--text-secondary)] font-medium">
-            Routing Accuracy
-          </span>
-          <div className="my-2">
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-5 flex flex-col justify-between shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--text-secondary)] font-medium">Routing Accuracy</span>
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+              PASS
+            </span>
+          </div>
+          <div className="my-1">
+            <span className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {currentStats.acc}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] font-medium">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>+2.1% vs rule baseline</span>
+          <div className="text-[11px] text-[var(--text-secondary)] flex items-center justify-between border-t border-[var(--border-subtle)]/60 pt-2">
+            <span>Target: &ge; 85.0%</span>
+            <span className="text-[var(--accent)] flex items-center gap-1 font-medium">
+              <TrendingUp className="w-3 h-3" /> +3.4%
+            </span>
           </div>
         </div>
 
         {/* Card 2 */}
-        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 flex flex-col justify-between shadow-xs space-y-3">
-          <span className="text-xs text-[var(--text-secondary)] font-medium">
-            Autonomous Resolution
-          </span>
-          <div className="my-2">
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-5 flex flex-col justify-between shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--text-secondary)] font-medium">Autonomous Resolution</span>
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+              PASS
+            </span>
+          </div>
+          <div className="my-1">
+            <span className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {currentStats.res}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--accent)] font-medium">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>+4.3% (1,420 turns)</span>
+          <div className="text-[11px] text-[var(--text-secondary)] flex items-center justify-between border-t border-[var(--border-subtle)]/60 pt-2">
+            <span>Target: &ge; 75.0%</span>
+            <span className="text-[var(--accent)] flex items-center gap-1 font-medium">
+              <TrendingUp className="w-3 h-3" /> +1.2%
+            </span>
           </div>
         </div>
 
         {/* Card 3 */}
-        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 flex flex-col justify-between shadow-xs space-y-3">
-          <span className="text-xs text-[var(--text-secondary)] font-medium">
-            Clarification Rate
-          </span>
-          <div className="my-2">
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-5 flex flex-col justify-between shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--text-secondary)] font-medium">Clarification Rate</span>
+            <span className="text-[10px] font-semibold text-[var(--accent)] bg-[var(--surface-2)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)] font-mono">
+              SAFE
+            </span>
+          </div>
+          <div className="my-1">
+            <span className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {currentStats.clar}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-secondary)]">
-            Margin guard: 0.45 - 0.74
-          </span>
+          <div className="text-[11px] text-[var(--text-secondary)] border-t border-[var(--border-subtle)]/60 pt-2">
+            <span>Margin Guard: 0.45 &ndash; 0.74</span>
+          </div>
         </div>
 
         {/* Card 4 */}
-        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 flex flex-col justify-between shadow-xs space-y-3">
-          <span className="text-xs text-[var(--text-secondary)] font-medium">
-            Human Handoff Rate
-          </span>
-          <div className="my-2">
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-5 flex flex-col justify-between shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--text-secondary)] font-medium">Human Handoff Rate</span>
+            <span className="text-[10px] font-semibold text-[var(--text-secondary)] bg-[var(--surface-2)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)] font-mono">
+              TRIAGE
+            </span>
+          </div>
+          <div className="my-1">
+            <span className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {ANALYTICS_SUMMARY.handoffRate}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-secondary)]">
-            Dispatched to human triage
-          </span>
+          <div className="text-[11px] text-[var(--text-secondary)] border-t border-[var(--border-subtle)]/60 pt-2">
+            <span>Dispatched to Specialist Queue</span>
+          </div>
         </div>
 
         {/* Card 5 */}
-        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 flex flex-col justify-between shadow-xs space-y-3">
-          <span className="text-xs text-[var(--text-secondary)] font-medium">
-            Source Grounding
-          </span>
-          <div className="my-2">
-            <span className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+        <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-5 flex flex-col justify-between shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-[var(--text-secondary)] font-medium">Source Grounding</span>
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+              0% HALLUC
+            </span>
+          </div>
+          <div className="my-1">
+            <span className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               {ANALYTICS_SUMMARY.sourceCoverage}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--accent)] flex items-center gap-1 font-medium">
+          <div className="text-[11px] text-[var(--accent)] flex items-center gap-1 font-medium border-t border-[var(--border-subtle)]/60 pt-2 font-mono">
             <ShieldCheck className="w-3.5 h-3.5" /> 100% Policy Grounded
-          </span>
+          </div>
         </div>
       </div>
 
-      {/* Latency Strip with Generous Padding */}
+      {/* Latency Strip */}
       <div className="bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl px-6 py-4 flex flex-wrap items-center justify-between text-xs text-[var(--text-secondary)] shadow-xs">
         <div className="flex items-center gap-6">
-          <span>Latency p50: <strong className="text-[var(--foreground)] font-semibold">{ANALYTICS_SUMMARY.p50Latency}</strong></span>
-          <span>Latency p95: <strong className="text-[var(--foreground)] font-semibold">{ANALYTICS_SUMMARY.p95Latency}</strong></span>
-          <span>TTFT: <strong className="text-[var(--foreground)] font-semibold">1.12s</strong></span>
+          <span>Latency p50: <strong className="text-[var(--foreground)] font-semibold font-mono">{ANALYTICS_SUMMARY.p50Latency}</strong></span>
+          <span>Latency p95: <strong className="text-[var(--foreground)] font-semibold font-mono">{ANALYTICS_SUMMARY.p95Latency}</strong></span>
+          <span>TTFT: <strong className="text-[var(--foreground)] font-semibold font-mono">1.12s</strong></span>
         </div>
         <div className="flex items-center gap-2.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -238,17 +338,17 @@ export const AnalyticsView: React.FC = () => {
       {/* 5x5 Matrix & Live Log Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: 5x5 Confusion Matrix */}
-        <div className="lg:col-span-7 bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-7 space-y-6 shadow-xs">
+        <div className="lg:col-span-7 bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 sm:p-7 space-y-6 shadow-xs relative">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2.5 tracking-tight">
                 <Layers className="w-4 h-4 text-[var(--accent)]" />
-                <span>5×5 Domain Confusion Heatmap</span>
+                <span>5&times;5 Domain Confusion Heatmap</span>
               </h3>
               <span className="text-[11px] text-[var(--text-tertiary)] font-mono">12,480 evaluated turns</span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] mt-1.5">
-              Click any cell to inspect cross-department routing ambiguity & boundary safety
+              Click any cell to open interactive query routing diagnostic drill-down
             </p>
           </div>
 
@@ -281,7 +381,9 @@ export const AnalyticsView: React.FC = () => {
                         key={cIdx}
                         onClick={() => setSelectedCell({ actual: row.actual, pred: col.key, val: col.val })}
                         className={`py-3.5 px-3 rounded-xl cursor-pointer transition-all ${
-                          col.isDiag
+                          selectedCell?.actual === row.actual && selectedCell?.pred === col.key
+                            ? 'ring-2 ring-[var(--accent)] bg-[var(--surface-2)] font-bold'
+                            : col.isDiag
                             ? 'bg-[var(--surface-2)] text-[var(--accent)] font-bold shadow-xs'
                             : parseFloat(col.val) > 2
                             ? 'text-amber-400 font-medium hover:bg-[var(--surface-2)]'
@@ -297,29 +399,44 @@ export const AnalyticsView: React.FC = () => {
             </table>
           </div>
 
-          {/* Interactive Cell Popover / Banner */}
+          {/* Interactive Cell Diagnostic Banner */}
           {selectedCell ? (
-            <div className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border-subtle)] space-y-1.5 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[var(--foreground)]">
-                  {selectedCell.actual} queries routed to {selectedCell.pred}: {selectedCell.val}
-                </span>
+            <div className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border-subtle)] space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between pb-1 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground)]">
+                  <FileCheck className="w-4 h-4 text-[var(--accent)]" />
+                  <span>
+                    Diagnostic Case: Actual {selectedCell.actual} &rarr; Pred {selectedCell.pred} ({selectedCell.val})
+                  </span>
+                </div>
                 <button
                   onClick={() => setSelectedCell(null)}
-                  className="text-[11px] text-[var(--accent)] hover:underline"
+                  className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--foreground)] p-1 rounded-full"
                 >
-                  Clear
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                {selectedCell.actual === selectedCell.pred
-                  ? 'Authoritative routing alignment: high confidence classifier above the 0.85 certainty threshold.'
-                  : `Disambiguation triggered: Inquiries touching both ${selectedCell.actual} and ${selectedCell.pred} prompted student clarification rather than hallucinating.`}
-              </p>
+
+              <div className="space-y-2">
+                {getDiagnosticCases().map((c, cIdx) => (
+                  <div key={cIdx} className="p-3 rounded-xl bg-[var(--surface-1)] border border-[var(--border-subtle)] text-xs space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-medium text-[var(--foreground)]">&ldquo;{c.query}&rdquo;</span>
+                      <span className="font-mono text-[var(--accent)] font-semibold">
+                        &Delta; Margin: {c.deltaMargin}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10.5px] text-[var(--text-secondary)]">
+                      <span>Outcome: <strong className="text-[var(--foreground)]">{c.outcome}</strong></span>
+                      <span className="font-mono">Conf: {(c.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-[11px] text-[var(--text-tertiary)] flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
-              <span>Confidence Margin Guard: Δ ≥ 0.15</span>
+              <span>Confidence Margin Guard: &Delta; &ge; 0.15</span>
               <span className="flex items-center gap-1.5 text-[var(--accent)] font-medium">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Autonomous Route Alignment</span>
@@ -329,7 +446,7 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         {/* Right: Live Stream Turn Audit Log */}
-        <div className="lg:col-span-5 bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-7 space-y-5 shadow-xs">
+        <div className="lg:col-span-5 bg-[var(--surface-1)] border border-[var(--border-subtle)] rounded-3xl p-6 sm:p-7 space-y-5 shadow-xs">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-[var(--foreground)] flex items-center gap-2.5 tracking-tight">
               <Activity className="w-4 h-4 text-[var(--accent)]" />

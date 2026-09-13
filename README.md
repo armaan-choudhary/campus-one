@@ -23,13 +23,13 @@ CampusOne replaces disjointed chatbots, confusing portal links, and bouncing ema
 
 ## 💻 Frontend UI & Multi-Persona Architecture
 
-The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Google DM Sans**:
+The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Inter**:
 
-- **Students (Alex Rivera — Primary Audience):** Clean, distraction-free conversational stream with zero corporate clutter. Features interactive action checklists, inline citation badges, clarification dialogs, and a floating pill composer.
+- **Students (Alex Rivera — Primary Audience):** Clean, distraction-free conversational stream with zero corporate clutter. Features architectural SVG knowledge mesh hero, interactive action checklists, inline citation badges, clarification dialogs, and a floating pill composer.
 - **Campus Support Agents (Sarah Jenkins):** Departmental escalation triage queue with SLA indicators (Urgent 15m window), full conversational context, and 1-click resolution templates.
-- **Knowledge Administrators (Dr. Patricia Cole):** Institutional policy catalog, pgvector chunk inspection, and vector corpus publishing workflows.
-- **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix.
-- **Theme System:** Full native support for Google Material 3 **Dark Mode** and **Light Mode**, with antialiased transparent branding marks that seamlessly adapt to the active surface.
+- **Knowledge Administrators (Dr. Patricia Cole):** Institutional policy catalog, pgvector chunk inspection, and vector corpus publishing workflows with single-line Grounding Authority indicators.
+- **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix on an expansive 1440px dashboard grid.
+- **Theme & Vector System:** Deep neutral black canvas with restrained electric sapphire/indigo accent (`#6366f1`), custom pure-SVG vector graphics, and accessible WCAG 2.1 AA contrast.
 
 ```bash
 # Start Frontend Development Server
@@ -72,5 +72,5 @@ The project includes an exhaustive, implementation-ready 19-document specificati
 
 - **Official Mark:** Minimalist monochrome university gateway arch framing an integrated numeral "1" (One Front Door for Everything).
 - **Assets:** Transparent antialiased mark in `assets/branding/logo.png` (white for dark mode) and `assets/branding/logo-dark.png` (deep slate for light mode).
-- **Typography:** **Google DM Sans** as primary interface typeface, paired with JetBrains Mono for telemetry and identifiers.
-- **Design Tokens:** Google Material Design 3 surface tokens with balanced vertical breathing room and accessible WCAG 2.1 AA contrast.
+- **Typography:** **Inter** as primary interface typeface, paired with JetBrains Mono for telemetry, citations, and identifiers.
+- **Design Tokens:** Deep neutral black canvas (`#09090b` / `#121215`) with restrained electric sapphire/indigo accent (`#6366f1` / `#4f46e5`) and accessible WCAG 2.1 AA contrast.

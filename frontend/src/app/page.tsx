@@ -9,6 +9,7 @@ import { CitationDrawer } from '@/components/CitationDrawer';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { AgentQueueView } from '@/components/AgentQueueView';
 import { KnowledgeAdminView } from '@/components/KnowledgeAdminView';
+import { KnowledgeMeshHero } from '@/components/vectors/KnowledgeMeshHero';
 import {
   INITIAL_CONVERSATIONS,
   STARTER_PROMPTS,
@@ -19,7 +20,13 @@ import {
   UserRole,
   PERSONAS,
 } from '@/lib/demoFixtures';
-import { Sparkles, ArrowRight, KeyRound, CreditCard, Wrench, Compass } from 'lucide-react';
+import { KeyRound, CreditCard, Wrench, Compass } from 'lucide-react';
+
+let globalIdSeq = 1000;
+function createUniqueId(prefix: string): string {
+  globalIdSeq += 1;
+  return `${prefix}_${Date.now()}_${globalIdSeq}`;
+}
 
 export default function Home() {
   const [currentRole, setCurrentRole] = useState<UserRole>('student');
@@ -29,6 +36,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [thinkingStage, setThinkingStage] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Sync theme with html element
@@ -49,10 +57,10 @@ export default function Home() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeConvId, activeConversation?.messages?.length, isProcessing]);
+  }, [activeConvId, activeConversation?.messages?.length, isProcessing, thinkingStage]);
 
   const handleNewChat = () => {
-    const newId = `conv-${Date.now()}`;
+    const newId = createUniqueId('conv');
     const newConv: ConversationItem = {
       id: newId,
       title: 'New inquiry',
@@ -65,41 +73,65 @@ export default function Home() {
     setActiveConvId(newId);
   };
 
-  const handleSendMessage = (text: string) => {
-    if (!text.trim() || isProcessing) return;
+  const handleDeleteConversation = (id: string) => {
+    const remaining = conversations.filter((c) => c.id !== id);
+    setConversations(remaining);
+    if (activeConvId === id && remaining.length > 0) {
+      setActiveConvId(remaining[0].id);
+    }
+  };
+
+  const handleSendMessage = (text: string, attachment?: { name: string; size: string; type: string }) => {
+    if (!text.trim() && !attachment) return;
+    if (isProcessing) return;
+
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsgText = attachment
+      ? `${text}\n📎 [Attachment: ${attachment.name} (${attachment.size})]`
+      : text;
 
     const userMsg: Message = {
-      id: `msg-${Date.now()}`,
+      id: createUniqueId('msg'),
       role: 'user',
-      content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      content: userMsgText,
+      timestamp,
     };
 
     const updatedMessages = [...activeConversation.messages, userMsg];
     updateActiveConversation(updatedMessages);
     setIsProcessing(true);
+    setThinkingStage(0);
 
-    // Simulated orchestrator response matching runbook fixtures
+    // Multi-step progressive thinking stages
+    setTimeout(() => {
+      setThinkingStage(1);
+    }, 450);
+
+    setTimeout(() => {
+      setThinkingStage(2);
+    }, 900);
+
     setTimeout(() => {
       const lower = text.toLowerCase();
       let assistantMsg: Message;
+      const respTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       if (lower.includes('password') || lower.includes('eduroam') || lower.includes('login') || lower.includes('wi-fi')) {
         assistantMsg = {
-          id: `asst-${Date.now()}`,
+          id: createUniqueId('asst'),
           role: 'assistant',
           domain: 'it',
           domainLabel: 'IT Support',
           confidence: 0.96,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: 'You can reset your university password and re-issue your Eduroam certificate through the Identity Management self-service portal. Once updated, credentials synchronize across all campus networks within 3 minutes.',
+          timestamp: respTimestamp,
+          content: 'You can reset your university password and re-issue your **Eduroam Wi-Fi certificate** through the Identity Management self-service portal [1]. Once updated, credentials synchronize across all campus networks within **3 minutes**.',
           portalLink: {
             label: 'Open Password Reset Portal (iam.example.edu)',
             url: 'https://iam.example.edu/reset',
           },
           citations: [
             {
-              id: `cit-${Date.now()}`,
+              id: createUniqueId('cit'),
               marker: '[1]',
               title: 'IT Account Recovery Guide (v2026.1)',
               section: 'Section 2.1: Self-Service Identity Management',
@@ -112,13 +144,13 @@ export default function Home() {
         };
       } else if (lower.includes('submarine') || lower.includes('marine') || lower.includes('off-campus')) {
         assistantMsg = {
-          id: `asst-${Date.now()}`,
+          id: createUniqueId('asst'),
           role: 'assistant',
           domain: 'administration',
           domainLabel: 'Department Escalation',
           confidence: 0.28,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: 'I could not find official university documentation regarding research submarine leases in our published institutional corpus. Rather than guessing, I have routed your inquiry directly to the Registrar for human assistance.',
+          timestamp: respTimestamp,
+          content: 'I could not find official university documentation regarding research submarine leases in our published institutional corpus. Rather than guessing, I have routed your inquiry directly to the **Registrar & Academic Administration** for human assistance.',
           handoff: {
             ticketId: '#HND-9921',
             department: 'Office of the Registrar / Academic Administration',
@@ -127,12 +159,12 @@ export default function Home() {
         };
       } else if (lower.includes('account') && lower.includes('problem')) {
         assistantMsg = {
-          id: `asst-${Date.now()}`,
+          id: createUniqueId('asst'),
           role: 'assistant',
           domain: 'it',
           domainLabel: 'Disambiguation',
           confidence: 0.52,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: respTimestamp,
           content: 'Your question touches both technical campus login access and student fee accounts. Please choose the option that matches what you need:',
           clarification: {
             prompt: 'Which account are you experiencing issues with?',
@@ -152,21 +184,21 @@ export default function Home() {
         };
       } else {
         assistantMsg = {
-          id: `asst-${Date.now()}`,
+          id: createUniqueId('asst'),
           role: 'assistant',
           domain: 'finance',
           domainLabel: 'Finance & Student Accounts',
           confidence: 0.93,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          content: 'University NEFT/RTGS electronic fund transfers require 24 to 48 banking business hours to reconcile into the Student Information System (SIS) ledger. If payment was made within this window, pending status is standard settlement latency.',
+          timestamp: respTimestamp,
+          content: 'University NEFT/RTGS electronic fund transfers require **24 to 48 banking business hours** to reconcile into the Student Information System (SIS) ledger [1]. If payment was made within this window, pending status is standard settlement latency.',
           checklist: [
-            'Verify the 16-digit UTR transaction reference number on your payment receipt.',
+            'Verify the 16-digit **UTR transaction reference number** on your payment receipt.',
             'Download the provisional payment confirmation slip from the Finance Portal.',
             'Check real-time clearance status under "Fee Dues & History".',
           ],
           citations: [
             {
-              id: `cit-${Date.now()}`,
+              id: createUniqueId('cit'),
               marker: '[1]',
               title: 'Fee Payment & Refund Policy (v2026.1)',
               section: 'Section 3.2: Payment Reconciliation SLAs',
@@ -176,12 +208,16 @@ export default function Home() {
               custodian: 'Office of the University Bursar & Comptroller',
             },
           ],
+          followUps: [
+            'What if my fee payment is still pending after 48 hours?',
+            'Where do I upload the bank payment proof?',
+          ],
         };
       }
 
       updateActiveConversation([...updatedMessages, assistantMsg]);
       setIsProcessing(false);
-    }, 600);
+    }, 1350);
   };
 
   const updateActiveConversation = (messages: Message[]) => {
@@ -215,7 +251,6 @@ export default function Home() {
     }
   };
 
-
   return (
     <div className="flex flex-col h-screen w-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden transition-colors duration-200">
       {/* Top App Bar with Persona & Theme Switchers */}
@@ -225,14 +260,16 @@ export default function Home() {
         currentTheme={currentTheme}
         onToggleTheme={toggleTheme}
         onNewChat={handleNewChat}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        isSidebarOpen={isSidebarOpen}
       />
 
       {/* Main Workspace - Persona Tailored Views */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* 1. STUDENT VIEW: Pure conversational interface with ZERO corporate stats */}
+        {/* 1. STUDENT VIEW: Pure conversational interface */}
         {currentRole === 'student' && (
           <>
-            {/* Minimalist Navigation Drawer */}
+            {/* Navigation Drawer */}
             <Sidebar
               conversations={conversations}
               activeId={activeConvId}
@@ -240,44 +277,42 @@ export default function Home() {
               isOpen={isSidebarOpen}
               onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
               persona={activePersona}
+              onDeleteConversation={handleDeleteConversation}
             />
 
             {/* Conversational Stream */}
-            <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-[var(--background)] relative">
+            <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-[var(--background)] relative min-w-0 transition-all duration-200">
               <div className="flex-1 overflow-y-auto px-4 py-6 pb-24">
-                <div className="max-w-2xl mx-auto">
+                <div className="max-w-2xl mx-auto w-full">
                   {activeConversation.messages.length === 0 ? (
-                    /* Clean Gemini-Style Student Empty State */
-                    <div className="py-10 sm:py-14 text-center space-y-6 animate-in fade-in duration-300">
-                      <div className="space-y-2.5">
-                        <div className="inline-flex items-center justify-center w-14 h-14 mb-1">
-                          <img
-                            src={currentTheme === 'dark' ? '/logo.png' : '/logo-dark.png'}
-                            alt="CampusOne"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
+                    /* Minimal Clean Student Empty State with Vector Knowledge Mesh */
+                    <div className="py-8 sm:py-12 text-center space-y-6 animate-in fade-in duration-200">
+                      {/* Architectural Vector Network Graphic */}
+                      <KnowledgeMeshHero className="mb-1" />
+
+                      <div className="space-y-2">
                         <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--foreground)] tracking-tight">
-                          Hello, Alex
+                          How can we help you today?
                         </h1>
+
                         <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
-                          What can I help you resolve across campus today? Ask once and get routed to the right university department.
+                          Ask any question across campus services to get routed and resolved.
                         </p>
                       </div>
 
-                      {/* Suggestion Cards Grid */}
+                      {/* Clean Suggestion Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto pt-2 text-left">
                         {STARTER_PROMPTS.slice(0, 4).map((prompt, idx) => (
                           <button
                             key={idx}
                             onClick={() => handleSendMessage(prompt.text)}
-                            className="p-4 rounded-2xl bg-[var(--surface-1)] hover:bg-[var(--surface-2)] transition-all text-xs flex flex-col justify-between gap-3 group cursor-pointer shadow-xs border border-[var(--border-subtle)]"
+                            className="p-4 rounded-2xl bg-[var(--surface-1)] hover:bg-[var(--surface-2)] transition-all text-xs flex flex-col justify-between gap-3 group cursor-pointer border border-[var(--border-subtle)] hover:border-[var(--border-medium)]"
                           >
                             <div className="flex items-center justify-between w-full">
-                              <div className="w-8 h-8 rounded-full bg-[var(--surface-2)] flex items-center justify-center">
+                              <div className="w-7 h-7 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-[var(--text-secondary)]">
                                 {getPromptIcon(idx)}
                               </div>
-                              <span className="text-[11px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors">
+                              <span className="text-xs text-[var(--text-tertiary)] capitalize">
                                 {prompt.domain}
                               </span>
                             </div>
@@ -289,7 +324,7 @@ export default function Home() {
                       </div>
                     </div>
                   ) : (
-                    /* Message Thread with Balanced Vertical Spacing */
+                    /* Message Thread */
                     <div className="pb-4">
                       {activeConversation.messages.map((msg) => (
                         <MessageBubble
@@ -300,10 +335,12 @@ export default function Home() {
                           onSelectFollowUp={handleSendMessage}
                         />
                       ))}
+
+                      {/* Minimal Thinking Indicator */}
                       {isProcessing && (
-                        <div className="flex items-center gap-2.5 text-xs text-[var(--text-secondary)] my-5 pl-1 animate-pulse">
-                          <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                          <span className="text-xs">CampusOne is checking 2026 institutional policies...</span>
+                        <div className="flex items-center gap-2.5 text-xs text-[var(--text-secondary)] my-5 pl-1 animate-in fade-in duration-150">
+                          <span className="w-2 h-2 rounded-full bg-[var(--foreground)] animate-pulse" />
+                          <span>Checking university evidence &amp; routing...</span>
                         </div>
                       )}
                       <div ref={messagesEndRef} className="h-4" />

@@ -2,12 +2,13 @@
 
 ## 1. Technology and principles
 
-Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Google DM Sans**. The browser client talks to the versioned FastAPI API or operates against verified runbook fixtures in demo mode. The UI presents **one unified conversational front door** for students while providing specialized operational workspaces for departmental staff, knowledge managers, and university evaluators.
+Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**. The browser client talks to the versioned FastAPI API or operates against verified runbook fixtures in demo mode. The UI presents **one unified conversational front door** for students while providing specialized operational workspaces for departmental staff, knowledge managers, and university evaluators.
 
-- **Primary Typography:** **Google DM Sans** (`--font-dm-sans`) with root font scale calibrated to `16.5px` and conversational prose scaled to `15px/16px` for natural reading comfort.
-- **Monospace Typography:** **JetBrains Mono** (`--font-mono`) for operational telemetry, transaction IDs, latency benchmarks, and vector hashes.
-- **Design System:** Google Material Design 3 surface tokens with balanced vertical breathing room, generous touch targets, and full WCAG 2.1 AA accessibility.
-- **Theme Engine:** Instant switching between **Dark Mode** (deep obsidian surface `#131314`) and **Light Mode** (`#f8f9fa`) with automatic transparent logo adaptation.
+- **Primary Typography:** **Inter** (`--font-inter`) with root font scale calibrated to `16px` and conversational prose scaled to `15px/16px` for natural reading comfort.
+- **Monospace Typography:** **JetBrains Mono** (`--font-mono`) reserved strictly for operational telemetry, transaction IDs, latency benchmarks, and vector hashes.
+- **Design System:** Deep neutral black (`#09090b` / `#121215`) with a restrained electric sapphire/indigo accent (`#6366f1` dark / `#4f46e5` light) applied to primary actions, active indicators, and provenance gauges.
+- **Theme Engine:** Instant switching between **Dark Mode** and **Light Mode** with automatic transparent logo adaptation.
+- **Dashboard Layout:** Expansive `1440px` max-width architecture with synchronized gutters (`px-4 sm:px-8 lg:px-12`) and responsive single-row toolbars.
 
 ## 2. Multi-Persona Workspaces & Roles
 
@@ -15,10 +16,10 @@ The frontend provides dedicated, role-tailored workspaces toggled dynamically vi
 
 | Role Key | Persona Name | Audience & Purpose | Key UI Features |
 |---|---|---|---|
-| `student` | **Alex Rivera** (3rd Year CS) | Undergraduates & graduates resolving tuition dues, Wi-Fi certs, course registration, dorm repairs | Pure conversational stream, zero corporate stats, action checklists, inline citations, floating pill composer |
+| `student` | **Alex Rivera** (3rd Year CS) | Undergraduates & graduates resolving tuition dues, Wi-Fi certs, course registration, dorm repairs | Pure conversational stream, zero corporate stats, action checklists, inline citations, floating pill composer, vector knowledge mesh hero |
 | `agent` | **Sarah Jenkins** (Support Specialist) | Departmental specialists receiving pre-packaged escalations | Live triage queue, urgency SLA indicators (15m window), conversational context, 1-click template replies |
-| `knowledge_admin` | **Dr. Patricia Cole** (University Registrar) | Officers authoring and versioning approved university policy documents | Policy registry catalog, pgvector chunk inspection, document upload & embedding workflow |
-| `executive` | **Dr. Marcus Vance** (VP Academic Evaluation) | Leadership monitoring institutional metrics & routing health | Executive Telemetry KPIs (88.4% accuracy, 76.2% auto-resolution), 5×5 confusion matrix, live edge audit log |
+| `knowledge_admin` | **Dr. Patricia Cole** (University Registrar) | Officers authoring and versioning approved university policy documents | Policy registry catalog, pgvector chunk inspection, document upload & embedding workflow, Grounding Authority badge |
+| `executive` | **Dr. Marcus Vance** (VP Academic Evaluation) | Leadership monitoring institutional metrics & routing health | Executive Telemetry KPIs (88.4% accuracy, 76.2% auto-resolution), 5×5 confusion matrix, live edge audit log, 1440px grid |
 
 ## 3. Repository structure
 
@@ -30,18 +31,22 @@ frontend/
     wordmark.png           # High-resolution branding lockups
   src/
     app/
-      layout.tsx           # Google DM Sans & JetBrains Mono root configuration
-      globals.css          # Tailwind v4 theme tokens, Material 3 surfaces, .dark variant
+      layout.tsx           # Inter & JetBrains Mono root configuration
+      globals.css          # Tailwind v4 theme tokens, deep neutral surfaces, accent variables
       page.tsx             # Master orchestrator switching between the 4 persona dashboards
     components/
       TopNav.tsx           # Header with transparent standalone logo, persona switcher & theme toggle
       Sidebar.tsx          # Collapsible navigation drawer with inquiry history & student profile
       MessageBubble.tsx    # Conversational turns, action checklists, citations, TTS audio & feedback
       MessageComposer.tsx  # Floating pill input with voice recording simulation & attachment trigger
-      CitationDrawer.tsx   # Slide-out verified institutional handbook reader with grounding scores
+      CitationDrawer.tsx   # Slide-out verified institutional handbook reader with radial grounding meter
       AgentQueueView.tsx   # Departmental escalation triage queue with SLA tracking & templates
       KnowledgeAdminView.tsx # Registrar policy management & pgvector embedding publishing console
       AnalyticsView.tsx    # Executive Telemetry dashboard & 5×5 cross-department confusion matrix
+      vectors/
+        KnowledgeMeshHero.tsx   # Architectural vector constellation illustration for empty state
+        GroundingRadialGauge.tsx # Precision 260° circular SVG arc grounding score meter
+        RoutingFlowVector.tsx    # Triage pipeline SVG showing query routing path
     lib/
       demoFixtures.ts      # Authoritative runbook test cases, persona profiles & telemetry mocks
 ```
