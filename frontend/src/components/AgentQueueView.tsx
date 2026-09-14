@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AGENT_TICKETS, HandoffTicket } from '@/lib/demoFixtures';
+import { Toast } from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import {
   Inbox,
   AlertTriangle,
@@ -24,7 +26,17 @@ export const AgentQueueView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTicket, setSelectedTicket] = useState<HandoffTicket | null>(null);
   const [resolutionNote, setResolutionNote] = useState<string>('');
-  const [showToast, setShowToast] = useState<string | null>(null);
+  const { toastMessage, showToast } = useToast();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedTicket) {
+        setSelectedTicket(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTicket]);
 
   const filteredTickets = tickets.filter((t) => {
     const matchesFilter =
@@ -49,11 +61,6 @@ export const AgentQueueView: React.FC = () => {
     return matchesFilter && matchesSearch;
   });
 
-  const triggerToast = (msg: string) => {
-    setShowToast(msg);
-    setTimeout(() => setShowToast(null), 3000);
-  };
-
   const handleClaim = (ticketId: string) => {
     setTickets((prev) =>
       prev.map((t) =>
@@ -63,7 +70,7 @@ export const AgentQueueView: React.FC = () => {
     if (selectedTicket?.ticketId === ticketId) {
       setSelectedTicket((prev) => (prev ? { ...prev, status: 'in_progress' } : null));
     }
-    triggerToast(`Ticket ${ticketId} claimed and assigned to your workstation.`);
+    showToast(`Ticket ${ticketId} claimed and assigned to your workstation.`);
   };
 
   const handleResolve = (ticketId: string) => {
@@ -75,7 +82,7 @@ export const AgentQueueView: React.FC = () => {
     if (selectedTicket?.ticketId === ticketId) {
       setSelectedTicket((prev) => (prev ? { ...prev, status: 'resolved' } : null));
     }
-    triggerToast(`Ticket ${ticketId} marked resolved. Resolution notification sent to student.`);
+    showToast(`Ticket ${ticketId} marked resolved. Resolution notification sent to student.`);
   };
 
   const rawTemplates = [
@@ -95,12 +102,7 @@ export const AgentQueueView: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-[1440px] mx-auto space-y-6 transition-all">
       {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-[var(--surface-1)] border border-[var(--accent)] text-[var(--foreground)] px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-[var(--accent)] shrink-0" />
-          <span className="text-xs font-medium">{showToast}</span>
-        </div>
-      )}
+      <Toast message={toastMessage} />
 
       {/* Header */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">

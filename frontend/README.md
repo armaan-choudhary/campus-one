@@ -4,7 +4,7 @@ The official conversational web application and multi-persona operational suite 
 
 ## 🚀 Overview
 
-Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Google DM Sans**, CampusOne delivers an enterprise university interface tailored to four core campus constituencies.
+Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**, CampusOne delivers an enterprise university interface tailored to four core campus constituencies.
 
 ### 🎭 Persona Dashboards & Views
 1. **Student View (Alex Rivera — Primary Audience)**:
@@ -25,9 +25,9 @@ Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and *
 
 ## 🎨 Theme & Typography System
 
-- **Primary Font:** **Google DM Sans** loaded via `next/font/google` (`--font-dm-sans`) with root font scale calibrated to `16.5px` and message text at `15px/16px` for enhanced reading comfort.
+- **Primary Font:** **Inter** loaded via `next/font/google` (`--font-inter`) with root font scale calibrated to `16px` and message text at `15px/16px` for enhanced reading comfort.
 - **Monospace Font:** **JetBrains Mono** (`--font-mono`) for telemetry data, latencies, and transaction hashes.
-- **Dual Themes:** Google Material Design 3 Dark Mode (obsidian `#131314`) and Light Mode (`#f8f9fa`) with seamless theme toggling via TopNav.
+- **Dual Themes:** Google Material Design 3 Dark Mode (obsidian `#09090b` / `#121215`) and Light Mode (`#ffffff` / `#fafafa`) with seamless theme toggling via TopNav.
 - **Branding Assets:** Transparent antialiased mark in `public/logo.png` (white for dark mode) and `public/logo-dark.png` (deep slate for light mode).
 
 ---
@@ -71,6 +71,10 @@ frontend/
 │   │   ├── AgentQueueView.tsx     # Support specialist escalation triage dashboard
 │   │   ├── KnowledgeAdminView.tsx # Policy registry & pgvector corpus manager
 │   │   └── AnalyticsView.tsx      # Executive telemetry & 5x5 confusion matrix
-│   └── lib/
-│       └── demoFixtures.ts   # Complete realistic runbook fixtures & persona data
+│   ├── lib/
+│   │   ├── demoFixtures.ts   # Complete realistic runbook fixtures & persona data
+│   │   └── utils.ts          # Common utility functions, cn helper & safe ID generator
+│   └── types/
+│       └── index.ts          # Centralized TypeScript domain & UI entity contracts
 ```
+

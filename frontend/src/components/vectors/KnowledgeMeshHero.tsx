@@ -47,7 +47,7 @@ export const KnowledgeMeshHero: React.FC<KnowledgeMeshHeroProps> = ({ className 
         </defs>
 
         {/* Ambient Core Glow */}
-        <circle cx="220" cy="110" r="95" fill="url(#meshCenterGlow)" />
+        <circle cx="220" cy="110" r="95" fill="url(#meshCenterGlow)" className="animate-pulse-glow" style={{ transformOrigin: '220px 110px' }} />
 
         {/* Concentric Orbital Rings */}
         <circle
@@ -56,8 +56,8 @@ export const KnowledgeMeshHero: React.FC<KnowledgeMeshHeroProps> = ({ className 
           r="82"
           stroke="var(--border-subtle)"
           strokeWidth="1"
-          strokeDasharray="3 4"
-          className="opacity-60"
+          strokeDasharray="4 6"
+          className="opacity-60 animate-flow-dash"
         />
         <circle
           cx="220"

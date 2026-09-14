@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { KNOWLEDGE_DOCUMENTS, PolicyDocument } from '@/lib/demoFixtures';
+import { Toast } from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import {
   BookOpen,
   Database,
   Upload,
   RefreshCw,
-  CheckCircle2,
   Plus,
   X,
   Search,
@@ -63,11 +64,22 @@ export const KnowledgeAdminView: React.FC = () => {
   const [inspectingDoc, setInspectingDoc] = useState<PolicyDocument | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDomain, setNewDomain] = useState<'it' | 'finance' | 'facilities' | 'academics' | 'administration'>('academics');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { toastMessage, showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'documents' | 'sandbox'>('documents');
   const [sandboxQuery, setSandboxQuery] = useState('How long does fee payment take to clear in student ledger?');
   const [sandboxResults, setSandboxResults] = useState<RetrievalMatch[]>(SAMPLE_RETRIEVALS.default);
   const [isSimulating, setIsSimulating] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showUploadModal) setShowUploadModal(false);
+        if (inspectingDoc) setInspectingDoc(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showUploadModal, inspectingDoc]);
 
   const filteredDocs = documents.filter((doc) => {
     return (
@@ -77,11 +89,6 @@ export const KnowledgeAdminView: React.FC = () => {
       doc.domain.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   const handleReindex = () => {
     setIsReindexing(true);
@@ -135,12 +142,7 @@ export const KnowledgeAdminView: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-[1440px] mx-auto space-y-6 transition-all">
       {/* Toast Feedback */}
-      {toastMessage && (
-        <div className="fixed bottom-8 right-8 z-50 bg-[var(--surface-1)] border border-[var(--accent)] text-[var(--foreground)] px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-[var(--accent)] shrink-0" />
-          <span className="text-xs font-medium">{toastMessage}</span>
-        </div>
-      )}
+      <Toast message={toastMessage} />
 
       {/* Header */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">

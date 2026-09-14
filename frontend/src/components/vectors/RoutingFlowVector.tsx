@@ -28,8 +28,18 @@ export const RoutingFlowVector: React.FC<RoutingFlowVectorProps> = ({
         <circle cx="8" cy="12" r="5" fill="var(--surface-2)" stroke="var(--border-subtle)" strokeWidth="1.2" />
         <circle cx="8" cy="12" r="2" fill="var(--text-secondary)" />
 
-        {/* Path 1: Source to Classifier */}
-        <line x1="14" y1="12" x2="86" y2="12" stroke="var(--border-subtle)" strokeWidth="1" strokeDasharray="3 3" />
+        {/* Path 1: Source to Classifier with animated streaming flow */}
+        <line
+          x1="14"
+          y1="12"
+          x2="86"
+          y2="12"
+          stroke="var(--accent)"
+          strokeOpacity="0.75"
+          strokeWidth="1.2"
+          strokeDasharray="4 3"
+          className="animate-flow-dash"
+        />
         
         {/* Classifier Center Node */}
         <rect

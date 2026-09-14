@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Citation } from '@/lib/demoFixtures';
 import {
   X,
@@ -26,6 +26,21 @@ export const CitationDrawer: React.FC<CitationDrawerProps> = ({
   const [copied, setCopied] = useState(false);
   const [reported, setReported] = useState(false);
   const [viewMode, setViewMode] = useState<'excerpt' | 'context'>('excerpt');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (citation) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [citation, onClose]);
 
   if (!citation) return null;
 

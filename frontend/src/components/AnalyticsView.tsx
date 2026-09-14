@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ANALYTICS_SUMMARY,
   CONFUSION_MATRIX,
   LIVE_AUDIT_LOGS,
 } from '@/lib/demoFixtures';
+import { Toast } from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import {
   TrendingUp,
   Activity,
@@ -14,7 +16,6 @@ import {
   RefreshCw,
   Sparkles,
   Download,
-  CheckCircle2,
   BarChart2,
   X,
   FileCheck,
@@ -82,12 +83,17 @@ export const AnalyticsView: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'semester'>('7d');
   const [selectedCell, setSelectedCell] = useState<{ actual: string; pred: string; val: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { toastMessage, showToast } = useToast();
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedCell) {
+        setSelectedCell(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCell]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -154,12 +160,7 @@ export const AnalyticsView: React.FC = () => {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-[1440px] mx-auto space-y-6 transition-all">
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-8 right-8 z-50 bg-[var(--surface-1)] border border-[var(--accent)] text-[var(--foreground)] px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-[var(--accent)] shrink-0" />
-          <span className="text-xs font-medium">{toastMessage}</span>
-        </div>
-      )}
+      <Toast message={toastMessage} />
 
       {/* Header & Filter Row */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">

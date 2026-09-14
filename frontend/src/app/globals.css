@@ -95,3 +95,53 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-medium);
 }
+
+/* Micro-animation keyframes */
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-flow-dash {
+  animation: flowDash 1s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-flow-dash,
+  .animate-pulse-glow,
+  .animate-float-gentle,
+  .animate-bounce,
+  .animate-pulse,
+  .animate-ping {
+    animation: none !important;
+  }
+}

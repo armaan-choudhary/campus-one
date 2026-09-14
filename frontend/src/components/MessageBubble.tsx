@@ -199,7 +199,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               href={message.portalLink.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs text-[var(--foreground)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] px-4 py-2 rounded-full transition-all border border-[var(--border-subtle)] font-medium"
+              className="inline-flex items-center gap-2 text-xs text-[var(--foreground)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:-translate-y-0.5 hover:shadow-xs active:scale-95 px-4 py-2 rounded-full transition-all duration-150 border border-[var(--border-subtle)] font-medium"
             >
               <span>{message.portalLink.label}</span>
               <ExternalLink className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
@@ -219,7 +219,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <button
                   key={option.id}
                   onClick={() => onSelectClarification?.(option)}
-                  className="text-left p-3.5 rounded-xl bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-xs text-[var(--foreground)] transition-all flex flex-col gap-1 group cursor-pointer border border-[var(--border-subtle)] hover:border-[var(--border-medium)]"
+                  className="text-left p-3.5 rounded-xl bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:-translate-y-0.5 hover:shadow-xs active:scale-[0.98] text-xs text-[var(--foreground)] transition-all duration-150 flex flex-col gap-1 group cursor-pointer border border-[var(--border-subtle)] hover:border-[var(--accent)]"
                 >
                   <span className="font-semibold text-xs leading-snug">
                     {option.label}
@@ -259,7 +259,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <button
                 key={citation.id}
                 onClick={() => onOpenCitation(citation)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border border-[var(--border-subtle)] hover:border-[var(--border-medium)] text-xs text-[var(--foreground)] transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:-translate-y-0.5 hover:shadow-xs active:scale-95 border border-[var(--border-subtle)] hover:border-[var(--accent)] text-xs text-[var(--foreground)] transition-all duration-150 cursor-pointer"
               >
                 <FileCheck className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
                 <span className="font-bold font-mono text-[11px] text-[var(--text-secondary)]">{citation.marker}</span>
@@ -282,9 +282,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <button
                   key={idx}
                   onClick={() => onSelectFollowUp?.(promptText)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-1)] hover:bg-[var(--surface-2)] text-xs text-[var(--foreground)] border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-all cursor-pointer shadow-xs text-left group"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-1)] hover:bg-[var(--surface-2)] hover:-translate-y-0.5 hover:shadow-xs active:scale-95 text-xs text-[var(--foreground)] border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-all duration-150 cursor-pointer text-left group"
                 >
-                  <Sparkles className="w-3 h-3 text-[var(--accent)] shrink-0" />
+                  <Sparkles className="w-3 h-3 text-[var(--accent)] shrink-0 group-hover:scale-110 transition-transform" />
                   <span className="group-hover:text-[var(--accent)] transition-colors font-normal text-xs">
                     {promptText}
                   </span>
@@ -299,7 +299,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       <div className="flex items-center gap-1 pt-0.5 pl-1 text-[var(--text-tertiary)]">
         <button
           onClick={handleCopy}
-          className="p-2 hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] rounded-full transition-colors cursor-pointer"
+          className="p-2 hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] active:scale-90 rounded-full transition-all duration-150 cursor-pointer"
           title="Copy message"
           aria-label="Copy message"
         >
@@ -307,7 +307,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </button>
         <button
           onClick={handleToggleSpeak}
-          className={`p-2 rounded-full transition-colors cursor-pointer ${
+          className={`p-2 rounded-full active:scale-90 transition-all duration-150 cursor-pointer ${
             isSpeaking
               ? 'text-[var(--accent)] bg-[var(--surface-2)] animate-pulse'
               : 'hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]'
@@ -319,7 +319,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </button>
         <button
           onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
-          className={`p-2 rounded-full transition-colors cursor-pointer ${
+          className={`p-2 rounded-full active:scale-90 transition-all duration-150 cursor-pointer ${
             feedback === 'up'
               ? 'text-[var(--accent)] bg-[var(--surface-2)]'
               : 'hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]'
@@ -331,7 +331,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </button>
         <button
           onClick={handleThumbsDown}
-          className={`p-2 rounded-full transition-colors cursor-pointer ${
+          className={`p-2 rounded-full active:scale-90 transition-all duration-150 cursor-pointer ${
             feedback === 'down'
               ? 'text-red-400 bg-[var(--surface-2)]'
               : 'hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]'
