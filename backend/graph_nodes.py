@@ -1,6 +1,9 @@
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from backend.graph_nodes import AssistantState, DepartmentRoute
+from backend.graph_state import AssistantState, DepartmentRoute, ITQueryResponse
+from backend.knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
+from langchain_core.prompts import ChatPromptTemplate
+from Prompts import IT_QUERY_PROMPT
 
 load_dotenv()
 
@@ -27,34 +30,65 @@ def router(state : AssistantState):
 
 
 
-def it_agent(state : AssistantState):
-
+def it_query(state: AssistantState):
     llm = ChatGroq(
-        model = "openai/gpt-oss-120b",
-        temperature = 0.7
+        model="openai/gpt-oss-120b",
+        temperature=0.3,
+    )
+
+    structured_llm = llm.with_structured_output(ITQueryResponse)
+
+    retrieved_documents = retrieve_documents(
+        query=state["current_query"],
+        collection_name=IT_KNOWLEDGE_BASE,
+        number_of_documents=4,
+    )
+
+    retrieved_context = format_retrieved_documents(
+        retrieved_documents
+    )
+
+    prompt = IT_QUERY_PROMPT.format(
+        query=state["current_query"],
+        context=retrieved_context,
+    )
+
+    response = structured_llm.invoke(prompt)
+
+    answer_confidence = response.answer_confidence
+
+    source_references = [
+        (
+            f"{document.metadata.get('source', 'Unknown document')}"
+            f", page {document.metadata['page'] + 1}"
+            if isinstance(document.metadata.get("page"), int)
+            else document.metadata.get(
+                "source",
+                "Unknown document",
+            )
         )
-
-    query = state["current_query"]
-    prompt = f"""
-        You are the university IT support agent.
-
-        Answer the user's technical question clearly and practically.
-        If the issue requires account access, system permissions, or manual intervention,
-        explain that a human support agent is required.
-
-        User query:
-        {query}
-        """
-    response  = llm.invoke(prompt)
+        for document in retrieved_documents
+    ]
 
     return {
-        "agent_response": response.content,
-        "agent_confidence": 0.85,
-        "solved": True,
-        "human_required": False,
-        "handoff_reason": None,
-        "sources": [],
+        "agent_response": response.answer,
+        "agent_confidence": answer_confidence,
+        "solved": answer_confidence >= 0.75,
+        "human_required": answer_confidence < 0.75,
+        "handoff_reason": (
+            "The retrieved IT documentation does not provide "
+            "enough information for a confident answer."
+            if answer_confidence < 0.75
+            else None
+        ),
+        "sources": source_references,
+        "metadata": {
+            **state.get("metadata", {}),
+            "agent_domain": "IT",
+            "retrieved_document_count": len(retrieved_documents),
+        },
     }
+
 
 def clarify(state: AssistantState):
     query = state["current_query"]
