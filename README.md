@@ -46,7 +46,31 @@ The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind
 
 ---
 
-## 🚀 Quickstart & Development
+## 🚀 One-Command Launch (All Platforms)
+
+Right after a fresh `git clone` or `git pull`, launch the entire stack (PostgreSQL + pgvector container, Python venv, dependencies, and Next.js frontend) with a single command:
+
+#### Linux & macOS (Bash)
+```bash
+./start.sh
+```
+*(Optionally run `./setup.sh` first if you only want to set up dependencies without launching the server)*
+
+#### Windows (Command Prompt)
+```cmd
+start.bat
+```
+
+#### Windows & Cross-Platform (PowerShell)
+```powershell
+.\start.ps1
+```
+
+---
+
+## 🛠️ Manual Step-by-Step Setup
+
+If you prefer configuring services step-by-step:
 
 ### 1. Start Vector Database (PostgreSQL + pgvector)
 ```bash
@@ -61,7 +85,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Create .env with GROQ_API_KEY and DATABASE_URL
+# Create .env from .env.example with GROQ_API_KEY and DATABASE_URL
 # Ingest and index PDF policy documents:
 python index_documents.py
 ```
