@@ -4,7 +4,7 @@ REM CampusOne — Application Launcher (Windows Command Prompt)
 REM ==============================================================================
 setlocal enabledelayedexpansion
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo ==================================================================
 echo   CampusOne: One Front Door for Everything — Windows Launcher
@@ -17,8 +17,8 @@ if not exist "frontend\node_modules" goto run_setup
 goto launch
 
 :run_setup
-echo [INFO] First-time setup detected. Running setup.bat...
-call setup.bat
+echo [INFO] First-time setup detected. Running scripts\setup.bat...
+call scripts\setup.bat
 if %errorlevel% neq 0 (
     echo [ERROR] Setup encountered errors. Please check the logs.
     exit /b 1

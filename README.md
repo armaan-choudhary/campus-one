@@ -52,18 +52,18 @@ Right after a fresh `git clone` or `git pull`, launch the entire stack (PostgreS
 
 #### Linux & macOS (Bash)
 ```bash
-./start.sh
+./scripts/start.sh
 ```
-*(Optionally run `./setup.sh` first if you only want to set up dependencies without launching the server)*
+*(Optionally run `./scripts/setup.sh` first if you only want to set up without launching)*
 
 #### Windows (Command Prompt)
 ```cmd
-start.bat
+scripts\start.bat
 ```
 
 #### Windows & Cross-Platform (PowerShell)
 ```powershell
-.\start.ps1
+.\scripts\start.ps1
 ```
 
 ---

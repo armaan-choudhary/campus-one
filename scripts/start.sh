@@ -12,7 +12,7 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo -e "${BOLD}${CYAN}"
@@ -27,8 +27,8 @@ echo "------------------------------------------------------------------"
 
 # Auto-run setup if environment is uninitialized
 if [ ! -f "backend/.env" ] || [ ! -d "backend/.venv" ] || [ ! -d "frontend/node_modules" ]; then
-    echo -e "${YELLOW}[INFO] First-time setup detected. Running ./setup.sh...${NC}\n"
-    ./setup.sh
+    echo -e "${YELLOW}[INFO] First-time setup detected. Running ./scripts/setup.sh...${NC}\n"
+    ./scripts/setup.sh
 fi
 
 # Detect docker compose command

@@ -10,33 +10,28 @@ Write-Host "==================================================================" 
 Write-Host "  CampusOne: One Front Door for Everything — PowerShell Setup" -ForegroundColor Cyan
 Write-Host "==================================================================" -ForegroundColor Cyan
 
-$ProjectRoot = $PSScriptRoot
+$ProjectRoot = (Resolve-Path "$PSScriptRoot\..")
 Set-Location $ProjectRoot
 
 # 1. Dependency Checks
 Write-Host "`n[1/5] Checking System Prerequisites..." -ForegroundColor Yellow
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-    Write-Error "Docker is not installed or not in PATH. Please install Docker: https://docs.docker.com/get-docker/"
+    Write-Error "Docker is not installed or not in PATH. Install from: https://docs.docker.com/get-docker/"
 }
-
 if (-not (Get-Command python -ErrorAction SilentlyContinue) -and -not (Get-Command python3 -ErrorAction SilentlyContinue)) {
     Write-Error "Python 3.10+ is required but not found in PATH."
 }
-
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Error "Node.js 18+ is required but not found in PATH."
 }
-
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     Write-Error "npm is required but not found in PATH."
 }
-
 Write-Host "✓ Prerequisites found." -ForegroundColor Green
 
 # 2. Environment Configuration
 Write-Host "`n[2/5] Configuring Environment Variables..." -ForegroundColor Yellow
-
 $EnvPath = Join-Path $ProjectRoot "backend\.env"
 $EnvExamplePath = Join-Path $ProjectRoot "backend\.env.example"
 
@@ -68,7 +63,6 @@ Write-Host "`n[4/5] Setting up Backend Python Virtual Environment..." -Foregroun
 $VenvPath = Join-Path $ProjectRoot "backend\.venv"
 
 if (-not (Test-Path $VenvPath)) {
-    Write-Host "Creating Python virtual environment..."
     $PythonExe = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } else { "python3" }
     & $PythonExe -m venv $VenvPath
     Write-Host "✓ Virtual environment created." -ForegroundColor Green
@@ -76,11 +70,8 @@ if (-not (Test-Path $VenvPath)) {
     Write-Host "✓ backend/.venv exists." -ForegroundColor Green
 }
 
-$VenvPip = if ($IsWindows -or $env:OS -match "Windows") {
-    Join-Path $VenvPath "Scripts\pip.exe"
-} else {
-    Join-Path $VenvPath "bin/pip"
-}
+$IsWin = $env:OS -match "Windows"
+$VenvPip = if ($IsWin) { Join-Path $VenvPath "Scripts\pip.exe" } else { Join-Path $VenvPath "bin/pip" }
 
 Write-Host "Installing Python requirements..."
 & $VenvPip install -r (Join-Path $ProjectRoot "backend\requirements.txt")
@@ -102,8 +93,5 @@ if (-not (Test-Path $NodeModules)) {
 Write-Host "`n==================================================================" -ForegroundColor Green
 Write-Host "🎉 Setup Completed Successfully!" -ForegroundColor Green
 Write-Host "==================================================================" -ForegroundColor Green
-Write-Host "Run the entire stack anytime with:" -ForegroundColor White
-Write-Host "  .\start.ps1" -ForegroundColor Cyan
-Write-Host "`nServices:" -ForegroundColor White
-Write-Host "  - Frontend:   http://localhost:3000" -ForegroundColor Cyan
-Write-Host "  - PostgreSQL: localhost:5432 (campus_one)`n" -ForegroundColor Cyan
+Write-Host "Run the entire stack with:" -ForegroundColor White
+Write-Host "  .\scripts\start.ps1`n" -ForegroundColor Cyan

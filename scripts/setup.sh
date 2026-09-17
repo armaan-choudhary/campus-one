@@ -21,7 +21,7 @@ echo -e "${NC}"
 echo -e "${BOLD}One Front Door for Everything — Full Stack Automated Setup${NC}"
 echo "=================================================================="
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # ------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ echo -e "\n${BOLD}${GREEN}======================================================
 echo -e "🎉 Setup Completed Successfully!"
 echo -e "==================================================================${NC}"
 echo -e "You can now run the complete stack anytime with:"
-echo -e "  ${BOLD}./start.sh${NC}"
+echo -e "  ${BOLD}./scripts/start.sh${NC}"
 echo ""
 echo -e "Services configured:"
 echo -e "  • Frontend Web Client : ${BLUE}http://localhost:3000${NC}"

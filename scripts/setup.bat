@@ -8,7 +8,7 @@ echo ==================================================================
 echo   CampusOne: One Front Door for Everything — Windows Setup
 echo ==================================================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 REM 1. Check Prerequisites
 echo.
@@ -111,7 +111,7 @@ echo ==================================================================
 echo   Setup Completed Successfully!
 echo ==================================================================
 echo You can run the entire app anytime using:
-echo   start.bat
+echo   scripts\start.bat
 echo.
 echo Services:
 echo   - Frontend Web App: http://localhost:3000
