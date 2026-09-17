@@ -21,6 +21,19 @@ CampusOne replaces disjointed chatbots, confusing portal links, and bouncing ema
 
 ---
 
+## ⚙️ Backend Multi-Agent & Retrieval Engine
+
+The backend (`backend/`) is a LangGraph orchestration service combining Groq high-throughput LLMs (`openai/gpt-oss-120b`) and PostgreSQL with `pgvector`:
+
+- **Structured Intent Routing (`router()`):** Employs JSON Schema structured outputs (`DepartmentRoute`) to determine target departments, routing confidence, and classification reasoning.
+- **Isolated PGVector Knowledge Bases:** Four dedicated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) to prevent multi-department cross-contamination.
+- **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
+- **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
+- **Confidence-Gated Resolution:** If routing confidence $\ge 0.75$, routes to domain agents (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`); if confidence $< 0.75$, shifts to dynamic clarification (`clarify()`) or flags human specialist escalation.
+- **Synthesis Node (`synthesize()`):** Formats raw domain outputs into clear, actionable advice with numbered checklists before returning to the conversation history.
+
+---
+
 ## 💻 Frontend UI & Multi-Persona Architecture
 
 The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Inter**:
@@ -31,11 +44,61 @@ The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind
 - **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix on an expansive 1440px dashboard grid.
 - **Theme & Vector System:** Deep neutral black canvas with restrained electric sapphire/indigo accent (`#6366f1`), custom pure-SVG vector graphics, and accessible WCAG 2.1 AA contrast.
 
+---
+
+## 🚀 Quickstart & Development
+
+### 1. Start Vector Database (PostgreSQL + pgvector)
 ```bash
-# Start Frontend Development Server
-cd frontend
+cd backend
+docker compose up -d
+```
+
+### 2. Configure & Run Backend Pipeline
+```bash
+# In backend/ directory
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Create .env with GROQ_API_KEY and DATABASE_URL
+# Ingest and index PDF policy documents:
+python index_documents.py
+```
+
+### 3. Start Frontend Development Server
+```bash
+cd ../frontend
 npm install
 npm run dev # Launches on http://localhost:3000
+```
+
+---
+
+## 📂 Repository Structure
+
+```text
+msInnovateHack/
+├── backend/                       # Python LangGraph & pgvector orchestration engine
+│   ├── Documents/                 # Institutional policy PDFs (IT, HR, Finance, Facilities)
+│   ├── docker-compose.yml         # PostgreSQL 16 + pgvector container
+│   ├── graph_nodes.py             # Router, domain RAG nodes, clarify, synthesize, respond
+│   ├── graph_state.py             # State graph schemas and Pydantic structured output models
+│   ├── index_documents.py         # PDF chunking and vector indexing script
+│   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
+│   ├── Prompts.py                 # Domain prompt templates and system instructions
+│   ├── requirements.txt           # Python dependencies
+│   ├── test.ipynb                 # Interactive evaluation notebook
+│   └── README.md                  # Backend architecture and setup guide
+├── frontend/                      # Next.js 16 multi-persona web application
+│   ├── src/app/                   # App Router pages (Landing / & Workspace /workspace)
+│   ├── src/components/            # UI components (Chat, Queue, Admin, Analytics, Vectors)
+│   ├── src/lib/                   # Mock engine, demo fixtures, utilities
+│   ├── src/types/                 # Centralized domain and entity TypeScript interfaces
+│   └── README.md                  # Frontend documentation
+├── docs/                          # Exhaustive 19-document architectural specification suite
+├── assets/                        # Brand marks, vector assets, and design artifacts
+└── README.md                      # Monorepo master documentation
 ```
 
 ---

@@ -81,9 +81,22 @@ Chunk text includes a breadcrumb prefix for retrieval context:
 If a payment is deducted but the portal remains pending, the student should...
 ```
 
-The stored `content` excludes synthetic prefixes if a clean citation excerpt is preferred; `retrieval_text` stores the exact embedded text. Use `text-embedding-3-small` by default with dimension 1536. Changing model or dimension requires a new embedding version and a backfill before cutover.
+The stored `content` excludes synthetic prefixes if a clean citation excerpt is preferred; `retrieval_text` stores the exact embedded text. Use `sentence-transformers/all-MiniLM-L6-v2` (dimension 384) with normalized embeddings by default, matching the live vector pipeline in `backend/knowledge_retrieval.py`.
 
-## 6. Hybrid Retrieval algorithm & PostgreSQL RRF Implementation
+### Implemented Department Vector Collections
+
+The backend maintains four department-isolated vector collections inside PostgreSQL 16 (`pgvector`):
+
+| Domain | Collection Identifier | Ingestion Source Path | Search Strategy |
+|:---|:---|:---|:---|
+| **IT** | `it_knowledge` | `backend/Documents/IT/*.pdf` | MMR ($k=4, \lambda=0.7$) |
+| **HR** | `hr_knowledge` | `backend/Documents/HR/*.pdf` | MMR ($k=4, \lambda=0.7$) |
+| **Finance** | `finance_knowledge` | `backend/Documents/Finance/*.pdf` | MMR ($k=4, \lambda=0.7$) |
+| **Facilities** | `facilities_knowledge` | `backend/Documents/Facilities/*.pdf` | MMR ($k=4, \lambda=0.7$) |
+
+Ingestion is executed via `python backend/index_documents.py`, which loads PDFs using `PyPDFLoader`, performs recursive chunking (1,000 characters with 150-character overlap), and injects chunk metadata (`source`, `page`, `chunk_index`, `department`).
+
+## 6. Retrieval Algorithm & PGVector Implementation
 
 ```python
 scope = RetrievalScope(

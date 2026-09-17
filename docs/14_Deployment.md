@@ -12,45 +12,73 @@ Never copy production student data into local or staging.
 
 ## 2. Local setup
 
-Prerequisites: Docker, Docker Compose, Node.js 20+, Python 3.12+, and an OpenAI API key for model-backed mode. Fake mode runs without an external key.
+Prerequisites: Docker, Docker Compose, Node.js 20+, Python 3.10+, and a [Groq API Key](https://console.groq.com/).
 
 ```bash
-cp .env.example .env
-docker compose up -d db redis
-cd backend && uv sync
-uv run alembic upgrade head
-uv run python -m app.seed
-uv run uvicorn app.main:app --reload --port 8000
-cd ../frontend && npm ci && npm run dev
+# 1. Start PostgreSQL 16 + pgvector container
+cd backend
+docker compose up -d
+
+# 2. Setup Python virtual environment & install dependencies
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 3. Configure backend/.env
+# GROQ_API_KEY=your_groq_api_key_here
+# DATABASE_URL=postgresql+psycopg://campus_one:your_password@localhost:5432/campus_one
+# POSTGRES_DB=campus_one
+# POSTGRES_USER=campus_one
+# POSTGRES_PASSWORD=your_password
+
+# 4. Ingest and index department PDFs (IT, HR, Finance, Facilities)
+python index_documents.py
+
+# 5. Optional: Run test & evaluation notebook
+jupyter notebook test.ipynb
+
+# 6. Start Frontend Development Server
+cd ../frontend
+npm install
+npm run dev # Runs on http://localhost:3000
 ```
 
-Docker Compose services:
+`backend/docker-compose.yml` service definition:
 
 ```yaml
 services:
-  db:
+  postgres:
     image: pgvector/pgvector:pg16
-    environment: { POSTGRES_DB: campusone, POSTGRES_USER: campusone, POSTGRES_PASSWORD: campusone }
-    ports: ["5432:5432"]
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-  api:
-    build: ./backend
-    depends_on: [db, redis]
-  worker:
-    build: ./backend
-    command: python -m app.worker
-    depends_on: [db, redis]
-```
+    container_name: campus-one-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - campus_one_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_one -d campus_one"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-Do not commit actual secrets; the shown values are local-only.
+volumes:
+  campus_one_postgres_data:
+```
 
 ## 3. Environment variables
 
-Required backend values: `APP_ENV`, `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` or OIDC settings, `OPENAI_API_KEY` in model mode, model names, routing thresholds (`ROUTER_HIGH_CONFIDENCE_THRESHOLD=0.75`, `ROUTER_MARGIN_GUARD=0.15`), retrieval threshold (`RETRIEVAL_MIN_SCORE=0.65`), turn mutex lease (`REDIS_TURN_LOCK_TTL_SEC=15`), resilience flags (`CIRCUIT_BREAKER_TIMEOUT_MS=3500`, `PREWARM_DEMO_FIXTURES=true`), `CORS_ORIGINS`, and retention settings. Frontend exposes only `NEXT_PUBLIC_API_BASE_URL` and non-secret feature flags.
+Required backend values (in `backend/.env`):
+- `GROQ_API_KEY`: Groq API key for high-throughput LLM reasoning (`openai/gpt-oss-120b`).
+- `DATABASE_URL`: SQLAlchemy/psycopg connection URI (e.g. `postgresql+psycopg://campus_one:campus_one_secret@localhost:5432/campus_one`).
+- `POSTGRES_DB`: Default database name (`campus_one`).
+- `POSTGRES_USER`: Database username (`campus_one`).
+- `POSTGRES_PASSWORD`: Database password.
 
-Startup validates required values and fails with a safe configuration error. It logs variable names, not values.
+Startup validates required values and fails with a safe configuration error if `DATABASE_URL` or `GROQ_API_KEY` is missing.
 
 ## 4. Database and vector setup
 

@@ -33,31 +33,22 @@ flowchart LR
 ### Pre-Flight Verification Commands
 
 ```bash
-# 1. Ensure Docker containers are healthy
-docker compose ps
-# Expected: db (healthy, port 5432), redis (healthy, port 6379)
-
-# 2. Run migrations and database seeding
+# 1. Ensure PostgreSQL 16 + pgvector container is healthy
 cd backend
-uv run alembic upgrade head
-uv run python -m app.seed
+docker compose up -d
+docker ps --filter "name=campus-one-postgres"
+# Expected: campus-one-postgres (healthy, port 5432)
 
-# 3. Verify knowledge corpus status (IT, Finance, Facilities, Academics, Administration)
-uv run python -m app.knowledge.verify_corpus
-# Expected: 5 domains published, 48 total chunks, 0 unindexed documents
+# 2. Ingest and index knowledge corpus across departments
+python index_documents.py
+# Expected: Indexed chunks for IT, HR, Finance, and Facilities into PGVector
 
-# 4. Check Backend readiness endpoint
-curl -s http://localhost:8000/api/v1/health/ready | jq .
-# Expected: {"status":"ready","database":"ok","vector":"ok","openai":"configured"}
+# 3. Run routing and graph verification
+jupyter notebook test.ipynb # Or run test script
 
-# 5. Check Frontend accessibility
+# 4. Check Frontend accessibility
 curl -I http://localhost:3000/
 # Expected: HTTP/1.1 200 OK
-
-# 6. Test Demo Student Auth token
-curl -s -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"student@example.edu","password":"demo-password"}' | jq .access_token
 ```
 
 ### Autonomous Fallback & Zero-Downtime Replay Circuit Breaker

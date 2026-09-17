@@ -2,9 +2,9 @@
 
 ## 1. Architecture decision
 
-CampusOne uses a **modular monolith**: one FastAPI application owns orchestration and APIs, one Next.js application owns the web UI, PostgreSQL with pgvector owns durable state and vector retrieval, and Redis is used for short-lived locks and ingestion/evaluation jobs. The modules are separated in code and tested independently, but they are deployed with the smallest number of operational units that still supports the prototype.
+CampusOne uses a **modular LangGraph-driven monolith**: a Python backend orchestrates multi-agent conversation graphs (`graph_nodes.py`, `graph_state.py`) with high-throughput Groq LLMs (`openai/gpt-oss-120b`), a Next.js 16 application owns the multi-persona web UI, and PostgreSQL 16 with `pgvector` hosts department-isolated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) with Max Marginal Relevance (MMR) retrieval. 
 
-This balances hackathon delivery speed with clean future seams. A future domain, retrieval backend, identity provider, or ticketing integration can be added behind an interface without changing the public chat contract.
+This balances hackathon delivery speed with clean, decoupled seams. Department skills, vector collections, or human handoff queues can be evolved independently without impacting the conversational front door.
 
 ## 2. Context diagram
 
@@ -12,21 +12,19 @@ This balances hackathon delivery speed with clean future seams. A future domain,
 flowchart TB
     Student[Student browser]
     Admin[Admin/evaluator browser]
-    Web[Next.js web client]
-    API[FastAPI API / modular monolith]
-    LLM[OpenAI API]
-    DB[(PostgreSQL + pgvector)]
-    Redis[(Redis)]
-    IdP[Mock auth / future university OIDC]
-    Agent[Support agent or handoff inbox]
-    Logs[Structured logs / metrics]
+    Web[Next.js 16 web client]
+    API[Backend: LangGraph Orchestration]
+    LLM[Groq API: openai/gpt-oss-120b]
+    DB[(PostgreSQL 16 + pgvector)]
+    Embeddings[HuggingFace: all-MiniLM-L6-v2]
+    Agent[Sarah Jenkins: Support Triage Queue]
+    Logs[Structured telemetry / audit logs]
 
     Student --> Web
     Admin --> Web
     Web --> API
-    API --> IdP
     API --> DB
-    API --> Redis
+    API --> Embeddings
     API --> LLM
     API --> Agent
     API --> Logs
@@ -90,23 +88,16 @@ flowchart LR
     ResilientLLM --- RAG
 ```
 
-## 4. Backend module boundaries
+## 4. Backend module boundaries & File Mappings
 
-| Module | Owns | Does not own |
-|---|---|---|
-| `api` | HTTP validation, SSE streaming protocols, auth wiring, status codes | business routing logic |
-| `auth` | provider abstraction, token validation, role checks | conversation ownership decisions outside the current user |
-| `conversation` | turn lifecycle, Redis turn mutex, optimistic versioning, state transitions | domain-specific facts |
-| `routing` | candidate intents, margin-guarded confidence, topic switches | answer generation |
-| `skills` | registry, micro-drafts, domain-specific retrieval filters | global conversation state |
-| `retrieval` | hybrid pgvector HNSW + FTS GIN, RRF ranking, relevance filtering | choosing the user-facing wording |
-| `generation` | grounded structured answer from evidence, streaming tokens | deciding which domain owns the message |
-| `citation` | stable citation objects and coverage validation | document parsing |
-| `handoff` | fallback policy, summary, queue record | agent's external ticket system |
-| `analytics` | event schema, aggregation queries | changing a routing decision after the fact |
-| `evaluation` | fixtures, runners, metric calculations | production conversation mutation |
-| `db` | SQLAlchemy models, sessions, migrations, full-text indexes | domain policy |
-| `config` | typed environment settings | hidden defaults in feature modules |
+| Module / File | Owns | Does not own | Implementation |
+|---|---|---|---|
+| `graph_nodes.py` | State graph nodes (`router`, `it_query`, `hr_agent`, `clarify`, `synthesize`, `respond`) | Raw SQL queries, PDF loading | LangChain + ChatGroq (`openai/gpt-oss-120b`) |
+| `graph_state.py` | TypedDict schemas (`AssistantState`) & Pydantic models (`DepartmentRoute`, `RetrievedDocument`, `ITQueryResponse`) | Network transport or DB sessions | Pydantic v2 + Typing |
+| `knowledge_retrieval.py` | PGVector connections, HuggingFace embeddings (`all-MiniLM-L6-v2`), MMR search | Presentation formatting for UI | `langchain_postgres` + `HuggingFaceEmbeddings` |
+| `index_documents.py` | PDF parsing (`PyPDFLoader`), recursive character chunking (1000/150), collection seeding | Answering chat queries | `langchain_community` + `RecursiveCharacterTextSplitter` |
+| `Prompts.py` | Department-specific system prompts and grounding instructions | Runtime state transitions | Python string templates |
+| `docker-compose.yml` | PostgreSQL 16 + pgvector container runtime (`campus-one-postgres`) | Application-level graph logic | Docker Compose v2 |
 
 ## 5. Request lifecycle & streaming events
 

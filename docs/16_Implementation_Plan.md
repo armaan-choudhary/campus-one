@@ -125,44 +125,38 @@ gantt
 ### TASK-04-KNOWLEDGE-INGEST: Document Parsing, Table-Aware Chunking, & Vector Indexing
 - **Objective:** Implement asynchronous document ingestion, table-aware chunking, OpenAI embeddings, full-text search generation, and metadata tagging.
 - **Files to Create or Modify:**
-  - `backend/app/knowledge/chunking.py`
-  - `backend/app/knowledge/embeddings.py`
-  - `backend/app/knowledge/ingest.py`
-  - `backend/app/knowledge/validator.py`
-  - `backend/app/api/v1/endpoints/knowledge.py`
+  - `backend/index_documents.py` *(Active Implementation)*
+  - `backend/knowledge_retrieval.py` *(Active Implementation)*
+  - `backend/docker-compose.yml` *(Active Implementation)*
 - **Implementation Details:**
-  - Implement table-aware chunker: Detect markdown/HTML tables before splitting, preserving tables as atomic chunks with schema breadcrumbs.
-  - Implement text chunker using sliding window: 450 tokens with 60-token overlap for prose.
-  - Populate `text_search_vector` for PostgreSQL GIN full-text search alongside 1536-dimensional `embedding` for pgvector cosine HNSW search.
-  - Implement endpoints: `POST /knowledge/documents`, `GET /knowledge/documents`, and `POST /knowledge/documents/{id}/publish`.
+  - Implemented in `backend/index_documents.py` using `PyPDFLoader` and `RecursiveCharacterTextSplitter` with 1,000-character chunk sizes and 150-character overlap.
+  - Generates normalized 384-dimensional embeddings using `sentence-transformers/all-MiniLM-L6-v2` via `HuggingFaceEmbeddings` and connects to PostgreSQL 16 `pgvector` via `langchain_postgres`.
+  - Injects chunk metadata including `department`, `source`, `file_name`, `file_path`, `document_type`, and `chunk_index`.
 - **Dependencies:** `TASK-02-DB-SCHEMA`.
 - **Acceptance Criteria:**
-  - Ingesting policy documents preserves tables intact; both vector embeddings and GIN full-text search vectors are generated.
-  - Publishing a document marks older versions as `superseded` and activates new chunks in hybrid retrieval search.
+  - Ingesting policy documents preserves structure; vector embeddings are generated into PostgreSQL collections.
+  - Multi-collection indexing executes cleanly via `python index_documents.py`.
 - **Test Requirements:**
-  - `backend/tests/test_knowledge_ingest.py`: Tests table boundary preservation, embedding generation, and FTS vector generation.
-- **Definition of Done:** Knowledge CLI and REST endpoints successfully load documents into `knowledge_documents` and `knowledge_chunks`.
+  - `backend/test.ipynb`: Interactive retrieval verification across collections.
+- **Definition of Done:** `index_documents.py` successfully populates PGVector collections for each department.
 
-### TASK-05-CORPUS-SEED: Ingest Five Core University Knowledge Bases
-- **Objective:** Seed realistic university policy documentation for all five initial domains: IT, Finance, Facilities, Academics, and Administration.
+### TASK-05-CORPUS-SEED: Ingest Four Core University Knowledge Bases
+- **Objective:** Seed realistic university policy documentation for all initial domains: IT, HR, Finance, and Facilities.
 - **Files to Create or Modify:**
-  - `backend/knowledge/it/password_and_portal.md`
-  - `backend/knowledge/it/wifi_and_network.md`
-  - `backend/knowledge/finance/fee_payment_schedule.md`
-  - `backend/knowledge/finance/refund_and_reconciliation.md`
-  - `backend/knowledge/facilities/hostel_maintenance.md`
-  - `backend/knowledge/academics/attendance_and_exams.md`
-  - `backend/knowledge/administration/certificates_and_records.md`
-  - `backend/app/seed.py`
+  - `backend/Documents/IT/*.pdf` *(Active Implementation)*
+  - `backend/Documents/HR/*.pdf` *(Active Implementation)*
+  - `backend/Documents/Finance/*.pdf` *(Active Implementation)*
+  - `backend/Documents/Facilities/*.pdf` *(Active Implementation)*
+  - `backend/index_documents.py` *(Active Implementation)*
 - **Implementation Details:**
-  - Author detailed, realistic policy documents containing specific procedures, contact details, turnaround SLAs (e.g. 24–48 hours for fee clearing, 75% attendance rule).
-  - Implement `python -m app.seed` script that loads users, domains, and automatically processes and publishes all seed documents.
+  - Author and organize detailed policy PDFs in `backend/Documents/<Department>/`.
+  - Execute `python backend/index_documents.py` to index the 4 isolated vector collections (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`).
 - **Dependencies:** `TASK-04-KNOWLEDGE-INGEST`.
 - **Acceptance Criteria:**
-  - `python -m app.seed` runs idempotently and populates `knowledge_chunks` with at least 40 searchable chunks across the 5 domains.
+  - `python index_documents.py` runs idempotently and populates PGVector collections with searchable chunks.
 - **Test Requirements:**
-  - `backend/tests/test_seed.py`: Asserts count of published chunks per domain is greater than zero.
-- **Definition of Done:** The database contains an active, searchable corpus for IT, Finance, Facilities, Academics, and Administration.
+  - `backend/test.ipynb`: Validates chunk counts and MMR similarity scoring across all 4 collections.
+- **Definition of Done:** The database contains an active, searchable corpus for IT, HR, Finance, and Facilities.
 
 ---
 
@@ -199,28 +193,23 @@ gantt
 ### TASK-07-INTENT-ROUTER: Two-Stage Classification & Margin-Guarded Policy
 - **Objective:** Implement the intent routing engine supporting single-intent, multi-intent, and topic-switching classification with margin-guarded confidence scoring.
 - **Files to Create or Modify:**
-  - `backend/app/router/schemas.py`
-  - `backend/app/router/engine.py`
-  - `backend/app/router/policy.py`
-  - `backend/app/router/prompts.py`
+  - `backend/graph_nodes.py` *(Active Implementation: `router()`, `route_by_confidence()`)*
+  - `backend/graph_state.py` *(Active Implementation: `DepartmentRoute`, `AssistantState`)*
+  - `backend/Prompts.py` *(Active Implementation)*
 - **Implementation Details:**
-  - Implement `IntentRouter` utilizing OpenAI Structured Outputs (`response_format=Pydantic`) with strict schema validation.
-  - Inject domain profiles and current conversation state (`active_domain`, `recent_intents`).
-  - Implement `RoutingPolicy` classifying decisions into three operational confidence tiers:
-    - **High Confidence ($\ge 0.75$ and Margin Guard passed):** Direct dispatch to domain skill.
-    - **Ambiguous ($0.45 \le \text{confidence} < 0.75$ OR Margin Guard $\Delta < 0.15$):** Trigger clarification generator.
-    - **Low Confidence ($< 0.45$):** Trigger safe fallback / handoff manager.
-  - Enforce negative anchor vector penalties: subtract $0.25$ if query matches a domain's negative anchor.
-  - Implement multi-intent detection when two or more domains exceed the threshold with low divergence.
-  - Implement topic-switching detection flag comparing new domain vs `active_domain`.
+  - Implemented in `backend/graph_nodes.py` via `router()` using `ChatGroq` (`openai/gpt-oss-120b`) with JSON Schema structured output mapped to Pydantic model `DepartmentRoute`.
+  - Classifies route into `"IT"`, `"HR"`, `"Fees"`, `"Facilities"`, `"Admissions"`, `"Academics"`, `"General"`, or `"Human"`.
+  - Generates numerical `confidence` (0.0 to 1.0) and explicit natural language `reason`.
+  - Edge routing via `route_by_confidence()`:
+    - High Confidence ($\ge 0.75$): Dispatches to domain agent node (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`).
+    - Ambiguous / Low Confidence ($< 0.75$ or empty domains): Routes to `clarify()` node.
 - **Dependencies:** `TASK-06-DOMAIN-SKILLS`.
 - **Acceptance Criteria:**
-  - Single-domain queries ("Reset password") route to IT with $\ge 0.90$ confidence.
-  - Ambiguous queries ("My account has a problem") trigger clarification even if top candidate is $> 0.75$ due to small margin delta.
-  - Multi-intent queries ("Fee unpaid and cannot log in") output both `finance` and `it` candidates.
+  - Router produces typed `DepartmentRoute` dictionaries with calibrated confidence scores and reasoning.
+  - Queries with confidence $< 0.75$ cleanly divert to the `clarify()` node.
 - **Test Requirements:**
-  - `backend/tests/test_router.py`: Tests deterministic routing against 25 representative utterances across all 5 domains including margin guard verification.
-- **Definition of Done:** Router returns strictly typed `RoutingDecision` objects with margin-guarded confidence scores.
+  - `backend/test.ipynb`: Validates routing decisions across sample queries.
+- **Definition of Done:** Router returns structured decisions and integrates into the LangGraph state machine.
 
 ---
 
