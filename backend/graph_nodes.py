@@ -1,25 +1,48 @@
-from langchain_groq import ChatGroq
+from pathlib import Path
 from dotenv import load_dotenv
-from backend.graph_state import AssistantState, DepartmentRoute, ITQueryResponse
-from backend.knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
-from langchain_core.prompts import ChatPromptTemplate
-from Prompts import IT_QUERY_PROMPT
+from langchain_groq import ChatGroq
 
-load_dotenv()
+# Robustly load .env relative to this file
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+try:
+    from backend.graph_state import AssistantState, DepartmentRoute, ITQueryResponse
+    from backend.knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
+    from backend.Prompts import IT_QUERY_PROMPT
+except ModuleNotFoundError:
+    from graph_state import AssistantState, DepartmentRoute, ITQueryResponse
+    from knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
+    from Prompts import IT_QUERY_PROMPT
 
 
-def router(state : AssistantState):
+# Shared cached LLM instances for fast sub-second turn transitions
+_router_llm = None
+_it_llm = None
+_domain_llms = {}
+_synth_llm = None
 
-    llm = ChatGroq(
-        model = "openai/gpt-oss-120b",
-        temperature = 0.7
-        )
 
-    structured_llm = llm.with_structured_output(DepartmentRoute, method="json_schema")
+def get_router_llm():
+    global _router_llm
+    if _router_llm is None:
+        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
+        _router_llm = llm.with_structured_output(DepartmentRoute, method="json_schema")
+    return _router_llm
 
+
+def get_it_llm():
+    global _it_llm
+    if _it_llm is None:
+        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.3)
+        _it_llm = llm.with_structured_output(ITQueryResponse)
+    return _it_llm
+
+
+def router(state: AssistantState):
+    structured_llm = get_router_llm()
     query = state["current_query"]
-
-    response  = structured_llm.invoke(query)
+    response = structured_llm.invoke(query)
 
     return {
         "detected_domains": response.departments,
@@ -29,14 +52,8 @@ def router(state : AssistantState):
     }
 
 
-
 def it_query(state: AssistantState):
-    llm = ChatGroq(
-        model="openai/gpt-oss-120b",
-        temperature=0.3,
-    )
-
-    structured_llm = llm.with_structured_output(ITQueryResponse)
+    structured_llm = get_it_llm()
 
     retrieved_documents = retrieve_documents(
         query=state["current_query"],
@@ -111,12 +128,22 @@ def clarify(state: AssistantState):
         },
     }
 
-def _run_domain_agent(state: AssistantState, domain: str):
-    llm = ChatGroq(
-        model="openai/gpt-oss-120b",
-        temperature=0.7,
-    )
+def _get_general_llm():
+    global _general_llm
+    if _general_llm is None:
+        _general_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
+    return _general_llm
 
+
+def _get_synth_llm():
+    global _synth_llm
+    if _synth_llm is None:
+        _synth_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.5)
+    return _synth_llm
+
+
+def _run_domain_agent(state: AssistantState, domain: str):
+    llm = _get_general_llm()
     query = state["current_query"]
 
     prompt = f"""
@@ -160,11 +187,7 @@ def facilities_agent(state: AssistantState):
 
 
 def synthesize(state: AssistantState):
-    llm = ChatGroq(
-        model="openai/gpt-oss-120b",
-        temperature=0.5,
-    )
-
+    llm = _get_synth_llm()
     query = state["current_query"]
     agent_response = state.get("agent_response")
 
@@ -226,13 +249,16 @@ def route_by_confidence(state: AssistantState) -> str:
         return "clarify"
 
     # DepartmentRoute returns uppercase values, but graph keys are lowercase
-    department = domains[0].lower()
+    department = domains[0].lower().strip()
 
     valid_routes = {
         "it": "it",
         "hr": "hr",
         "fees": "fees",
+        "finance": "fees",
+        "fees and finance": "fees",
         "facilities": "facilities",
+        "facilities and maintenance": "facilities",
     }
 
     return valid_routes.get(department, "clarify")

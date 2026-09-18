@@ -59,6 +59,14 @@ export const PERSONAS: Record<UserRole, Persona> = {
     avatar: 'MV',
     badge: 'Executive Evaluator',
   },
+  admin: {
+    id: 'admin',
+    name: 'System Administrator',
+    title: 'Chief Information Security Officer',
+    department: 'Central IT Administration',
+    avatar: 'SA',
+    badge: 'Super Admin',
+  },
 };
 
 export const INITIAL_CONVERSATIONS: ConversationItem[] = [

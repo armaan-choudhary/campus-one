@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'agent' | 'knowledge_admin' | 'executive';
+export type UserRole = 'student' | 'agent' | 'knowledge_admin' | 'executive' | 'admin';
 
 export interface Persona {
   id: UserRole;
@@ -7,6 +7,34 @@ export interface Persona {
   department: string;
   avatar: string;
   badge: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  department?: string;
+  displayName?: string;
+  permissions: string[];
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    department?: string;
+    display_name?: string;
+  };
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
 }
 
 export interface Citation {

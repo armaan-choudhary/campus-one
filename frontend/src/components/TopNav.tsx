@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { UserRole, PERSONAS } from '@/lib/demoFixtures';
+import { useAuth } from '@/context/AuthContext';
+import { LoginModal } from '@/components/auth/LoginModal';
 import {
   Sun,
   Moon,
@@ -16,6 +18,7 @@ import {
   Database,
   BarChart3,
   Home,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface TopNavProps {
@@ -45,8 +48,15 @@ export const TopNav: React.FC<TopNavProps> = ({
   isSidebarOpen,
 }) => {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { user, switchDemoPersona } = useAuth();
   const activePersona = PERSONAS[currentRole];
+
+  const handleRoleSelect = (role: UserRole) => {
+    onRoleChange(role);
+    switchDemoPersona(role);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -137,7 +147,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             return (
               <button
                 key={item.role}
-                onClick={() => onRoleChange(item.role)}
+                onClick={() => handleRoleSelect(item.role)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all duration-150 cursor-pointer active:scale-95 ${
                   isSelected
                     ? 'bg-[var(--surface-1)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border-subtle)]'
@@ -177,7 +187,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   <button
                     key={item.role}
                     onClick={() => {
-                      onRoleChange(item.role);
+                      handleRoleSelect(item.role);
                       setShowRoleDropdown(false);
                     }}
                     className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2.5 text-xs transition-all duration-150 active:scale-95 cursor-pointer ${
@@ -200,8 +210,24 @@ export const TopNav: React.FC<TopNavProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Home link, Theme Switcher & Actions */}
+      {/* Right Controls: Auth Trigger, Home link, Theme Switcher & Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Auth / Persona Profile Trigger */}
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg bg-[var(--surface-2)]/80 hover:bg-[var(--surface-3)] text-xs border border-[var(--border-subtle)] text-[var(--foreground)] transition-all duration-150 active:scale-95 cursor-pointer shadow-xs group"
+          title="Open Campus Identity & RBAC Token Manager"
+          aria-label="Manage user authentication and roles"
+        >
+          <div className="w-5 h-5 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold text-[10px] flex items-center justify-center shrink-0">
+            {activePersona.avatar}
+          </div>
+          <span className="hidden xl:inline text-xs font-medium max-w-[110px] truncate">
+            {user?.displayName || activePersona.name}
+          </span>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+        </button>
+
         {/* Return to Home link icon */}
         <Link
           href="/"
@@ -238,6 +264,9 @@ export const TopNav: React.FC<TopNavProps> = ({
           </button>
         )}
       </div>
+
+      {/* Campus Identity & RBAC Token Manager Modal */}
+      <LoginModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </header>
   );
 };

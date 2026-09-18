@@ -3,20 +3,27 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Sun, Moon, ArrowRight, Sparkles } from 'lucide-react';
+import { Sun, Moon, ArrowRight, Sparkles, ShieldCheck, Key } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { PERSONAS } from '@/lib/demoFixtures';
 
 interface HomeNavbarProps {
   currentTheme: 'dark' | 'light';
   onToggleTheme: () => void;
+  onOpenAuth?: () => void;
 }
 
 export const HomeNavbar: React.FC<HomeNavbarProps> = ({
   currentTheme,
   onToggleTheme,
+  onOpenAuth,
 }) => {
+  const { user, role, isAuthenticated } = useAuth();
+  const currentPersona = PERSONAS[role] || PERSONAS.student;
+
   return (
     <header className="h-14 bg-[var(--surface-1)]/80 backdrop-blur-md px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-40 border-b border-[var(--border-subtle)] transition-colors">
-      {/* Left: Brand Identity & Version Tag */}
+      {/* Left: Brand Identity */}
       <div className="flex items-center gap-3">
         <Link
           href="/"
@@ -37,13 +44,6 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
             CampusOne
           </span>
         </Link>
-
-        <div className="h-4 w-px bg-[var(--border-subtle)] hidden sm:block" />
-
-        <div className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--surface-2)]/60 border border-[var(--border-subtle)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>v2.4 Enterprise</span>
-        </div>
       </div>
 
       {/* Center: Minimalist Anchor Navigation */}
@@ -52,30 +52,47 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
           href="#capabilities"
           className="px-3 py-1.5 rounded-md hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]/70 transition-all duration-150"
         >
-          Capabilities
+          Campus Services
         </a>
-        <a
-          href="#personas"
+        <Link
+          href="/workspace?role=student"
           className="px-3 py-1.5 rounded-md hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]/70 transition-all duration-150"
         >
-          Workspaces
-        </a>
-        <a
-          href="#telemetry"
-          className="px-3 py-1.5 rounded-md hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]/70 transition-all duration-150"
-        >
-          Telemetry
-        </a>
-        <a
-          href="#architecture"
-          className="px-3 py-1.5 rounded-md hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]/70 transition-all duration-150"
-        >
-          Architecture
-        </a>
+          Ask Assistant
+        </Link>
       </nav>
 
-      {/* Right Controls: Theme Toggle & Launch Portal */}
+      {/* Right Controls: Auth Trigger, Theme Toggle & Launch Portal */}
       <div className="flex items-center gap-2">
+        {/* Campus Identity & RBAC Trigger Button */}
+        <button
+          type="button"
+          onClick={onOpenAuth}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--surface-2)]/80 hover:bg-[var(--surface-3)] text-xs border border-[var(--border-subtle)] text-[var(--foreground)] transition-all duration-150 active:scale-95 cursor-pointer shadow-xs group"
+          title="Campus Identity & Role-Based Access"
+          aria-label="Manage campus identity"
+        >
+          {isAuthenticated ? (
+            <>
+              <div className="w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] font-semibold text-[10px] flex items-center justify-center shrink-0">
+                {currentPersona.avatar}
+              </div>
+              <span className="hidden sm:inline text-xs font-medium max-w-[110px] truncate">
+                {user?.displayName || currentPersona.name}
+              </span>
+              <span className="text-[10px] font-mono text-[var(--text-secondary)] px-1.5 py-0.5 rounded bg-[var(--surface-3)] border border-[var(--border-subtle)] hidden lg:inline">
+                {currentPersona.badge}
+              </span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            </>
+          ) : (
+            <>
+              <Key className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Campus Sign In</span>
+            </>
+          )}
+        </button>
+
         {/* Compact Theme Switcher */}
         <button
           onClick={onToggleTheme}

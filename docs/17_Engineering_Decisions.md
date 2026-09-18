@@ -535,3 +535,72 @@ We adopt **Concept 2 (The Integrated Monogram)** as the canonical logo mark:
   - Single-color identity relies heavily on shape and negative space rather than multi-color departmental differentiation (intentional to avoid department silos).
 - **Mitigations:**
   - Domain context is conveyed inside the conversation via subtle, accessible text pills rather than altering the primary brand mark.
+
+---
+
+## ADR-016: Single Front-Door Conversational Hero & Minimalist Geometric Canvas Background
+
+### Status
+**Accepted**
+
+### Context & Problem Statement
+Early hero iterations fell into two architectural failure modes:
+1. **Departmental Siloing in Marketing UI:** Initial previews introduced category tabs (*Academics*, *Financial Aid*, *Housing*, *Health*). This contradicted CampusOne's fundamental architectural premise: students should never have to navigate administrative silos or categorize their own problems.
+2. **Visual Slop & Frantic Motion:** Early attempts to enliven the background introduced colorful gradient text, radial color blobs, and fast canvas vortexes that looked like generic AI marketing templates rather than an authoritative university infrastructure tool.
+
+### Decision
+1. **Unified Cross-Department Conversational Preview:**
+   - The hero product viewport showcases a single authentic conversation (**Alex Rivera • Undergraduate Student**).
+   - Demonstrates a complex, multi-domain emergency inquiry spanning both the Registrar (Medical Drop §7.2) and Financial Aid (Title IV Grant Hold §4.1).
+   - Shows how CampusOne resolves both domains simultaneously with verifiable handbook citations and actionable PDF form downloads.
+2. **Editorial Typography (Zero Gradients):**
+   - Headings combine crisp sans-serif bold (`Inter`) with classical **Playfair Display italic serif** (`--font-serif`) for prestigious academic authority.
+   - Strict ban on CSS gradient text (`bg-clip-text`), radial blur blobs, and colorful canvas gradients.
+3. **Interactive Subtle Geometric Canvas (`InteractiveSubtleBackground`):**
+   - High-performance 2D canvas with a 34px mathematical dot matrix (5–7% resting opacity).
+   - Cursor proximity springs: dots within 110px gently brighten and deflect outward.
+   - Constellation hairlines: faint links draw to the 4 nearest points under the cursor.
+   - Tactile click ripples: clicking anywhere on the background triggers a dashed geometric expansion wave.
+   - Dual-theme adaptation: deep charcoal dots in dark mode, crisp neutral dots in light mode.
+
+### Consequences
+- **Positive:**
+  - Immediate conceptual alignment: users immediately understand that CampusOne is a single conversational front door, not a directory of department links.
+  - Premium, high-taste aesthetic: conveys trust, speed, and institutional precision.
+  - Interactive tactile feedback without visual distraction or CPU overhead.
+- **Negative:**
+  - Requires maintaining Google `Playfair_Display` font configuration alongside `Inter`.
+- **Mitigations:**
+  - Font is self-hosted with zero layout shift via `next/font/google` and CSS variable `--font-serif`.
+
+---
+
+## ADR-017: Root-Level React Portal Architecture for Identity and Auth Modals
+
+### Status
+**Accepted**
+
+### Context & Problem Statement
+Under W3C CSS specifications, applying `backdrop-filter` (e.g. Tailwind `backdrop-blur-md`) or `transform` to an ancestor element causes that ancestor to become the containing block for all descendants with `position: fixed`. When `<LoginModal />` was mounted inside the sticky `<header className="... backdrop-blur-md">`, the modal positioned itself relative to the 56px header height rather than the viewport. This caused the modal to render with a severe negative Y-offset, cutting off the top half of the dialog off-screen.
+
+### Decision
+1. **Enforce React Portals for Overlays:**
+   - All overlay dialogs, identity drawers, and modal dialogs must render via `createPortal(dialogContent, document.body)`.
+   - Modals are completely isolated from ancestor stacking contexts, CSS transforms, and backdrop filters.
+2. **Minimalist Monochrome Auth Design System:**
+   - Replaced legacy purple button tokens (`#4f46e5`) with solid monochrome tokens (`bg-[var(--foreground)] text-[var(--background)]`).
+   - Clean 1px hairline borders (`border-[var(--border-subtle)]`).
+   - Structured dual-tab view: **Student Sign-In (Default)** with 1-click NetID demo access, alongside an **All Campus Roles (Demo)** picker for evaluating multi-persona RBAC boundaries.
+3. **Centralized Modal State:**
+   - The landing page orchestrator (`frontend/src/app/page.tsx`) owns the `showAuthModal` state, accepting trigger events from both the top navigation bar and hero CTAs.
+
+### Consequences
+- **Positive:**
+  - 100% immune to CSS containing-block bugs across all viewports and browser engines.
+  - Perfect vertical and horizontal viewport centering with internal overflow scrolling.
+  - Consistent visual taste with zero jarring accent colors.
+- **Negative:**
+  - Requires checking `typeof document !== 'undefined'` to prevent SSR hydration mismatches during static export.
+- **Mitigations:**
+  - Idiomatic client guard `if (!isOpen || typeof document === 'undefined') return null;` implemented cleanly.
+

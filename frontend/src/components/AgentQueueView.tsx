@@ -38,28 +38,32 @@ export const AgentQueueView: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedTicket]);
 
-  const filteredTickets = tickets.filter((t) => {
-    const matchesFilter =
-      filter === 'all'
-        ? true
-        : filter === 'it'
-        ? t.department.toLowerCase().includes('it')
-        : filter === 'finance'
-        ? t.department.toLowerCase().includes('finance') || t.department.toLowerCase().includes('accounts')
-        : filter === 'facilities'
-        ? t.department.toLowerCase().includes('facilities')
-        : filter === 'registrar'
-        ? t.department.toLowerCase().includes('registrar') || t.department.toLowerCase().includes('admin')
-        : true;
+  const filteredTickets = React.useMemo(() => {
+    return tickets.filter((t) => {
+      const matchesFilter =
+        filter === 'all'
+          ? true
+          : filter === 'it'
+          ? t.department.toLowerCase().includes('it')
+          : filter === 'finance'
+          ? t.department.toLowerCase().includes('finance') || t.department.toLowerCase().includes('accounts')
+          : filter === 'facilities'
+          ? t.department.toLowerCase().includes('facilities')
+          : filter === 'registrar'
+          ? t.department.toLowerCase().includes('registrar') || t.department.toLowerCase().includes('admin')
+          : true;
 
-    const matchesSearch =
-      t.ticketId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.studentName && t.studentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      t.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.preview && t.preview.toLowerCase().includes(searchQuery.toLowerCase()));
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        !q ||
+        t.ticketId.toLowerCase().includes(q) ||
+        (t.studentName && t.studentName.toLowerCase().includes(q)) ||
+        t.reason.toLowerCase().includes(q) ||
+        (t.preview && t.preview.toLowerCase().includes(q));
 
-    return matchesFilter && matchesSearch;
-  });
+      return matchesFilter && matchesSearch;
+    });
+  }, [tickets, filter, searchQuery]);
 
   const handleClaim = (ticketId: string) => {
     setTickets((prev) =>

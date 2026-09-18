@@ -5,8 +5,10 @@
 Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**. The browser client talks to the versioned FastAPI API or operates against verified runbook fixtures in demo mode. The UI presents **one unified conversational front door** for students while providing specialized operational workspaces for departmental staff, knowledge managers, and university evaluators.
 
 - **Primary Typography:** **Inter** (`--font-inter`) with root font scale calibrated to `16px` and conversational prose scaled to `15px/16px` for natural reading comfort.
+- **Editorial Display Typography:** **Playfair Display** (`--font-serif`) for authoritative, classical institutional headlines paired with bold sans-serif.
 - **Monospace Typography:** **JetBrains Mono** (`--font-mono`) reserved strictly for operational telemetry, transaction IDs, latency benchmarks, and vector hashes.
-- **Design System:** Deep neutral black (`#09090b` / `#121215`) with a restrained electric sapphire/indigo accent (`#6366f1` dark / `#4f46e5` light) applied to primary actions, active indicators, and provenance gauges.
+- **Minimalist Aesthetic & Taste Directives:** Pure high-contrast surfaces without decorative gradient text, blur mesh blobs, or rainbow borders. High-contrast monochrome buttons with 6px/8px radii (`rounded-md` / `rounded-xl`), 1px hairlines (`border-[var(--border-subtle)]`), and tactile active scales (`active:scale-[0.98]`).
+- **Interactive Geometric Canvas:** High-performance 2D canvas (`InteractiveSubtleBackground`) providing subtle 34px dot matrix springs, cursor proximity constellation hairlines, and tactile click ripples.
 - **Theme Engine:** Instant switching between **Dark Mode** and **Light Mode** with automatic transparent logo adaptation.
 - **Dashboard Layout:** Expansive `1440px` max-width architecture with synchronized gutters (`px-4 sm:px-8 lg:px-12`) and responsive single-row toolbars.
 
@@ -31,11 +33,21 @@ frontend/
     wordmark.png           # High-resolution branding lockups
   src/
     app/
-      layout.tsx           # Inter & JetBrains Mono root configuration
-      globals.css          # Tailwind v4 theme tokens, deep neutral surfaces, accent variables
-      page.tsx             # Master orchestrator switching between the 4 persona dashboards
+      layout.tsx           # Inter, JetBrains Mono & Playfair Display font configuration
+      globals.css          # Tailwind v4 theme tokens, surface variables, font definitions
+      page.tsx             # Public landing page orchestrator (Hero, Services, Centralized Auth Modal)
+      workspace/
+        page.tsx           # Master workspace orchestrator switching between the 4 persona dashboards
     components/
-      TopNav.tsx           # Header with transparent standalone logo, persona switcher & theme toggle
+      home/
+        HomeNavbar.tsx     # Clean header with brand lockup, service links, and Campus ID auth trigger
+        HomeHero.tsx       # Student single front door conversational preview with cross-department resolution
+        InteractiveSubtleBackground.tsx # High-performance canvas dot matrix, constellation links & click ripples
+        CapabilitiesSection.tsx # Four campus domain overview (IT, Registrar, Bursar, Housing)
+        HomeFooter.tsx     # Institutional footer
+      auth/
+        LoginModal.tsx     # Portaled campus identity dialog (Student Sign-In & All Roles picker)
+      TopNav.tsx           # Workspace header with standalone logo, persona switcher & theme toggle
       Sidebar.tsx          # Collapsible navigation drawer with inquiry history & student profile
       MessageBubble.tsx    # Conversational turns, action checklists, citations, TTS audio & feedback
       MessageComposer.tsx  # Floating pill input with voice recording simulation & attachment trigger
@@ -49,7 +61,20 @@ frontend/
         RoutingFlowVector.tsx    # Triage pipeline SVG showing query routing path
     lib/
       demoFixtures.ts      # Authoritative runbook test cases, persona profiles & telemetry mocks
+      api.ts               # Authenticated API client with token injection & offline fixtures
 ```
+
+## 3.1 Single Front Door Landing Experience & React Portal Architecture
+
+### Conversational Hero Design Philosophy
+In alignment with CampusOne's architectural core, the public landing hero eliminates departmental silo tabs (*Academics*, *Financial Aid*, *Housing*, *Health*). Instead, the live product window demonstrates cross-department orchestration:
+- A single complex student inquiry (emergency appendectomy impacting both a CS midterm and full-time financial aid eligibility).
+- Simultaneous resolution across both the **Registrar (Academic Code §7.2)** and **Bursar (Financial Aid Title IV)** in one conversational turn.
+- Direct links to official downloadable PDF forms (`Form 104-A`) and verified handbook citations.
+- Interactive question input with real student prompt chips (*"Can I switch a class to Pass/Fail after week 6?"*, *"3 final exams in one day"*).
+
+### Root-Level Overlay Portals
+All overlay modals and drawers render via `createPortal(content, document.body)`. This guarantees immunity from CSS containing-block traps created by ancestor elements utilizing `backdrop-filter: blur(...)` or `transform`, ensuring all dialogs remain perfectly centered vertically and horizontally across any device viewport.
 
 ## 4. State management
 
