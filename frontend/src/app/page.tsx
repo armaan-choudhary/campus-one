@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { HomeNavbar } from '@/components/home/HomeNavbar';
 import { HomeHero } from '@/components/home/HomeHero';
-import { CapabilitiesSection } from '@/components/home/CapabilitiesSection';
+import { CampusMapSection } from '@/components/home/CampusMapSection';
+import { HowItWorks } from '@/components/home/HowItWorks';
+import { InstitutionalTrust } from '@/components/home/InstitutionalTrust';
+import { FinalCta } from '@/components/home/FinalCta';
 import { HomeFooter } from '@/components/home/HomeFooter';
 import { LoginModal } from '@/components/auth/LoginModal';
 
@@ -45,19 +48,31 @@ export default function HomePage() {
         onOpenAuth={() => setShowAuthModal(true)}
       />
 
-      {/* Main landing sections */}
+      {/* Main landing composition: Radically simplified, high-personality wayfinding */}
       <main className="flex-1 flex flex-col">
+        {/* 1 & 2: Hero + Compact Interactive Visual Demo */}
         <HomeHero
           currentTheme={currentTheme}
           onOpenAuth={() => setShowAuthModal(true)}
         />
-        <CapabilitiesSection />
+
+        {/* 3: Visual Problem Statement + Conceptual Campus Transit Map */}
+        <CampusMapSection />
+
+        {/* 4: Compact How It Works */}
+        <HowItWorks />
+
+        {/* 5: Official University Document Citation */}
+        <InstitutionalTrust />
+
+        {/* 6: Extremely Simple Final CTA */}
+        <FinalCta />
       </main>
 
-      {/* Institutional footer */}
+      {/* 7: Minimal Institutional Footer */}
       <HomeFooter currentTheme={currentTheme} />
 
-      {/* Campus Identity & RBAC Modal (Portaled cleanly to document.body) */}
+      {/* Campus Identity & RBAC Modal */}
       <LoginModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}

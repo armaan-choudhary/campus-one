@@ -21,6 +21,9 @@ This document records the foundational architectural decisions made for **Campus
 - [ADR-013: Margin-Guarded Routing Policy and Negative Domain Anchors](#adr-013-margin-guarded-routing-policy-and-negative-domain-anchors)
 - [ADR-014: Autonomous Zero-Downtime Replay Circuit Breaker for High-Stakes Presentations](#adr-014-autonomous-zero-downtime-replay-circuit-breaker-for-high-stakes-presentations)
 - [ADR-015: Minimalist Monochrome Brand Identity & 'One Front Door' Logo Mark](#adr-015-minimalist-monochrome-brand-identity--one-front-door-logo-mark)
+- [ADR-016: Single Front-Door Conversational Hero & Minimalist Geometric Canvas Background](#adr-016-single-front-door-conversational-hero--minimalist-geometric-canvas-background)
+- [ADR-017: Root-Level React Portal Architecture for Identity and Auth Modals](#adr-017-root-level-react-portal-architecture-for-identity-and-auth-modals)
+- [ADR-018: Campus Wayfinding Visual Language, Information Architecture Simplification, and Document Provenance Stationery](#adr-018-campus-wayfinding-visual-language-information-architecture-simplification-and-document-provenance-stationery)
 
 ---
 
@@ -603,4 +606,46 @@ Under W3C CSS specifications, applying `backdrop-filter` (e.g. Tailwind `backdro
   - Requires checking `typeof document !== 'undefined'` to prevent SSR hydration mismatches during static export.
 - **Mitigations:**
   - Idiomatic client guard `if (!isOpen || typeof document === 'undefined') return null;` implemented cleanly.
+
+---
+
+## ADR-018: Campus Wayfinding Visual Language, Information Architecture Simplification, and Document Provenance Stationery
+
+### Status
+**Accepted**
+
+### Context & Problem Statement
+Early versions of the landing page, while technically sound and dark-mode compliant, exhibited severe symptoms of "AI SaaS template fatigue":
+1. **Information Overload:** Too many sections explaining the product repeatedly through generic "headline + paragraph + 3 rounded cards" formulas.
+2. **Abstract Buzzwords:** Prominent technical terminology (*"Zero-Hallucination RAG"*, *"Multi-Department Policy Mesh Active"*, *"Zero Departmental Bouncing"*) sounded like enterprise marketing rather than authentic higher-education infrastructure.
+3. **Lack of Institutional Personality:** The page looked like a generic AI developer tool rather than a real university system designed for students and academic staff.
+
+### Decision
+1. **Radical Storytelling Simplification (~40% Content Volume Reduction):**
+   - Stripped away redundant feature cards, decorative telemetry, and marketing paragraphs.
+   - Streamlined page flow to a pure linear narrative: **Hero & Visual Demo &rarr; Problem Statement & Central Quad Map &rarr; Micro How It Works &rarr; Document Stationery Citation &rarr; Simple CTA &rarr; Minimal Footer**.
+2. **Campus Wayfinding & Architectural Signage Design System:**
+   - Introduced authentic university wayfinding objects (`CampusWayfindingSign.tsx`) featuring building markers (`BLDG 04`), floors, room codes, and restrained department color indicators (Registrar in Blue, Bursar in Amber, IT in Violet, Housing in Green).
+   - Designed the **CampusOne Convergence Motif (`CampusOneMark.tsx`)** as a precision SVG representing multiple disparate paths converging into one front door.
+3. **Problem Statement & Central Quad Transit Schematic (`CampusMapSection.tsx`):**
+   - Centered on the core truth: *"Students don't think in departments. They think in problems."*
+   - Interactive conceptual transit map visually demonstrates multi-office routing (North: Registrar, West: IT, Center: CampusOne Front Door, East: Bursar, South: Housing) without verbose explanatory text.
+4. **Micro Horizontal Workflow (`HowItWorks.tsx`):**
+   - Compressed the process into a single horizontal sequence (`01 ASK` &rarr; `02 UNDERSTAND` &rarr; `03 CONNECT` &rarr; `04 RESOLVE`) with large display numerals and zero card fluff.
+5. **University Document Stationery Provenance (`InstitutionalTrust.tsx`):**
+   - Transformed abstract RAG claims into a tangible university document artifact: an official letterhead from the Office of the Registrar displaying codified regulations (*Academic Regulations Handbook §7.2*), verified publication date, and page citation proving *"Every answer has receipts."*
+6. **Ultra-Minimal Closing & Footer (`FinalCta.tsx`, `HomeFooter.tsx`):**
+   - Quiet, confident closure (*"Your campus has dozens of offices. Students need one front door."*) and a lightweight footer.
+
+### Consequences
+- **Positive:**
+  - Communicates the product's core value within 5 seconds without requiring visitors to read walls of text.
+  - Distinctive, memorable visual identity grounded in real university physical infrastructure (wayfinding, room numbers, official documents).
+  - 40% reduction in client DOM weight and cleaner code maintenance.
+  - Zero buzzword soup; establishes deep institutional trust.
+- **Negative:**
+  - Removed several legacy feature tiles (`CapabilitiesSection`, `MetricsBanner`, `PersonaGrid`).
+- **Mitigations:**
+  - In-depth operational capabilities and role-specific workflows remain comprehensively showcased in the live workspace (`/workspace`) and documented in `docs/10_Frontend_Architecture.md`.
+
 

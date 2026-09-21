@@ -38,11 +38,12 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 
 The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Inter**:
 
+- **Editorial Single Front Door Landing Page:** Reinterpreted through modern campus wayfinding, directional building signage, and an interactive Central Quad transit schematic demonstrating cross-department orchestration ($$\text{Question} \to \text{Dispatch} \to \text{Registrar} + \text{Bursar} \to \text{One Answer}$$) with official university stationery citations.
 - **Students (Alex Rivera — Primary Audience):** Clean, distraction-free conversational stream with zero corporate clutter. Features architectural SVG knowledge mesh hero, interactive action checklists, inline citation badges, clarification dialogs, and a floating pill composer.
 - **Campus Support Agents (Sarah Jenkins):** Departmental escalation triage queue with SLA indicators (Urgent 15m window), full conversational context, and 1-click resolution templates.
 - **Knowledge Administrators (Dr. Patricia Cole):** Institutional policy catalog, pgvector chunk inspection, and vector corpus publishing workflows with single-line Grounding Authority indicators.
 - **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix on an expansive 1440px dashboard grid.
-- **Theme & Vector System:** Deep neutral black canvas with restrained electric sapphire/indigo accent (`#6366f1`), custom pure-SVG vector graphics, and accessible WCAG 2.1 AA contrast.
+- **Theme & Vector System:** Deep neutral black canvas with restrained electric sapphire/indigo accent (`#6366f1`), custom pure-SVG vector graphics, interactive canvas mouse effects, and accessible WCAG 2.1 AA contrast.
 
 ---
 

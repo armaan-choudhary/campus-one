@@ -78,13 +78,17 @@ frontend/
 │   │   └── workspace/
 │   │       └── page.tsx      # Full-suite multi-persona conversational workspace
 │   ├── components/
-│   │   ├── home/             # Landing page components
-│   │   │   ├── HomeNavbar.tsx
-│   │   │   ├── HomeHero.tsx
-│   │   │   ├── MetricsBanner.tsx
-│   │   │   ├── PersonaGrid.tsx
-│   │   │   ├── CapabilitiesSection.tsx
-│   │   │   └── HomeFooter.tsx
+│   │   ├── home/             # Editorial campus wayfinding landing components
+│   │   │   ├── HomeNavbar.tsx          # Wayfinding header & student ID trigger
+│   │   │   ├── HomeHero.tsx            # Single front door hero & visual routing demo
+│   │   │   ├── CampusOneMark.tsx       # Precision SVG convergence motif
+│   │   │   ├── CampusWayfindingSign.tsx # Directional building & floor signs
+│   │   │   ├── CampusMapSection.tsx    # Central quad transit schematic
+│   │   │   ├── HowItWorks.tsx          # Compact 4-step horizontal workflow
+│   │   │   ├── InstitutionalTrust.tsx  # University document stationery citation
+│   │   │   ├── FinalCta.tsx            # Minimalist confident call-to-action
+│   │   │   ├── HomeFooter.tsx          # Lightweight institutional footer
+│   │   │   └── InteractiveSubtleBackground.tsx # Canvas dot matrix, constellation & ripples
 │   │   ├── ui/               # Core UI components
 │   │   │   ├── CampusLoader.tsx
 │   │   │   └── Toast.tsx

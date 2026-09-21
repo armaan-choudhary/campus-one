@@ -40,11 +40,17 @@ frontend/
         page.tsx           # Master workspace orchestrator switching between the 4 persona dashboards
     components/
       home/
-        HomeNavbar.tsx     # Clean header with brand lockup, service links, and Campus ID auth trigger
-        HomeHero.tsx       # Student single front door conversational preview with cross-department resolution
+      home/
+        HomeNavbar.tsx     # Wayfinding header with convergence mark, directory links, student ID
+        HomeHero.tsx       # Single front door hero with compact cross-department visual routing demo
         InteractiveSubtleBackground.tsx # High-performance canvas dot matrix, constellation links & click ripples
-        CapabilitiesSection.tsx # Four campus domain overview (IT, Registrar, Bursar, Housing)
-        HomeFooter.tsx     # Institutional footer
+        CampusOneMark.tsx  # Precision SVG convergence motif (multiple paths → one front door)
+        CampusWayfindingSign.tsx # Authentic university architectural signage with room & floor markers
+        CampusMapSection.tsx # "Students don't think in departments" statement + interactive central quad transit schematic
+        HowItWorks.tsx     # Ultra-compact 4-step horizontal workflow (01 Ask → 02 Understand → 03 Connect → 04 Resolve)
+        InstitutionalTrust.tsx # Official university document stationery citation (§7.2 Medical Appeals)
+        FinalCta.tsx       # Confident closing call-to-action
+        HomeFooter.tsx     # Minimal institutional footer
       auth/
         LoginModal.tsx     # Portaled campus identity dialog (Student Sign-In & All Roles picker)
       TopNav.tsx           # Workspace header with standalone logo, persona switcher & theme toggle
@@ -64,14 +70,17 @@ frontend/
       api.ts               # Authenticated API client with token injection & offline fixtures
 ```
 
-## 3.1 Single Front Door Landing Experience & React Portal Architecture
+## 3.1 Single Front Door Landing Experience & Campus Wayfinding Architecture
 
-### Conversational Hero Design Philosophy
-In alignment with CampusOne's architectural core, the public landing hero eliminates departmental silo tabs (*Academics*, *Financial Aid*, *Housing*, *Health*). Instead, the live product window demonstrates cross-department orchestration:
-- A single complex student inquiry (emergency appendectomy impacting both a CS midterm and full-time financial aid eligibility).
-- Simultaneous resolution across both the **Registrar (Academic Code §7.2)** and **Bursar (Financial Aid Title IV)** in one conversational turn.
-- Direct links to official downloadable PDF forms (`Form 104-A`) and verified handbook citations.
-- Interactive question input with real student prompt chips (*"Can I switch a class to Pass/Fail after week 6?"*, *"3 final exams in one day"*).
+### Campus Wayfinding Design Philosophy
+Rather than adhering to generic AI SaaS templates with gradients and excessive marketing paragraphs, the CampusOne landing page is built around authentic **campus wayfinding and directory systems**:
+- **CampusOne Convergence Motif (`CampusOneMark.tsx`):** A recurring architectural symbol depicting multiple independent paths converging inward to a single front door.
+- **Architectural Signage (`CampusWayfindingSign.tsx`):** Realistic campus wayfinding plaques with building identifiers (`BLDG 04`), floors, room numbers, and subtle department color coding (Registrar in Blue, Bursar in Amber, IT in Violet, Housing in Green).
+- **Streamlined Hero (`HomeHero.tsx`):** Massive typography, wayfinding header (`CAMPUSONE → FRONT DOOR / BUILDING 01`), human copy (*"Wrong office? Not your problem."*), and a compact visual routing schematic ($$\text{Question} \to \text{Dispatch} \to \text{Registrar} + \text{Bursar} \to \text{One Answer}$$).
+- **Central Quad Transit Schematic (`CampusMapSection.tsx`):** Demonstrates that *"Students don't think in departments. They think in problems."* with an interactive 4-card conceptual transit map connecting Registrar, Bursar, Housing, and IT to sample multi-office issues.
+- **Micro Horizontal Sequence (`HowItWorks.tsx`):** Ultra-concise four-stage flow (`01 ASK` &rarr; `02 UNDERSTAND` &rarr; `03 CONNECT` &rarr; `04 RESOLVE`) with zero card fluff.
+- **Document Stationery Grounding (`InstitutionalTrust.tsx`):** Official institutional letterhead displaying codified regulations (*Academic Regulations Handbook §7.2*) reinforcing that *"Every answer has receipts."*
+- **Minimalist Closing & Footer (`FinalCta.tsx`, `HomeFooter.tsx`):** Confident closure (*"Your campus has dozens of offices. Students need one front door."*) and ultra-lightweight footer.
 
 ### Root-Level Overlay Portals
 All overlay modals and drawers render via `createPortal(content, document.body)`. This guarantees immunity from CSS containing-block traps created by ancestor elements utilizing `backdrop-filter: blur(...)` or `transform`, ensuring all dialogs remain perfectly centered vertically and horizontally across any device viewport.

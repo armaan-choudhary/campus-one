@@ -1,7 +1,7 @@
 # CampusOne — Project Overview
 
 **Tagline:** Ask once. Get routed right. Get it resolved.  
-**Brand Identity & Logo:** The official visual identity is the minimal monochrome archway monogram, located at `assets/branding/logo.png` (white mark for dark mode) and `assets/branding/logo-dark.png` (dark mark for light mode). It combines a classical campus architectural archway with an integrated numeral "1", representing the single front door, with full background transparency.
+**Brand Identity & Logo:** The official visual identity is the minimal monochrome archway monogram, located at `assets/branding/logo.png` (white mark for dark mode) and `assets/branding/logo-dark.png` (dark mark for light mode), complemented by the **CampusOne Convergence Motif** (`CampusOneMark`, four directional paths converging into a single front door), authentic university wayfinding signage, and official document stationery.
 
 **Status:** implementation-ready hackathon specification
 

@@ -62,7 +62,7 @@ If the hackathon venue Wi-Fi degrades or the OpenAI API experiences latency spik
 
 | Time | Segment | Focus |
 |---|---|---|
-| **0:00 - 0:45** | The Hook & Problem | The fragmented university dilemma: 6+ portals, lost students, high ticket volume. |
+| **0:00 - 0:45** | The Hook & Single Front Door | Show landing page (`http://localhost:3000`): Demonstrate the campus wayfinding visual language, building signage, Central Quad transit schematic (*"Students don't think in departments; they think in problems"*), and how CampusOne coordinates Registrar + Bursar behind the scenes without student friction. |
 | **0:45 - 2:45** | Live Demonstration | 6 targeted questions demonstrating Routing, Switching, Synthesis, Clarification, Fallback. |
 | **2:45 - 3:45** | Enterprise Analytics | Admin Dashboard showing live routing matrix, resolution rate, and citation coverage. |
 | **3:45 - 4:30** | Architecture & Extensibility | Modular monolith, pgvector RAG, pluggable domain skill registry. |
