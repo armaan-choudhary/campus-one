@@ -1,41 +1,53 @@
+"""CampusOne LangGraph Assistant State Definitions."""
 from typing import List, Optional, Dict, Any, TypedDict, Literal
 from pydantic import BaseModel, Field
 
-# State Graph
 
-class AssistantState(TypedDict):
-
-    # Conversation
+# Canonical Assistant State Graph Schema
+class AssistantState(TypedDict, total=False):
+    # Conversation History & Current Turn
     messages: List[Dict[str, Any]]
     current_query: str
 
-    # Routing
-    detected_domains: List[str]
-    intent: Optional[str]
-    routing_confidence: float
+    # Domain & Topic Tracking
+    department: Optional[str]             # Active department: "it", "hr", "fees", "facilities", or "clarify"
+    previous_department: Optional[str]    # Previous turn active department
+    topic_switched: bool                  # True if active domain switched this turn
+    domain_context: Optional[str]         # Isolated domain context for current turn
+    active_domains: List[str]             # All active domains involved in current session/turn
+    topic_history: List[Dict[str, Any]]   # Track sequence of topics and domains across turns
+    unresolved_intents: List[Dict[str, Any]] # Pending issues across multi-turn sessions
+    resolved_intents: List[Dict[str, Any]]   # Successfully answered issues
 
-    # Agent result
-    agent_response: Optional[str]
-    agent_confidence: float
-    solved: bool
+    # Router Outputs
+    route_mode: str                       # "single", "multi", or "clarify"
+    target_domains: List[str]             # List of domains to invoke in parallel
+    routing_confidence: float             # Final router composite score
+    routing_scores: Dict[str, float]      # Fused domain scores
+    requires_clarification: bool          # Margin guard trigger flag
+    detected_domains: List[str]           # Candidate domains ranked
+    intent: Optional[str]                 # Primary detected intent / route
+    cross_domain_resolution: Optional[Dict[str, Any]] # Structured multi-domain orchestration output
 
-    # Human handoff
-    human_required: bool
-    handoff_reason: Optional[str]
-    ticket_id: Optional[str]
+    # Domain RAG Outputs
+    agent_response: Optional[str]         # Raw domain agent response
+    agent_confidence: float               # Domain grounding confidence
+    solved: bool                          # Whether domain considered query solved
+    human_required: bool                  # Escalation flag
+    handoff_reason: Optional[str]         # Escalation reason
 
-    # Grounding
-    sources: List[str]
+    # Grounding & Citations
+    sources: List[str]                    # Human-readable citation strings
+    citations: List[Dict[str, Any]]       # Structured citation objects
 
-    # Final response
-    final_answer: Optional[str]
+    # Final Response
+    final_answer: Optional[str]           # Synthesized response sent to user
 
-    # Misc
+    # Diagnostics & Metadata
     metadata: Dict[str, Any]
 
 
-# Structure Output for Router LLM
-
+# Preserved legacy Pydantic models for backwards compatibility
 class DepartmentRoute(BaseModel):
     route: Literal["IT", "HR", "Fees", "Facilities", "Admissions", "Academics", "General", "Human"]
     departments: List[Literal["IT", "HR", "Fees", "Facilities", "Admissions", "Academics", "General"]]
@@ -44,47 +56,14 @@ class DepartmentRoute(BaseModel):
     reason: str
 
 
-# Vector Db related
-
 class RetrievedDocument(BaseModel):
-    document_id: Optional[str] = Field(
-        default=None,
-        description="ID of the retrieved document or vector database chunk."
-    )
-    content: str = Field(
-        description="Content retrieved from the vector database."
-    )
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Metadata such as filename, page number, section, or chunk ID."
-    )
-    relevance_score: Optional[float] = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="Relevance score returned by the vector database."
-    )
+    document_id: Optional[str] = Field(default=None, description="ID of the retrieved document or chunk.")
+    content: str = Field(description="Content retrieved from the vector database.")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata such as filename or chunk ID.")
+    relevance_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Relevance score.")
 
-
-
-# Structured Output for it_agent LLM
 
 class ITQueryResponse(BaseModel):
-    answer: str = Field(
-        description="A clear answer based only on the retrieved documents."
-    )
-    answer_confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description=(
-            "Confidence that the answer is correct and supported "
-            "by the retrieved documents."
-        )
-    )
-    source_references: List[RetrievedDocument] = Field(
-        default_factory=list,
-        description=(
-            "The retrieved vector database documents used as evidence "
-            "for generating the answer."
-        )
-    )
+    answer: str = Field(description="A clear answer based only on retrieved documents.")
+    answer_confidence: float = Field(ge=0.0, le=1.0, description="Confidence score.")
+    source_references: List[RetrievedDocument] = Field(default_factory=list, description="Retrieved documents.")

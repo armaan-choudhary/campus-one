@@ -19,19 +19,28 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 
 ```text
 backend/
-├── Documents/                # Source institutional PDFs organized by department
-│   ├── IT/                   # Campus IT, Wi-Fi, VPN, SSO, account policies
-│   ├── HR/                   # Faculty & staff benefits, leave, payroll policies
-│   ├── Finance/              # Student tuition, payment schedules, bursar FAQs
-│   └── Facilities/           # Dorm maintenance, keycard access, work orders
-├── docker-compose.yml        # PostgreSQL 16 + pgvector container definition
-├── graph_nodes.py            # LangGraph workflow nodes (router, domain agents, clarify, synthesize, respond)
-├── graph_state.py            # TypedDict state schemas & Pydantic structured output models
-├── index_documents.py        # PDF loading, recursive chunking, and PGVector indexing pipeline
-├── knowledge_retrieval.py    # PGVector connection, HuggingFace embeddings, and MMR retrieval helpers
-├── Prompts.py                # Departmental prompt templates and system instructions
-├── requirements.txt          # Python dependencies (LangChain, Groq, PGVector, SentenceTransformers)
-├── test.ipynb                # Interactive notebook for routing & graph evaluation
+├── app/                      # FastAPI service layer (auth, chat API, core config)
+│   ├── api/v1/endpoints/     # chat.py, auth.py
+│   └── auth/                 # JWT lifecycle, RBAC matrix, dependencies
+├── routing/                  # 3-Way Hybrid Router & Multi-Intent Semantic Detector
+│   ├── hybrid_router.py      # 55% Vector + 25% Lexical + 20% ML Classifier
+│   ├── multi_intent.py       # Clause segmentation & multi-domain routing
+│   ├── vector_scorer.py      # SentenceTransformers centroid cosine scoring
+│   ├── lexical_scorer.py     # N-gram & negative anchor keyword scoring
+│   └── model.py              # Calibrated Scikit-Learn routing model
+├── rag/                      # Department RAG & isolated retrieval
+│   ├── engine.py             # MMR retrieval & grounded citation generation
+│   ├── prompts.py            # Departmental prompt templates
+│   └── config.py             # Domain registry & collection mappings
+├── orchestration/            # Cross-domain resolution & dependencies
+│   ├── engine.py             # Multi-domain synthesis & parallel execution
+│   └── dependency_graph.py   # Institutional workflow topological precedence
+├── graph.py                  # LangGraph StateGraph builder with MemorySaver
+├── graph_nodes.py            # Graph nodes (router, clarify, RAG, orchestrate, respond)
+├── graph_state.py            # TypedDict state schemas
+├── index_documents.py        # PDF chunking and vector indexing script
+├── knowledge_retrieval.py    # PGVector connection and MMR retrieval helpers
+├── requirements.txt          # Python dependencies
 └── README.md                 # Backend documentation
 ```
 
