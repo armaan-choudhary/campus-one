@@ -1,15 +1,4 @@
 """CampusOne FastAPI Application Entrypoint."""
-import sys
-from pathlib import Path
-
-# Ensure project root and backend dir are in sys.path
-_current_dir = Path(__file__).resolve().parent
-_backend_dir = _current_dir.parent
-_project_root = _backend_dir.parent
-for _p in (str(_project_root), str(_backend_dir)):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
 from typing import Dict, Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -39,7 +28,7 @@ app.add_middleware(
 
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    """Standardized error responses conforming to docs/api.md."""
+    """Standardized error responses conforming to docs/09_API_Reference.md."""
     if isinstance(exc.detail, dict):
         content = exc.detail
     else:

@@ -27,7 +27,6 @@ wheels/
 .venv/
 venv/
 ENV/
-.pytest_cache/
 
 # Node
 node_modules/

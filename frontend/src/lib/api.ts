@@ -1,4 +1,4 @@
-import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole, ChatApiResponse } from '@/types';
+import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole } from '@/types';
 import { PERSONAS } from '@/lib/demoFixtures';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -191,38 +191,4 @@ export async function logoutApi(refreshToken: string): Promise<void> {
   } catch {
     // Best-effort logout
   }
-}
-
-export async function sendChatMessage(
-  query: string,
-  conversationId?: string,
-  token?: string
-): Promise<ChatApiResponse> {
-  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('campusone_access_token') : null);
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
-  const res = await fetch(`${API_BASE_URL}/chat`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      query,
-      conversation_id: conversationId || undefined,
-    }),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    const message = errorData.message || errorData.detail?.message || `Chat request failed (${res.status})`;
-    const error = new Error(message);
-    (error as any).status = res.status;
-    (error as any).errorType = errorData.error || errorData.detail?.error || 'unknown_error';
-    throw error;
-  }
-
-  return await res.json();
 }

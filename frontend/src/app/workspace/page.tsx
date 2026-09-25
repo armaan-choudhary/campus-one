@@ -23,7 +23,7 @@ interface WorkspaceContentProps {
 }
 
 function WorkspaceContent({ defaultRole }: WorkspaceContentProps) {
-  const { user, role: authRole, accessToken, switchDemoPersona } = useAuth();
+  const { user, role: authRole, switchDemoPersona } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const currentRole = selectedRole ?? authRole ?? defaultRole;
 
@@ -48,7 +48,7 @@ function WorkspaceContent({ defaultRole }: WorkspaceContentProps) {
     newChat,
     deleteConversation,
     selectClarification,
-  } = useChat({ accessToken });
+  } = useChat();
 
   // Synchronize theme with html element
   useEffect(() => {

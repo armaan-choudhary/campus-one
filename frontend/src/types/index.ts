@@ -80,7 +80,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  domain?: 'it' | 'finance' | 'fees' | 'facilities' | 'academics' | 'administration' | 'hr';
+  domain?: 'it' | 'finance' | 'facilities' | 'academics' | 'administration';
   domainLabel?: string;
   confidence?: number;
   timestamp: string;
@@ -90,32 +90,6 @@ export interface Message {
   checklist?: string[];
   portalLink?: MessagePortalLink;
   followUps?: string[];
-}
-
-export interface ChatDomainItem {
-  department: string;
-  display_name: string;
-  confidence: number;
-  solved: boolean;
-  human_required: boolean;
-  sources: string[];
-  citations: Citation[];
-}
-
-export interface ChatApiResponse {
-  answer: string;
-  conversation_id: string;
-  route_mode: string;
-  department?: string;
-  domains: ChatDomainItem[];
-  confidence: number;
-  sources: string[];
-  citations: Citation[];
-  next_steps: string[];
-  requires_clarification: boolean;
-  clarification_options: ClarificationOption[];
-  human_required: boolean;
-  handoff_reason?: string;
 }
 
 export interface ConversationItem {

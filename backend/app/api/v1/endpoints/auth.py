@@ -1,4 +1,4 @@
-"""Authentication endpoints conforming to docs/api.md."""
+"""Authentication endpoints conforming to docs/09_API_Reference.md §3."""
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 

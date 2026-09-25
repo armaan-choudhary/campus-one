@@ -38,7 +38,7 @@ def _verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 
-# Granular Role-Based Permissions Matrix (docs/architecture.md)
+# Granular Role-Based Permissions Matrix (docs/12_Security.md §4)
 ROLE_PERMISSIONS: Dict[Role, list[str]] = {
     Role.STUDENT: [
         "conversations:own",
@@ -110,7 +110,7 @@ class MockAuthProvider:
         # Track valid active refresh tokens for rotation & revocation
         self._active_refresh_tokens: Set[str] = set()
 
-        # Seeded demo credentials and persona accounts (docs/api.md)
+        # Seeded demo credentials and persona accounts (docs/15_Demo_Runbook.md & 17_Engineering_Decisions.md)
         demo_pwd_hash = _hash_password("demo-password", salt="campusone_demo_salt_2026")
 
         self._users_by_email: Dict[str, dict] = {

@@ -102,11 +102,11 @@ frontend/
 │   │   ├── AnalyticsView.tsx      # Executive telemetry & 5x5 confusion matrix
 │   │   └── vectors/               # Pure-SVG architectural graphics
 │   ├── hooks/
-│   │   ├── useChat.ts        # Conversational state machine & Live API bridge
+│   │   ├── useChat.ts        # Conversational state machine & mock engine bridge
 │   │   └── useToast.ts       # Global notification system
 │   ├── lib/
-│   │   ├── api.ts            # Live FastAPI client with auth & graceful fallback
 │   │   ├── demoFixtures.ts   # Complete realistic runbook fixtures & persona data
+│   │   ├── mockEngine.ts     # Realistic simulation engine mirroring backend graph
 │   │   └── utils.ts          # Common utility functions, cn helper & safe ID generator
 │   └── types/
 │       └── index.ts          # Centralized TypeScript domain & UI entity contracts
