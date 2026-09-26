@@ -23,9 +23,12 @@ class AssistantState(TypedDict):
     human_required: bool
     handoff_reason: Optional[str]
     ticket_id: Optional[str]
+    ticket_requested: bool
+    ticket_summary: Optional[Dict[str, Any]]
 
     # Grounding
     sources: List[str]
+    retrieved_chunks: List[Dict[str, Any]]
 
     # Final response
     final_answer: Optional[str]
@@ -139,4 +142,46 @@ class SynthesisResponse(BaseModel):
         description=(
             "A concise final answer assembled from the agent response."
         )
+    )
+
+
+# Structured schema for creating ticket
+
+class TicketSummary(BaseModel):
+    subject: str = Field(
+        description="Short, clear title for the support ticket."
+    )
+    department: Literal[
+        "IT",
+        "HR",
+        "Fees",
+        "Facilities",
+        "General",
+    ] = Field(
+        description="Department responsible for handling the ticket."
+    )
+    issue_summary: str = Field(
+        description="Concise description of the user's original problem."
+    )
+    conversation_summary: str = Field(
+        description="Summary of the relevant conversation between the user and assistant."
+    )
+    attempted_steps: List[str] = Field(
+        default_factory=list,
+        description="Troubleshooting or guidance already attempted."
+    )
+    current_status: str = Field(
+        description="What remains unresolved for the user."
+    )
+    priority: Literal[
+        "low",
+        "medium",
+        "high",
+        "urgent",
+    ] = Field(
+        default="medium",
+        description="Suggested ticket priority."
+    )
+    escalation_reason: str = Field(
+        description="Why the issue requires internal support."
     )

@@ -24,6 +24,8 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     thread_id: str
+    ticket_id: Optional[str] = None
+    ticket: Optional[Dict[str, Any]] = None
     detected_domains: List[str] = Field(default_factory=list)
     intent: Optional[str] = None
     routing_confidence: float = 0.0
@@ -31,6 +33,7 @@ class ChatResponse(BaseModel):
     human_required: bool = False
     handoff_reason: Optional[str] = None
     sources: List[str] = Field(default_factory=list)
+    retrieved_chunks: List[Dict[str, Any]] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -74,6 +77,8 @@ async def chat(
     return ChatResponse(
         answer=result.get("final_answer") or result.get("agent_response") or "",
         thread_id=thread_id,
+        ticket_id=result.get("ticket_id"),
+        ticket=result.get("metadata", {}).get("ticket"),
         detected_domains=result.get("detected_domains", []),
         intent=result.get("intent"),
         routing_confidence=result.get("routing_confidence", 0.0),
@@ -81,5 +86,6 @@ async def chat(
         human_required=result.get("human_required", False),
         handoff_reason=result.get("handoff_reason"),
         sources=result.get("sources", []),
+        retrieved_chunks=result.get("retrieved_chunks", []),
         metadata=result.get("metadata", {}),
     )

@@ -10,11 +10,13 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Department-Isolated Vector Retrieval:** Dedicated pgvector collections for IT, HR, Finance, and Facilities, preventing cross-domain hallucinations.
 - **MMR RAG Search:** Combines semantic similarity with diversity weighting (`k=4, fetch_k=16, lambda_mult=0.7`) using normalized `all-MiniLM-L6-v2` embeddings.
 - **Verifiable Institutional Citations:** Extracts exact document names and page numbers directly from vector metadata for source attribution.
-- **Confidence-Gated Edge Routing:** Routes to specialized domain agents if confidence $\ge 0.75$; triggers dynamic clarification dialogs or human specialist handoff if confidence $< 0.75$.
+- **Confidence-Gated Edge Routing:** Routes to specialized domain agents if confidence $\ge 0.75$ and returns a clarification response for ambiguous requests.
+- **Conversation-Based Escalation:** Detects unresolved follow-ups or explicit escalation requests and routes them to internal ticket creation without directly contacting a department.
+- **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and returns the ticket confirmation to the user.
 - **Synthesized Final Output:** Condenses domain agent responses into concise, student-friendly answers with actionable numbered steps.
 - **Authenticated Conversations:** Uses the access-token JWT ID (`jti`) as a unique LangGraph thread ID for each login session.
 - **FastAPI Chat API:** Exposes authenticated conversations through `POST /api/v1/chat`.
-- **Streamlit Debug Console:** Provides a developer-only local UI for smoke-testing login, routing, confidence, sources, and conversation context. The dedicated `frontend/` application is the user-facing client.
+- **Streamlit Debug Console:** Provides a developer-only local UI for smoke-testing login, routing, confidence, ticket creation, source metadata, and the exact retrieved chunks passed to domain agents. The dedicated `frontend/` application is the user-facing client.
 
 ---
 
@@ -61,30 +63,29 @@ backend/
       │
       ▼
 ┌──────────────┐
-│   router()   │  ── Structured JSON classification (confidence, department, reason)
+│   router()   │  ── Classifies intent and checks for escalation
 └──────┬───────┘
        │
-  route_by_confidence()
-   ├── Confidence < 0.75 ──────────────► ┌─────────────┐
-   │                                     │  clarify()  │ ── Prompt student for more details
-   └── Confidence >= 0.75                └─────────────┘
-         │
-   Select Domain Agent:
-   ├── IT: it_query() ──► MMR pgvector search ──► Grounded answer + citations
-   ├── HR: hr_agent()
-   ├── Fees: fees_agent()
-   └── Facilities: facilities_agent()
-      └── General: general_agent() ──► greetings, thanks, and small talk
-         │
-         ▼
-┌─────────────────┐
-│  synthesize()   │  ── Cleans, formats, and structures the response
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│    respond()    │  ── Appends to conversation history and returns state
-└─────────────────┘
+       ├── Ambiguous ───────────────► clarify() ──► respond() ──► END
+       │
+       ├── Escalation ──────────────► create_ticket()
+       │                                  │
+       │                                  ▼
+       │                              respond()
+       │                         (generate ticket summary)
+       │                                  │
+       │                                  ▼
+       │                              create_ticket()
+       │                         (raise ticket and assign ID)
+       │                                  │
+       │                                  ▼
+       │                              respond()
+       │                         (display confirmation) ──► END
+       │
+       └── Department Agent ──► synthesize() ──► respond() ──► END
+
+Domain agents use MMR retrieval from the department collection. The selected
+document text is retained as `retrieved_chunks` for debugging and inspection.
 ```
 
 ---
@@ -152,7 +153,7 @@ In a second terminal, from the repository root:
 streamlit run backend/streamlit_app.py --server.port 8501
 ```
 
-Open [http://localhost:8501](http://localhost:8501). The console logs in through the API, sends authenticated messages, and displays the selected intent, departments, routing confidence, sources, solved state, and thread ID.
+Open [http://localhost:8501](http://localhost:8501). The console logs in through the API, sends authenticated messages, and displays the selected intent, departments, routing confidence, sources, exact retrieved chunks, ticket summaries, solved state, and thread ID.
 
 Demo credentials:
 
@@ -179,6 +180,37 @@ curl -X POST http://localhost:8000/api/v1/chat \
 ```
 
 The server derives the LangGraph `thread_id` from the authenticated access token's unique JWT `jti`. Reusing the same access token continues the same conversation; a new login creates a separate conversation thread. Clients do not provide or override the thread ID.
+
+The response includes routing and grounding inspection data:
+
+```json
+{
+      "answer": "...",
+      "thread_id": "...",
+      "ticket_id": null,
+      "ticket": null,
+      "detected_domains": ["IT"],
+      "routing_confidence": 0.94,
+      "sources": ["wifi-guide.pdf, page 2"],
+      "retrieved_chunks": [
+            {
+                  "content": "Exact text extracted from the indexed document chunk...",
+                  "source": "wifi-guide.pdf",
+                  "page": 2,
+                  "metadata": {
+                        "source": "wifi-guide.pdf",
+                        "page": 1
+                  }
+            }
+      ]
+}
+```
+
+When escalation is triggered, `ticket_id` and `ticket` are populated. The
+ticket contains the structured summary generated from the conversation,
+department, priority, escalation reason, and conversation history. The current
+ticket store is process-local through `MemorySaver`; production deployments
+should replace it with durable database storage.
 
 ---
 

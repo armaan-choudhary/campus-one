@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
@@ -13,7 +16,21 @@ try:
         DepartmentRoute,
         ITQueryResponse,
         SynthesisResponse,
+        TicketSummary
     )
+except ModuleNotFoundError as exc:
+    if exc.name not in {"backend", "backend.graph_state"}:
+        raise
+    from graph_state import (
+        AgentQueryResponse,
+        AssistantState,
+        DepartmentRoute,
+        ITQueryResponse,
+        SynthesisResponse,
+        TicketSummary
+    )
+
+try:
     from backend.knowledge_retrieval import (
         FACILITIES_KNOWLEDGE_BASE,
         FINANCE_KNOWLEDGE_BASE,
@@ -22,6 +39,19 @@ try:
         format_retrieved_documents,
         retrieve_documents,
     )
+except ModuleNotFoundError as exc:
+    if exc.name not in {"backend", "backend.knowledge_retrieval"}:
+        raise
+    from knowledge_retrieval import (
+        FACILITIES_KNOWLEDGE_BASE,
+        FINANCE_KNOWLEDGE_BASE,
+        HR_KNOWLEDGE_BASE,
+        IT_KNOWLEDGE_BASE,
+        format_retrieved_documents,
+        retrieve_documents,
+    )
+
+try:
     from backend.Prompts import (
         FACILITIES_AGENT_PROMPT,
         FEES_AGENT_PROMPT,
@@ -31,22 +61,9 @@ try:
         ROUTER_PROMPT,
         SYNTHESIZE_PROMPT,
     )
-except ModuleNotFoundError:
-    from graph_state import (
-        AgentQueryResponse,
-        AssistantState,
-        DepartmentRoute,
-        ITQueryResponse,
-        SynthesisResponse,
-    )
-    from knowledge_retrieval import (
-        FACILITIES_KNOWLEDGE_BASE,
-        FINANCE_KNOWLEDGE_BASE,
-        HR_KNOWLEDGE_BASE,
-        IT_KNOWLEDGE_BASE,
-        format_retrieved_documents,
-        retrieve_documents,
-    )
+except ModuleNotFoundError as exc:
+    if exc.name not in {"backend", "backend.Prompts"}:
+        raise
     from Prompts import (
         FACILITIES_AGENT_PROMPT,
         FEES_AGENT_PROMPT,
@@ -64,6 +81,7 @@ _it_llm = None
 _domain_llms = {}
 _general_llm = None
 _synth_llm = None
+_ticket_llm = None
 
 
 def _conversation_context(state: AssistantState, limit: int = 8) -> str:
@@ -76,6 +94,22 @@ def _conversation_context(state: AssistantState, limit: int = 8) -> str:
         f"{message.get('content', '')}"
         for message in messages
     )
+
+
+def _retrieved_chunk_payload(documents) -> list[dict[str, Any]]:
+    return [
+        {
+            "content": document.page_content,
+            "source": document.metadata.get("source", "Unknown document"),
+            "page": (
+                document.metadata["page"] + 1
+                if isinstance(document.metadata.get("page"), int)
+                else None
+            ),
+            "metadata": dict(document.metadata),
+        }
+        for document in documents
+    ]
 
 
 def get_router_llm():
@@ -98,6 +132,22 @@ def get_it_llm():
             method="json_schema",
         )
     return _it_llm
+
+
+def _get_ticket_llm():
+    global _ticket_llm
+
+    if _ticket_llm is None:
+        llm = ChatGroq(
+            model="openai/gpt-oss-120b",
+            temperature=0.2,
+        )
+        _ticket_llm = llm.with_structured_output(
+            TicketSummary,
+            method="json_schema",
+        )
+
+    return _ticket_llm
 
 
 def router(state: AssistantState):
@@ -168,6 +218,7 @@ def it_query(state: AssistantState):
             else None
         ),
         "sources": source_references,
+        "retrieved_chunks": _retrieved_chunk_payload(retrieved_documents),
         "metadata": {
             **state.get("metadata", {}),
             "agent_domain": "IT",
@@ -259,6 +310,7 @@ def _run_domain_agent(
         "human_required": response.human_required,
         "handoff_reason": response.handoff_reason,
         "sources": source_references,
+        "retrieved_chunks": _retrieved_chunk_payload(retrieved_documents),
         "metadata": {
             **state.get("metadata", {}),
             "agent_domain": domain,
@@ -332,12 +384,45 @@ def synthesize(state: AssistantState):
     }
 
 def respond(state: AssistantState):
-    final_answer = state.get("final_answer") or state.get("agent_response")
+    if state.get("ticket_requested") and not state.get("ticket_summary"):
+        conversation = _conversation_context(state, limit=20)
+        prompt = f"""
+Create an internal support ticket summary from this conversation.
+
+Use only facts present in the conversation. Do not invent troubleshooting
+steps, policies, or user details.
+
+Conversation:
+{conversation}
+
+Detected department:
+{state.get("detected_domains", ["General"])[0]}
+"""
+        ticket_summary = _get_ticket_llm().invoke(prompt)
+
+        return {
+            "ticket_summary": ticket_summary.model_dump(),
+            "metadata": {
+                **state.get("metadata", {}),
+                "ticket_summary_generated": True,
+            },
+        }
+
+    candidate_answer = state.get("final_answer") or state.get("agent_response")
+    ticket_id = state.get("ticket_id")
+    if ticket_id:
+        final_answer = (
+            "Your issue has been raised as internal support ticket "
+            f"{ticket_id}. The conversation summary and troubleshooting "
+            "history have been included for the support team."
+        )
+    else:
+        final_answer = candidate_answer
 
     if not final_answer:
         final_answer = (
             "I could not generate an answer at this time. "
-            "Please try again or request human assistance."
+            "Please try again later."
         )
 
     return {
@@ -355,10 +440,59 @@ def respond(state: AssistantState):
         },
     }
 
+
+def route_after_response(state: AssistantState) -> str:
+    if state.get("ticket_requested") and not state.get("ticket_id"):
+        return "create_ticket"
+
+    return "finish"
+
+
+def should_raise_ticket(state: AssistantState) -> bool:
+    query = state.get("current_query", "").lower().strip()
+    messages = state.get("messages", [])
+
+    dissatisfaction_phrases = (
+        "still not",
+        "still doesn't",
+        "still does not",
+        "didn't work",
+        "doesn't work",
+        "does not work",
+        "not working",
+        "did not help",
+        "not helpful",
+        "tried that",
+        "same problem",
+        "didn't solve",
+        "not solved",
+        "speak to a human",
+        "need a human",
+        "talk to someone",
+        "create a support ticket",
+        "raise a ticket",
+        "escalate this",
+    )
+
+    has_previous_assistant_response = any(
+        message.get("role") == "assistant"
+        for message in messages[:-1]
+    )
+
+    return has_previous_assistant_response and any(
+        phrase in query for phrase in dissatisfaction_phrases
+    )
+
 def route_by_confidence(state: AssistantState) -> str:
+    if should_raise_ticket(state):
+        return "create_ticket"
+
     confidence = state.get("routing_confidence", 0.0)
     domains = state.get("detected_domains", [])
     intent = (state.get("intent") or "").lower().strip()
+
+    if intent == "human":
+        return "create_ticket"
 
     # Honor an explicit General classification, even if the model omitted
     # the department list for a greeting or small-talk request.
@@ -385,5 +519,39 @@ def route_by_confidence(state: AssistantState) -> str:
 
     return valid_routes.get(department, "clarify")
 
+def create_ticket(state: AssistantState):
+    if state.get("ticket_id"):
+        return {
+            "ticket_id": state["ticket_id"],
+            "human_required": True,
+            "metadata": {
+                **state.get("metadata", {}),
+                "ticket_created": True,
+            },
+        }
 
+    if not state.get("ticket_summary"):
+        return {
+            "ticket_requested": True,
+            "metadata": {
+                **state.get("metadata", {}),
+                "ticket_summary_requested": True,
+            },
+        }
 
+    ticket_id = f"TKT-{uuid4().hex[:8].upper()}"
+    ticket = {
+        "ticket_id": ticket_id,
+        **state["ticket_summary"],
+        "conversation": state.get("messages", []),
+    }
+
+    return {
+        "ticket_id": ticket_id,
+        "human_required": True,
+        "metadata": {
+            **state.get("metadata", {}),
+            "ticket_created": True,
+            "ticket": ticket,
+        },
+    }

@@ -121,6 +121,31 @@ def chat_panel() -> None:
                 st.write("Sources")
                 for source in routing["sources"]:
                     st.caption(source)
+
+            if routing.get("ticket_id") or routing.get("ticket"):
+                st.subheader("Raised ticket")
+                st.success(
+                    f"Ticket raised: {routing.get('ticket_id', 'Unknown ticket')}"
+                )
+                ticket = routing.get("ticket")
+                if ticket:
+                    st.json(ticket)
+
+            chunks = routing.get("retrieved_chunks", [])
+            st.subheader("Retrieved chunks")
+            if not chunks:
+                st.info("No retrieved chunks were returned for this response.")
+            else:
+                st.caption(
+                    "Exact document text passed to the domain agent, including page metadata."
+                )
+                for index, chunk in enumerate(chunks, start=1):
+                    source = chunk.get("source", "Unknown document")
+                    page = chunk.get("page")
+                    location = f"{source}, page {page}" if page else source
+                    with st.expander(f"Chunk {index}: {location}"):
+                        st.code(chunk.get("content", ""), language="text")
+                        st.json(chunk.get("metadata", {}))
         else:
             st.info("Send a message to inspect its route.")
 
