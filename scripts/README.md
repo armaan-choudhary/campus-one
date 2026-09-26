@@ -6,7 +6,7 @@ Unified cross-platform setup and launcher scripts for the CampusOne full-stack a
 
 Run these from the **repository root**:
 
-| OS | Setup (first time) | Start App |
+| OS | Setup (first time) | Start Full Stack |
 |:---|:---|:---|
 | **Linux / macOS** | `./scripts/setup.sh` | `./scripts/start.sh` |
 | **Windows (CMD)** | `scripts\setup.bat` | `scripts\start.bat` |
@@ -25,6 +25,11 @@ The **start** scripts automatically run setup if the environment is uninitialize
 
 ## What start does
 
-1. Runs setup if the environment is missing
-2. Ensures the PostgreSQL container is running
-3. Launches the Next.js frontend at `http://localhost:3000`
+1. Runs setup if any environment components are missing
+2. Ensures the PostgreSQL pgvector container is running
+3. Starts the FastAPI backend at `http://127.0.0.1:8000/api/v1`
+4. Starts the Next.js frontend dev server at `http://localhost:3000`
+5. Provides direct access to:
+   - **Student Portal**: `http://localhost:3000/workspace`
+   - **Admin Console**: `http://localhost:3000/admin`
+   - **Swagger Docs**: `http://127.0.0.1:8000/docs`

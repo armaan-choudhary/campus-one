@@ -227,7 +227,7 @@ All settings are loaded by one typed settings object. Environment names are exam
 
 ## 10. Observability
 
-Every request carries `request_id`; every turn has `conversation_id`, `user_id_hash`, and `message_id`. JSON logs include event name, duration, outcome, domain keys, and error code. They exclude message text by default, access tokens, API keys, full prompts, and retrieved document bodies. See [12 Security](12_Security.md) and [11 Analytics](11_Analytics_and_Evaluation.md).
+Every request carries `request_id`; every turn has `conversation_id`, `user_id_hash`, and `message_id`. JSON logs include event name, duration, outcome, domain keys, and error code. They exclude message text by default, access tokens, API keys, full prompts, and retrieved document bodies. See [12 Security](12_Security.md).
 
 ## 11. Architectural acceptance criteria
 

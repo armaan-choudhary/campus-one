@@ -13,20 +13,20 @@
 **CampusOne** is an enterprise-grade university orchestration platform and conversational single front door. Universities are notoriously fragmented into bureaucratic silos: IT Helpdesks, Student Accounts/Finance, Campus Facilities, Academic Registrars, and Administrative Directorates. 
 
 CampusOne replaces disjointed chatbots, confusing portal links, and bouncing email threads with a single conversational entry point powered by:
-- **Margin-Guarded Intent Routing** ($\Delta \ge 0.15$) with Negative Semantic Anchors
-- **Isolated Domain Skills** backed by pgvector + PostgreSQL Full-Text Hybrid Retrieval (RRF)
-- **Strict Grounding & Verifiable Citations** (zero hallucination, mandatory source attribution)
-- **Deterministic Multi-Domain Synthesis** and turn-based Redis concurrency locks
-- **Autonomous Zero-Downtime Replay Circuit Breaker** for bulletproof live demonstrations
+- **Margin-Guarded Intent Routing** with structured JSON output classification
+- **Isolated Domain Knowledge Stores** backed by PostgreSQL + `pgvector` MMR retrieval
+- **Strict Grounding & Verifiable Citations** (mandatory source attribution with page-level PDF provenance)
+- **Dynamic Clarification & Contextual Escalation** (avoids guessing when confidence is ambiguous)
+- **Role-Separated Operational Architecture** with dedicated student and administrator interfaces
 
 ---
 
 ## ⚙️ Backend Multi-Agent & Retrieval Engine
 
-The backend (`backend/`) is a LangGraph orchestration service combining Groq high-throughput LLMs (`openai/gpt-oss-120b`) and PostgreSQL with `pgvector`:
+The backend (`backend/`) is a LangGraph orchestration service combining Groq high-throughput LLMs and PostgreSQL with `pgvector`:
 
 - **Structured Intent Routing (`router()`):** Employs JSON Schema structured outputs (`DepartmentRoute`) to determine target departments, routing confidence, and classification reasoning.
-- **Isolated PGVector Knowledge Bases:** Four dedicated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) to prevent multi-department cross-contamination.
+- **Isolated PGVector Knowledge Bases:** Dedicated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) to prevent multi-department cross-contamination.
 - **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
 - **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
 - **Confidence-Gated Resolution:** If routing confidence $\ge 0.75$, routes to domain agents (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`); if confidence $< 0.75$, shifts to dynamic clarification (`clarify()`) or flags human specialist escalation.
@@ -34,28 +34,36 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 
 ---
 
-## 💻 Frontend UI & Multi-Persona Architecture
+## 💻 Frontend Dual-Role Architecture
 
-The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, and **Inter**:
+The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**, enforcing clean page separation across two primary roles:
 
-- **Editorial Single Front Door Landing Page:** Reinterpreted through modern campus wayfinding, directional building signage, and an interactive Central Quad transit schematic demonstrating cross-department orchestration ($$\text{Question} \to \text{Dispatch} \to \text{Registrar} + \text{Bursar} \to \text{One Answer}$$) with official university stationery citations.
-- **Students (Alex Rivera — Primary Audience):** Clean, distraction-free conversational stream with zero corporate clutter. Features architectural SVG knowledge mesh hero, interactive action checklists, inline citation badges, clarification dialogs, and a floating pill composer.
-- **Campus Support Agents (Sarah Jenkins):** Departmental escalation triage queue with SLA indicators (Urgent 15m window), full conversational context, and 1-click resolution templates.
-- **Knowledge Administrators (Dr. Patricia Cole):** Institutional policy catalog, pgvector chunk inspection, and vector corpus publishing workflows with single-line Grounding Authority indicators.
-- **University Leadership & Evaluators (Dr. Marcus Vance):** Executive telemetry dashboard monitoring 88.4% macro routing accuracy, autonomous resolution rates, and a 5×5 cross-department confusion matrix on an expansive 1440px dashboard grid.
-- **Theme & Vector System:** Deep neutral black canvas with restrained electric sapphire/indigo accent (`#6366f1`), custom pure-SVG vector graphics, interactive canvas mouse effects, and accessible WCAG 2.1 AA contrast.
+### 1. Student Portal (`/workspace`)
+- **Primary Audience:** Alex Rivera (`student@example.edu` / `demo-password`)
+- **Assistant Chat:** Zero-clutter conversational stream with architectural SVG knowledge mesh hero, suggested prompts, inline citation badges opening the slide-out `CitationDrawer`, dynamic clarification chips, and a floating pill composer.
+- **My Tickets:** Real-time tracking of personal inquiries split into **Ongoing** and **Resolved** tabs. Automatically captures escalated handoff tickets produced by the assistant.
+- **Isolated Context:** Strictly student-focused; no administrative panels or controls in this window.
+
+### 2. Administrator Console (`/admin`)
+- **Primary Audience:** System Administrator (`admin@example.edu` / `demo-password`)
+- **Unified Ticket Management Console:** Centralized triage board with real-time queue counts (Pending vs Claimed), status filtering (`all`, `pending`, `in_progress`, `resolved`), search filter, and detailed inspector.
+- **Lifecycle Management:** One-click ticket claiming, resolution note entry, and resolution actions that instantly synchronize with the student's ticket view via reactive `TicketContext`.
+- **RBAC Security Guard:** Protected by an **HTTP 403 Role Clearance Barrier**; unauthenticated visitors or student sessions cannot access administrative tools without admin authentication.
+
+### 3. Unified Authentication Gateway (`/login`)
+- **Dual-Card Selection:** Direct 1-click exploration buttons for "Enter as Student" (routes to `/workspace`) and "Enter as Admin" (routes to `/admin`).
+- **Direct Credentials Form:** Authenticates against FastAPI `/api/v1/auth/login` and automatically redirects based on user role.
 
 ---
 
 ## 🚀 One-Command Launch (All Platforms)
 
-Right after a fresh `git clone` or `git pull`, launch the entire stack (PostgreSQL + pgvector container, Python venv, dependencies, and Next.js frontend) with a single command:
+Right after a fresh `git clone` or `git pull`, launch the stack:
 
 #### Linux & macOS (Bash)
 ```bash
 ./scripts/start.sh
 ```
-*(Optionally run `./scripts/setup.sh` first if you only want to set up without launching)*
 
 #### Windows (Command Prompt)
 ```cmd
@@ -71,7 +79,7 @@ scripts\start.bat
 
 ## 🛠️ Manual Step-by-Step Setup
 
-If you prefer configuring services step-by-step:
+If you prefer running services independently:
 
 ### 1. Start Vector Database (PostgreSQL + pgvector)
 ```bash
@@ -86,9 +94,11 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Create .env from .env.example with GROQ_API_KEY and DATABASE_URL
-# Ingest and index PDF policy documents:
+# Ingest and index PDF policy documents into pgvector:
 python index_documents.py
+
+# Launch FastAPI backend:
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 ### 3. Start Frontend Development Server
@@ -105,6 +115,7 @@ npm run dev # Launches on http://localhost:3000
 ```text
 msInnovateHack/
 ├── backend/                       # Python LangGraph & pgvector orchestration engine
+│   ├── app/                       # FastAPI application (main.py, auth, chat endpoints)
 │   ├── Documents/                 # Institutional policy PDFs (IT, HR, Finance, Facilities)
 │   ├── docker-compose.yml         # PostgreSQL 16 + pgvector container
 │   ├── graph_nodes.py             # Router, domain RAG nodes, clarify, synthesize, respond
@@ -112,16 +123,21 @@ msInnovateHack/
 │   ├── index_documents.py         # PDF chunking and vector indexing script
 │   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
 │   ├── Prompts.py                 # Domain prompt templates and system instructions
-│   ├── requirements.txt           # Python dependencies
-│   ├── test.ipynb                 # Interactive evaluation notebook
-│   └── README.md                  # Backend architecture and setup guide
-├── frontend/                      # Next.js 16 multi-persona web application
-│   ├── src/app/                   # App Router pages (Landing / & Workspace /workspace)
-│   ├── src/components/            # UI components (Chat, Queue, Admin, Analytics, Vectors)
-│   ├── src/lib/                   # Mock engine, demo fixtures, utilities
-│   ├── src/types/                 # Centralized domain and entity TypeScript interfaces
+│   └── requirements.txt           # Python dependencies
+├── frontend/                      # Next.js 16 App Router application
+│   ├── src/app/
+│   │   ├── page.tsx               # Campus wayfinding landing page
+│   │   ├── login/page.tsx         # Unified dual-role authentication gateway
+│   │   ├── workspace/page.tsx     # Student workspace (Assistant Chat & My Tickets)
+│   │   └── admin/page.tsx         # Dedicated Administrator Ticket Console (RBAC protected)
+│   ├── src/components/            # UI components (Chat, TopNav, Sidebar, Ticket views)
+│   │   ├── StudentTicketsView.tsx # Student ticket list (Ongoing / Resolved tabs)
+│   │   ├── AdminTicketPanel.tsx   # Consolidated ticket triage & resolution console
+│   │   └── TopNav.tsx             # Clean student navigation bar
+│   ├── src/context/               # AuthContext and reactive TicketContext
+│   ├── src/lib/                   # API client (FastAPI bridge), fixtures, utilities
 │   └── README.md                  # Frontend documentation
-├── docs/                          # Exhaustive 19-document architectural specification suite
+├── docs/                          # Architectural specification suite
 ├── assets/                        # Brand marks, vector assets, and design artifacts
 └── README.md                      # Monorepo master documentation
 ```
@@ -130,11 +146,9 @@ msInnovateHack/
 
 ## 📚 Architectural Specification Suite
 
-The project includes an exhaustive, implementation-ready 19-document specification suite:
-
 | Document | Description |
 | :--- | :--- |
-| [`docs/00_Project_Overview.md`](docs/00_Project_Overview.md) | Vision, scope, personas, and brand identity |
+| [`docs/00_Project_Overview.md`](docs/00_Project_Overview.md) | Vision, scope, two-role model, and brand identity |
 | [`docs/01_Product_Requirements.md`](docs/01_Product_Requirements.md) | Complete PRD and functional requirements (FR-AUTH through FR-KB) |
 | [`docs/02_System_Architecture.md`](docs/02_System_Architecture.md) | Modular monolith architecture, interfaces, and system boundaries |
 | [`docs/03_Routing_Engine.md`](docs/03_Routing_Engine.md) | Margin Guard, Negative Anchors, and two-stage classification |
@@ -142,17 +156,13 @@ The project includes an exhaustive, implementation-ready 19-document specificati
 | [`docs/05_RAG_and_Knowledge_Base.md`](docs/05_RAG_and_Knowledge_Base.md) | Hybrid RRF retrieval, chunking, and seed corpus strategy |
 | [`docs/06_Conversation_Orchestration.md`](docs/06_Conversation_Orchestration.md) | Turn state machine and multi-domain resolution matrix |
 | [`docs/07_Fallback_and_Handoff.md`](docs/07_Fallback_and_Handoff.md) | Clarification dialogs, handoff tickets, and queue routing |
-| [`docs/08_Database_Design.md`](docs/08_Database_Design.md) | 14 relational tables, pgvector HNSW indexes, and migrations |
+| [`docs/08_Database_Design.md`](docs/08_Database_Design.md) | Relational tables, pgvector HNSW indexes, and migrations |
 | [`docs/09_API_Reference.md`](docs/09_API_Reference.md) | Comprehensive REST and SSE streaming API contracts |
-| [`docs/10_Frontend_Architecture.md`](docs/10_Frontend_Architecture.md) | Next.js architecture, responsive layouts, and accessibility specs |
-| [`docs/11_Analytics_and_Evaluation.md`](docs/11_Analytics_and_Evaluation.md) | Metrics, evaluation dataset, and mathematical formulas |
+| [`docs/10_Frontend_Architecture.md`](docs/10_Frontend_Architecture.md) | Next.js architecture, dual-role pages, and state management |
 | [`docs/12_Security.md`](docs/12_Security.md) | Auth abstractions, RBAC matrix, and prompt injection defense |
 | [`docs/13_Testing_Strategy.md`](docs/13_Testing_Strategy.md) | Test hierarchy, automated suites, and CI verification gates |
 | [`docs/14_Deployment.md`](docs/14_Deployment.md) | Docker Compose infrastructure and operations |
-| [`docs/15_Demo_Runbook.md`](docs/15_Demo_Runbook.md) | 15-minute live hackathon presentation playbook and script |
-| [`docs/16_Implementation_Plan.md`](docs/16_Implementation_Plan.md) | Sequential 14-phase, 18-task implementation roadmap |
-| [`docs/17_Engineering_Decisions.md`](docs/17_Engineering_Decisions.md) | 15 Architecture Decision Records (ADRs) |
-| [`docs/18_Engineering_Bible.md`](docs/18_Engineering_Bible.md) | Master reference and the 12 non-negotiable system invariants |
+| [`docs/15_Demo_Runbook.md`](docs/15_Demo_Runbook.md) | Live hackathon presentation playbook and script |
 
 ---
 

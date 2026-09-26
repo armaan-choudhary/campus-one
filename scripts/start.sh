@@ -41,26 +41,45 @@ else
     exit 1
 fi
 
-# Ensure PostgreSQL container is running
-echo -e "${BLUE}▶ Checking PostgreSQL pgvector database...${NC}"
+# 1. Ensure PostgreSQL container is running
+echo -e "${BLUE}▶ [1/3] Checking PostgreSQL pgvector database...${NC}"
 $DOCKER_COMPOSE -f backend/docker-compose.yml up -d
+
+# 2. Check and start FastAPI Backend if not already running on port 8000
+BACKEND_PID=""
+if curl -s http://127.0.0.1:8000/docs >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ [2/3] FastAPI backend is already running on port 8000.${NC}"
+else
+    echo -e "${BLUE}▶ [2/3] Starting FastAPI backend on port 8000...${NC}"
+    cd backend
+    ./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload >/dev/null 2>&1 &
+    BACKEND_PID=$!
+    cd "$PROJECT_ROOT"
+    sleep 2
+fi
 
 # Cleanup hook on script termination
 cleanup() {
     echo -e "\n${YELLOW}Shutting down CampusOne services...${NC}"
+    if [ -n "$BACKEND_PID" ]; then
+        kill "$BACKEND_PID" 2>/dev/null || true
+    fi
     exit 0
 }
 trap cleanup SIGINT SIGTERM EXIT
 
+# 3. Print URLs and start frontend
 echo -e "\n${BOLD}${GREEN}=================================================================="
 echo -e "🚀 CampusOne is Live!"
 echo -e "==================================================================${NC}"
-echo -e "  🌐 Web Client : ${BOLD}${BLUE}http://localhost:3000${NC}"
-echo -e "  🗄️  PostgreSQL : ${BOLD}${BLUE}localhost:5432${NC} (db: campus_one)"
-echo -e "  🧠 Model      : Groq (openai/gpt-oss-120b) + HuggingFace Embeddings"
+echo -e "  🌐 Web Client     : ${BOLD}${BLUE}http://localhost:3000${NC}"
+echo -e "  🎓 Student Portal : ${BOLD}${CYAN}http://localhost:3000/workspace${NC}"
+echo -e "  🛡️  Admin Console  : ${BOLD}${CYAN}http://localhost:3000/admin${NC}"
+echo -e "  ⚙️  FastAPI Backend: ${BOLD}${BLUE}http://127.0.0.1:8000/api/v1${NC}"
+echo -e "  📖 Swagger Docs   : ${BOLD}${BLUE}http://127.0.0.1:8000/docs${NC}"
+echo -e "  🗄️  PostgreSQL     : ${BOLD}${BLUE}localhost:5432${NC} (db: campus_one)"
 echo -e "------------------------------------------------------------------"
-echo -e "Press ${BOLD}Ctrl+C${NC} to stop the frontend server.\n"
+echo -e "Press ${BOLD}Ctrl+C${NC} to stop services.\n"
 
-# Start Frontend Dev Server
 cd frontend
 npm run dev

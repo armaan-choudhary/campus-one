@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -84,6 +85,24 @@ _synth_llm = None
 _ticket_llm = None
 
 
+def _clean_content(text: str) -> str:
+    if not text:
+        return ""
+    trimmed = str(text).strip()
+    if trimmed.startswith("{") and trimmed.endswith("}"):
+        try:
+            parsed = json.loads(trimmed)
+            if isinstance(parsed, dict) and "answer" in parsed:
+                ans = parsed["answer"]
+                if "steps" in parsed and isinstance(parsed["steps"], list):
+                    steps_str = "\n".join(f"{i+1}. {s}" for i, s in enumerate(parsed["steps"]))
+                    return f"{ans}\n{steps_str}"
+                return str(ans)
+        except Exception:
+            pass
+    return trimmed
+
+
 def _conversation_context(state: AssistantState, limit: int = 8) -> str:
     messages = state.get("messages", [])[-limit:]
     if not messages:
@@ -91,7 +110,7 @@ def _conversation_context(state: AssistantState, limit: int = 8) -> str:
 
     return "\n".join(
         f"{message.get('role', 'unknown').title()}: "
-        f"{message.get('content', '')}"
+        f"{_clean_content(message.get('content', ''))}"
         for message in messages
     )
 
@@ -116,10 +135,7 @@ def get_router_llm():
     global _router_llm
     if _router_llm is None:
         llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
-        _router_llm = llm.with_structured_output(
-            DepartmentRoute,
-            method="json_schema",
-        )
+        _router_llm = llm.with_structured_output(DepartmentRoute)
     return _router_llm
 
 
@@ -229,7 +245,8 @@ def it_query(state: AssistantState):
 
 def clarify(state: AssistantState):
     query = state["current_query"]
-    domains = state.get("detected_domains", [])
+    # Filter out 'General' so clarification always offers meaningful departmental options
+    domains = [d for d in state.get("detected_domains", []) if d.lower() != "general"]
 
     options = ", ".join(domains) if domains else "IT, HR, Fees, or Facilities"
 
@@ -425,13 +442,15 @@ Detected department:
             "Please try again later."
         )
 
+    clean_final_answer = _clean_content(final_answer)
+
     return {
-        "final_answer": final_answer,
+        "final_answer": clean_final_answer,
         "messages": [
             *state.get("messages", []),
             {
                 "role": "assistant",
-                "content": final_answer,
+                "content": clean_final_answer,
             },
         ],
         "metadata": {
@@ -491,21 +510,6 @@ def route_by_confidence(state: AssistantState) -> str:
     domains = state.get("detected_domains", [])
     intent = (state.get("intent") or "").lower().strip()
 
-    if intent == "human":
-        return "create_ticket"
-
-    # Honor an explicit General classification, even if the model omitted
-    # the department list for a greeting or small-talk request.
-    if confidence >= 0.75 and intent == "general":
-        return "general"
-
-    # Ambiguous or unsupported request
-    if confidence < 0.75 or not domains:
-        return "clarify"
-
-    # DepartmentRoute returns uppercase values, but graph keys are lowercase
-    department = domains[0].lower().strip()
-
     valid_routes = {
         "it": "it",
         "hr": "hr",
@@ -516,6 +520,32 @@ def route_by_confidence(state: AssistantState) -> str:
         "facilities and maintenance": "facilities",
         "general": "general",
     }
+
+    if intent == "human":
+        return "create_ticket"
+
+    # Honor an explicit General classification, even if the model omitted
+    # the department list for a greeting or small-talk request.
+    if confidence >= 0.75 and intent == "general":
+        return "general"
+
+    # Ambiguous or low-confidence request
+    if confidence < 0.75 or not domains:
+        # Check if this is a follow-up in an ongoing departmental conversation
+        messages = state.get("messages", [])
+        if len(messages) > 1:
+            prev_domain = state.get("metadata", {}).get("agent_domain")
+            if not prev_domain and domains:
+                candidate = [d for d in domains if d.lower() != "general"]
+                if candidate:
+                    prev_domain = candidate[0]
+            if prev_domain and prev_domain.lower() in valid_routes:
+                return valid_routes[prev_domain.lower()]
+
+        return "clarify"
+
+    # DepartmentRoute returns uppercase values, but graph keys are lowercase
+    department = domains[0].lower().strip()
 
     return valid_routes.get(department, "clarify")
 

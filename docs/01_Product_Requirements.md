@@ -15,7 +15,7 @@
 |---|---|---|---|
 | FR-AUTH-001 | The system MUST expose an authentication abstraction so the conversation layer receives a `CurrentUser` independent of the identity provider. | MUST | Mock provider works in local/demo mode; provider interface has an OIDC implementation seam. |
 | FR-AUTH-002 | A prototype user MUST be able to sign in with a seeded student account. | MUST | Login returns an access token and `/me` returns the seeded identity. |
-| FR-AUTH-003 | Role checks MUST protect admin, ingestion, analytics, evaluation, and handoff-agent operations. | MUST | Student requests to admin endpoints receive 403. |
+| FR-AUTH-003 | Role checks MUST protect administrator routes and ticket triage operations. | MUST | Student requests to `/admin` receive HTTP 403 barrier. |
 | FR-AUTH-004 | The system MUST minimise PII in messages, analytics, and logs. | MUST | Redaction tests pass and raw tokens are never logged. |
 
 ### Conversation
@@ -130,5 +130,5 @@
 
 ## 5. Product acceptance gate
 
-The MVP is accepted when all MUST requirements above have automated coverage or a documented manual check, the demo runbook completes without fabricated university facts, and the evaluation harness produces a report with formulas defined in [11 Analytics and Evaluation](11_Analytics_and_Evaluation.md).
+The MVP is accepted when all MUST requirements above have automated coverage or a documented manual check, the demo runbook completes without fabricated university facts, and the test suite passes quality checks defined in [13 Testing Strategy](13_Testing_Strategy.md).
 

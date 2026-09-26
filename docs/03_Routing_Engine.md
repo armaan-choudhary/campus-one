@@ -110,7 +110,7 @@ Additional policy:
 - A multi-domain route requires each selected domain to be at least `0.65` and have a distinct intent signal.
 - An explicit human request overrides confidence.
 - A sensitive request can hand off even with high routing confidence.
-- Thresholds (`ROUTER_HIGH_CONFIDENCE_THRESHOLD=0.75`, `ROUTER_MARGIN_GUARD=0.15`) are settings in `app/core/config.py`, not hardcoded constants. Tune using the evaluation protocol in [11 Analytics and Evaluation](11_Analytics_and_Evaluation.md).
+- Thresholds (`ROUTER_HIGH_CONFIDENCE_THRESHOLD=0.75`, `ROUTER_MARGIN_GUARD=0.15`) are settings in `app/core/config.py`, not hardcoded constants. Tune using the evaluation protocol in [13 Testing Strategy](13_Testing_Strategy.md).
 
 ## 7. Single, multi, and switched intents
 

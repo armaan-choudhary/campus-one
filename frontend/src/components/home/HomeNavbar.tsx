@@ -57,10 +57,16 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
           How It Works
         </a>
         <Link
-          href="/workspace?role=student"
+          href="/workspace"
           className="hover:text-[var(--foreground)] transition-colors"
         >
-          Ask Assistant
+          Student Portal
+        </Link>
+        <Link
+          href="/admin"
+          className="hover:text-indigo-400 transition-colors"
+        >
+          Admin Console
         </Link>
       </nav>
 
@@ -101,7 +107,7 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({
 
         {/* Primary Action */}
         <Link
-          href="/workspace?role=student"
+          href="/workspace"
           className="flex items-center gap-1.5 bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 active:scale-[0.98] text-xs font-semibold px-3.5 py-1.5 rounded transition-all cursor-pointer shadow-xs"
         >
           <span>Launch Portal</span>

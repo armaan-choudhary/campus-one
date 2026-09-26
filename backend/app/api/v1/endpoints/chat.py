@@ -1,4 +1,4 @@
-"""Conversational assistant endpoint."""
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +7,8 @@ from starlette.concurrency import run_in_threadpool
 
 from app.auth.dependencies import require_permission
 from app.auth.schemas import CurrentUser
+
+logger = logging.getLogger(__name__)
 
 try:
     from backend.graph import get_graph
@@ -66,11 +68,12 @@ async def chat(
             config={"configurable": {"thread_id": thread_id}},
         )
     except Exception as exc:
+        logger.exception("Assistant execution failed for thread %s on query %r", thread_id, request.message)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={
                 "error": "assistant_unavailable",
-                "message": "The assistant could not process this message.",
+                "message": f"The assistant could not process this message: {exc}",
             },
         ) from exc
 

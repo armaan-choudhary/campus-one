@@ -7,13 +7,13 @@
 
 **Audience:** product owners, coding agents, backend/frontend engineers, evaluators, and demo operators
 
-**Canonical decisions:** see [17 Engineering Decisions](17_Engineering_Decisions.md). When another document disagrees with this overview, the Engineering Bible and the decision record win.
+**Canonical architecture:** see [02 System Architecture](02_System_Architecture.md) and [01 Product Requirements](01_Product_Requirements.md).
 
 ## 1. Product summary
 
-CampusOne is a single conversational front door for university support. A student asks naturally in one chat; CampusOne detects one or more intents, chooses a registered domain skill, retrieves university-approved evidence, and returns a concise answer with citations. It asks a targeted clarification question when routing confidence is insufficient, and it creates a contextual handoff instead of guessing when the request is unsupported, sensitive, or unresolved.
+CampusOne is a single conversational front door for university support. A student asks naturally in one chat; CampusOne detects one or more intents, chooses a registered domain skill, retrieves university-approved evidence, and returns a concise answer with citations. It asks a targeted clarification question when routing confidence is insufficient, and it creates a contextual handoff ticket instead of guessing when the request is unsupported, sensitive, or unresolved.
 
-The product is an orchestration layer, not a generic chatbot and not five separate bots placed behind tabs. The frontend presents one assistant. The backend owns routing, evidence boundaries, skill invocation, state, handoff, and measurement.
+The product is an orchestration layer, not a generic chatbot and not separate bots placed behind tabs. The frontend presents one assistant to students at `/workspace` and a dedicated management console to administrators at `/admin`. The backend owns routing, evidence boundaries, skill invocation, state, handoff, and measurement.
 
 ## 2. Problem and users
 
@@ -21,16 +21,13 @@ The product is an orchestration layer, not a generic chatbot and not five separa
 
 The university has specialist support areas—IT, Finance, Facilities, Academics, and Administration—but students do not know which office or assistant owns a question. Existing entry points cause misrouting, repeated explanations, and answers that are difficult to verify. A successful system must make the organisation invisible while preserving organisational ownership internally.
 
-### Primary user
+### Primary User: Student (`student`)
 
-An authenticated student who wants an answer or a clear next action without knowing the responsible department.
+An authenticated student (`student@example.edu`) who interacts with the conversational assistant at `/workspace` to get verified, cited answers across university services and monitor their submitted tickets in the **My Tickets** view.
 
-### Secondary users
+### Administrative User: System Administrator / Staff (`admin`)
 
-- **Support agent:** receives escalated conversations with context, suggested department, and reason.
-- **Knowledge administrator:** uploads, versions, publishes, and retires approved source documents.
-- **Analyst/evaluator:** inspects routing, grounding, resolution, and test-run metrics.
-- **Platform administrator:** manages domains, configuration, access, and audit records.
+An authenticated campus administrator or support specialist (`admin@example.edu`) who accesses the dedicated **Admin Ticket Management Console** at `/admin` to triage escalated tickets, claim inquiries, update statuses, and submit formal resolutions.
 
 ## 3. Vision and principles
 

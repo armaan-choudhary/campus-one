@@ -1,33 +1,50 @@
 # CampusOne Frontend
 
-The official conversational web application and multi-persona operational suite for **CampusOne — One Front Door for Everything**.
+The official conversational web application and operational suite for **CampusOne — One Front Door for Everything**.
 
 ## 🚀 Overview
 
-Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**, CampusOne delivers an enterprise university interface tailored to four core campus constituencies.
+Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**, CampusOne provides a clean, dual-role architecture that separates the student conversational experience from administrative ticket management into distinct dedicated pages.
 
-### 🎭 Persona Dashboards & Views
-1. **Student View (Alex Rivera — Primary Audience)**:
-   - Minimalist, friendly conversational interface with zero administrative clutter.
-   - Action Checklists, grounded institutional citations with slide-out drawer, and dynamic clarification options.
-   - Floating pill message composer with voice toggle simulation and file attachment.
-   - Smooth auto-scroll with comfortable vertical breathing room.
-2. **Campus Support Specialist Queue (Sarah Jenkins)**:
-   - Departmental triage queue for pre-packaged escalations dispatched by CampusOne.
-   - Urgency indicators (Urgent 15-min SLA window), search filter, and 1-click resolution templates.
-3. **Knowledge Administration Console (Dr. Patricia Cole)**:
-   - University policy catalog, pgvector corpus status, chunk inspection, and document publishing modal.
-4. **Executive Telemetry & Observability (Dr. Marcus Vance)**:
-   - High-level KPIs: 88.4% macro routing accuracy, 76.2% autonomous resolution, and margin guard monitoring ($\Delta \ge 0.15$).
-   - Interactive 5×5 cross-departmental confusion matrix heatmap and live edge audit streaming.
+---
+
+## 🎭 Dual-Role Architecture & Dedicated Pages
+
+CampusOne strictly distinguishes between two core roles:
+
+### 1. Student Portal (`/workspace`)
+- **Primary Audience:** Alex Rivera (`student@example.edu` / `demo-password`)
+- **Conversational Assistant (`Assistant` tab):**
+  - Distraction-free conversational stream with zero administrative clutter.
+  - Interactive Action Checklists, grounded institutional citations with slide-out `CitationDrawer`, and dynamic clarification options.
+  - Floating pill message composer.
+  - Pure SVG vector knowledge mesh empty state.
+- **Personal Ticket Manager (`My Tickets` tab):**
+  - Shows inquiries submitted by the student, split into **Ongoing** and **Resolved** tabs.
+  - Automatically captures escalated handoff tickets produced during assistant chat sessions.
+  - Displays resolution notes from administrators when an issue is resolved.
+
+### 2. Administrator Console (`/admin`)
+- **Primary Audience:** System Administrator (`admin@example.edu` / `demo-password`)
+- **Consolidated Ticket Management Console (`AdminTicketPanel`):**
+  - Centralized triage board with live operational counters (Pending, Claimed, Resolved).
+  - Quick filters (`all`, `pending`, `in_progress`, `resolved`) and search by ticket ID, student name, department, or reason.
+  - Ticket details drawer with full context preview, timestamp, and urgency.
+  - One-click ticket claiming and resolution submission with administrator notes.
+- **RBAC Security Guard:**
+  - Protected with an **HTTP 403 Role Clearance Barrier**. Students or unauthenticated users cannot access administrative controls without entering admin credentials.
+
+### 3. Unified Authentication Gateway (`/login`)
+- **Dual-Card 1-Click Access:** Direct entry points for "Enter as Student" (routes to `/workspace`) and "Enter as Admin" (routes to `/admin`).
+- **Direct Credentials Sign-In:** Automatically inspects the resolved role and routes to the appropriate portal.
 
 ---
 
 ## 🎨 Theme & Typography System
 
 - **Primary Font:** **Inter** loaded via `next/font/google` (`--font-inter`) with root font scale calibrated to `16px` and message text at `15px/16px` for enhanced reading comfort.
-- **Monospace Font:** **JetBrains Mono** (`--font-mono`) for telemetry data, latencies, and transaction hashes.
-- **Dual Themes:** Google Material Design 3 Dark Mode (obsidian `#09090b` / `#121215`) and Light Mode (`#ffffff` / `#fafafa`) with seamless theme toggling via TopNav.
+- **Monospace Font:** **JetBrains Mono** (`--font-mono`) for ticket IDs, telemetry, and citations.
+- **Dual Themes:** Clean Dark Mode (`#09090b` / `#121215`) and Light Mode (`#ffffff` / `#fafafa`) with seamless theme toggling.
 - **Branding Assets:** Transparent antialiased mark in `public/logo.png` (white for dark mode) and `public/logo-dark.png` (deep slate for light mode).
 
 ---
@@ -51,13 +68,12 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ## 🔗 Integration with Backend Orchestration
 
-The frontend is architected to seamlessly pair with the LangGraph backend (`backend/`):
+The frontend directly connects to the FastAPI backend (`backend/`):
 
-- **Conversational Queries:** Student inputs sent via `MessageComposer` stream into the backend's `router()` and domain agents (`graph_nodes.py`).
-- **Verifiable Citations:** Responses with `RetrievedDocument` citations render inline badges that open the slide-out `CitationDrawer`, displaying exact PDF sources and page numbers extracted via `knowledge_retrieval.py`.
-- **Clarification Dialogs:** When backend confidence is $< 0.75$, the UI activates interactive clarification chips generated by `clarify()`.
-- **Specialist Escalations:** When a domain agent marks `human_required = True`, tickets are automatically surfaced in Sarah Jenkins's `AgentQueueView` with full conversation history and reason metadata.
-- **Knowledge Admin Console:** Reflects the 4 department vector collections (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) managed by `index_documents.py`.
+- **Live Chat Stream:** Messages sent from `MessageComposer` call `/api/v1/chat`, streaming through the LangGraph intent router, domain RAG nodes, and synthesis.
+- **Verifiable Citations:** Responses with `retrieved_chunks` automatically render clickable citation badges opening the `CitationDrawer`, displaying verified PDF source documents and page numbers.
+- **Clarification Dialogs:** When router confidence is ambiguous, the backend triggers clarification options rendered as interactive chips.
+- **Ticket Escalations:** When domain agents flag `human_required = true` or `ticket_id`, the ticket is stored in reactive `TicketContext`, displayed in the student's **My Tickets** view, and made immediately available for triage on the **Admin Console** (`/admin`).
 
 ---
 
@@ -71,44 +87,38 @@ frontend/
 │   └── wordmark.png          # High-resolution branding assets
 ├── src/
 │   ├── app/
-│   │   ├── globals.css       # Tailwind v4 theme tokens, Inter typography, dark styles
-│   │   ├── layout.tsx        # Inter & JetBrains Mono font configuration
+│   │   ├── globals.css       # Tailwind v4 theme tokens & dark styles
+│   │   ├── layout.tsx        # Inter font configuration & layout shell
 │   │   ├── loading.tsx       # Branded gateway archway loading screen
-│   │   ├── page.tsx          # Institutional landing homepage with persona showcase
-│   │   └── workspace/
-│   │       └── page.tsx      # Full-suite multi-persona conversational workspace
+│   │   ├── page.tsx          # Campus wayfinding landing page
+│   │   ├── login/
+│   │   │   └── page.tsx      # Dual-role authentication gateway
+│   │   ├── workspace/
+│   │   │   └── page.tsx      # Dedicated Student Workspace (Assistant & My Tickets)
+│   │   └── admin/
+│   │       └── page.tsx      # Dedicated Administrator Ticket Console
 │   ├── components/
 │   │   ├── home/             # Editorial campus wayfinding landing components
-│   │   │   ├── HomeNavbar.tsx          # Wayfinding header & student ID trigger
-│   │   │   ├── HomeHero.tsx            # Single front door hero & visual routing demo
-│   │   │   ├── CampusOneMark.tsx       # Precision SVG convergence motif
-│   │   │   ├── CampusWayfindingSign.tsx # Directional building & floor signs
-│   │   │   ├── CampusMapSection.tsx    # Central quad transit schematic
-│   │   │   ├── HowItWorks.tsx          # Compact 4-step horizontal workflow
-│   │   │   ├── InstitutionalTrust.tsx  # University document stationery citation
-│   │   │   ├── FinalCta.tsx            # Minimalist confident call-to-action
-│   │   │   ├── HomeFooter.tsx          # Lightweight institutional footer
-│   │   │   └── InteractiveSubtleBackground.tsx # Canvas dot matrix, constellation & ripples
-│   │   ├── ui/               # Core UI components
-│   │   │   ├── CampusLoader.tsx
-│   │   │   └── Toast.tsx
-│   │   ├── TopNav.tsx             # Header with persona selector & theme switcher
-│   │   ├── Sidebar.tsx            # Collapsible navigation drawer & inquiry history
-│   │   ├── MessageBubble.tsx      # Conversation turns, checklists, citations & TTS
-│   │   ├── MessageComposer.tsx    # Floating pill input with voice & attachment
+│   │   ├── ui/               # Core UI components (CampusLoader, Toast)
+│   │   ├── StudentTicketsView.tsx # Student ticket manager (Ongoing / Resolved tabs)
+│   │   ├── AdminTicketPanel.tsx   # Admin triage, status filters, and resolution console
+│   │   ├── TopNav.tsx             # Student navigation bar (Assistant / My Tickets tabs)
+│   │   ├── Sidebar.tsx            # Inquiry history drawer
+│   │   ├── MessageBubble.tsx      # Conversational turns, checklists, citations
+│   │   ├── MessageComposer.tsx    # Floating pill input
 │   │   ├── CitationDrawer.tsx     # Slide-out verified institutional policy viewer
-│   │   ├── AgentQueueView.tsx     # Support specialist escalation triage dashboard
-│   │   ├── KnowledgeAdminView.tsx # Policy registry & pgvector corpus manager
-│   │   ├── AnalyticsView.tsx      # Executive telemetry & 5x5 confusion matrix
-│   │   └── vectors/               # Pure-SVG architectural graphics
+│   │   └── auth/
+│   │       └── LoginModal.tsx     # Role-switching and login modal
+│   ├── context/
+│   │   ├── AuthContext.tsx   # Session management, JWT storage, role state
+│   │   └── TicketContext.tsx # Shared reactive ticket state (localStorage backed)
 │   ├── hooks/
-│   │   ├── useChat.ts        # Conversational state machine & mock engine bridge
+│   │   ├── useChat.ts        # Conversational state machine & backend API bridge
 │   │   └── useToast.ts       # Global notification system
 │   ├── lib/
-│   │   ├── demoFixtures.ts   # Complete realistic runbook fixtures & persona data
-│   │   ├── mockEngine.ts     # Realistic simulation engine mirroring backend graph
-│   │   └── utils.ts          # Common utility functions, cn helper & safe ID generator
+│   │   ├── api.ts            # FastAPI integration client (login, me, chat)
+│   │   ├── demoFixtures.ts   # Personas and starter suggestions
+│   │   └── utils.ts          # Common utility functions & cn helper
 │   └── types/
-│       └── index.ts          # Centralized TypeScript domain & UI entity contracts
+│       └── index.ts          # Centralized TypeScript entity contracts
 ```
-

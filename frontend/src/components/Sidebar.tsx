@@ -188,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex-1 overflow-y-auto px-3 space-y-3 pb-2">
           {filteredConversations.length === 0 ? (
             <div className="py-8 text-center text-xs text-[var(--text-tertiary)]">
-              No inquiries match &quot;{searchQuery}&quot;
+              {searchQuery ? `No inquiries match "${searchQuery}"` : 'No past inquiries yet'}
             </div>
           ) : (
             <>

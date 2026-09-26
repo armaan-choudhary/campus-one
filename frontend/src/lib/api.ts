@@ -8,18 +8,6 @@ export const SEEDED_CREDENTIALS: Record<UserRole, LoginCredentials> = {
     email: 'student@example.edu',
     password: 'demo-password',
   },
-  agent: {
-    email: 'agent@example.edu',
-    password: 'demo-password',
-  },
-  knowledge_admin: {
-    email: 'admin.knowledge@example.edu',
-    password: 'demo-password',
-  },
-  executive: {
-    email: 'executive@example.edu',
-    password: 'demo-password',
-  },
   admin: {
     email: 'admin@example.edu',
     password: 'demo-password',
@@ -33,150 +21,56 @@ const SEEDED_PERMISSIONS: Record<UserRole, string[]> = {
     'knowledge:read_public',
     'handoff:create_own',
   ],
-  agent: [
-    'conversations:assigned',
-    'handoffs:triage',
-    'handoffs:resolve',
-    'knowledge:read',
-  ],
-  knowledge_admin: [
-    'knowledge:ingest',
-    'knowledge:publish',
-    'knowledge:archive',
-    'knowledge:read',
-    'knowledge:manage',
-  ],
-  executive: [
-    'analytics:read',
-    'evaluation:read',
-    'evaluation:run',
-    'knowledge:read_metadata',
-  ],
   admin: ['*'],
 };
 
 function normalizeRole(backendRole: string): UserRole {
-  if (backendRole === 'admin') return 'admin';
-  if (backendRole === 'support_agent' || backendRole === 'agent') return 'agent';
-  if (backendRole === 'analyst' || backendRole === 'executive') return 'executive';
-  if (backendRole === 'knowledge_admin') return 'knowledge_admin';
-  return 'student';
-}
-
-/**
- * Generate fallback demo JWT tokens if local backend is offline during standalone UI demonstration.
- */
-function createFallbackDemoResponse(role: UserRole, email: string): AuthTokenResponse {
-  const persona = PERSONAS[role];
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = btoa(
-    JSON.stringify({
-      sub: `u-${role}-01`,
-      email,
-      role,
-      department: persona.department,
-      display_name: persona.name,
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    })
-  );
-  const signature = btoa('demo_signature_fallback');
-
-  return {
-    access_token: `${header}.${payload}.${signature}`,
-    refresh_token: `rt_demo_${role}_${Date.now()}`,
-    token_type: 'bearer',
-    expires_in: 3600,
-    user: {
-      id: `u-${role}-01`,
-      email,
-      role,
-      department: persona.department,
-      display_name: persona.name,
-    },
-  };
+  return backendRole?.toLowerCase() === 'admin' ? 'admin' : 'student';
 }
 
 export async function loginWithApi(credentials: LoginCredentials): Promise<AuthTokenResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(credentials),
+  });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || `Login failed with status ${res.status}`);
-    }
-
-    return await res.json();
-  } catch (err: unknown) {
-    // If backend is not reached (e.g. offline during client-side demo), use fallback seeded token
-    console.warn('API backend not reachable, using offline demo JWT tokens:', err);
-    let matchedRole: UserRole = 'student';
-    for (const [r, cred] of Object.entries(SEEDED_CREDENTIALS)) {
-      if (cred.email === credentials.email.trim().toLowerCase()) {
-        matchedRole = r as UserRole;
-        break;
-      }
-    }
-    return createFallbackDemoResponse(matchedRole, credentials.email);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Login failed with status ${res.status}`);
   }
+
+  return await res.json();
 }
 
 export async function fetchCurrentUser(accessToken: string): Promise<AuthUser> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/me`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  const res = await fetch(`${API_BASE_URL}/auth/me`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch current user (${res.status})`);
-    }
-
-    const data = await res.json();
-    const role = normalizeRole(data.role);
-    return {
-      id: data.id,
-      email: data.email,
-      role,
-      department: data.department,
-      displayName: data.display_name,
-      permissions: data.permissions || SEEDED_PERMISSIONS[role],
-    };
-  } catch {
-    // Decode claims from JWT payload if offline
-    try {
-      const parts = accessToken.split('.');
-      if (parts.length >= 2) {
-        const payload = JSON.parse(atob(parts[1]));
-        const role = normalizeRole(payload.role || 'student');
-        return {
-          id: payload.sub || 'u-fallback',
-          email: payload.email || 'student@example.edu',
-          role,
-          department: payload.department,
-          displayName: payload.display_name || PERSONAS[role]?.name,
-          permissions: SEEDED_PERMISSIONS[role],
-        };
-      }
-    } catch {
-      // Ignored
-    }
-    return {
-      id: 'u-student-01',
-      email: 'student@example.edu',
-      role: 'student',
-      department: PERSONAS.student.department,
-      displayName: PERSONAS.student.name,
-      permissions: SEEDED_PERMISSIONS.student,
-    };
+  if (res.status === 401) {
+    throw new Error('Unauthorized');
   }
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch current user (${res.status})`);
+  }
+
+  const data = await res.json();
+  const role = normalizeRole(data.role);
+  return {
+    id: data.id,
+    email: data.email,
+    role,
+    department: data.department,
+    displayName: data.display_name,
+    permissions: data.permissions || SEEDED_PERMISSIONS[role],
+  };
 }
 
 export async function logoutApi(refreshToken: string): Promise<void> {
@@ -192,3 +86,76 @@ export async function logoutApi(refreshToken: string): Promise<void> {
     // Best-effort logout
   }
 }
+
+export interface BackendRetrievedChunk {
+  content: string;
+  source: string;
+  page?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface BackendChatResponse {
+  answer: string;
+  thread_id: string;
+  ticket_id?: string | null;
+  ticket?: Record<string, any> | null;
+  detected_domains: string[];
+  intent?: string | null;
+  routing_confidence: number;
+  solved: boolean;
+  human_required: boolean;
+  handoff_reason?: string | null;
+  sources: string[];
+  retrieved_chunks: BackendRetrievedChunk[];
+  metadata?: Record<string, any>;
+}
+
+export async function sendChatMessageApi(
+  accessToken: string,
+  message: string
+): Promise<BackendChatResponse> {
+  let token = accessToken;
+
+  let res = await fetch(`${API_BASE_URL}/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ message }),
+  });
+
+  // If token is invalid or expired (e.g. stale dummy token from localStorage), re-authenticate and retry once
+  if (res.status === 401) {
+    try {
+      const activeRole = (typeof window !== 'undefined' ? localStorage.getItem('campusone_active_role') : null) as UserRole | null;
+      const creds = SEEDED_CREDENTIALS[activeRole && activeRole in SEEDED_CREDENTIALS ? activeRole : 'student'];
+      const auth = await loginWithApi(creds);
+      if (auth?.access_token) {
+        token = auth.access_token;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campusone_access_token', auth.access_token);
+          localStorage.setItem('campusone_refresh_token', auth.refresh_token);
+        }
+        res = await fetch(`${API_BASE_URL}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ message }),
+        });
+      }
+    } catch {
+      // Re-login failed, let the error handling below handle it
+    }
+  }
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Chat request failed with status ${res.status}`);
+  }
+
+  return await res.json();
+}
+

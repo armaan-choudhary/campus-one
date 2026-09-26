@@ -26,17 +26,24 @@ if %errorlevel% neq 0 (
 
 :launch
 echo.
-echo [1/2] Ensuring PostgreSQL pgvector container is running...
+echo [1/3] Ensuring PostgreSQL pgvector container is running...
 docker compose -f backend\docker-compose.yml up -d
 
 echo.
-echo [2/2] Starting Frontend Development Server...
+echo [2/3] Launching FastAPI backend in background window...
+start "CampusOne FastAPI Backend" cmd /k "cd backend && call .venv\Scripts\activate && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+
+echo.
+echo [3/3] Starting Frontend Development Server...
 echo ==================================================================
 echo   CampusOne is Live!
-echo   Web Client:  http://localhost:3000
-echo   PostgreSQL:  localhost:5432 (database: campus_one)
+echo   Web Client:      http://localhost:3000
+echo   Student Portal:  http://localhost:3000/workspace
+echo   Admin Console:   http://localhost:3000/admin
+echo   FastAPI Backend: http://127.0.0.1:8000/api/v1
+echo   PostgreSQL:      localhost:5432 (database: campus_one)
 echo ==================================================================
-echo Press Ctrl+C in this window to stop the server.
+echo Press Ctrl+C in this window to stop the frontend server.
 echo.
 
 cd frontend

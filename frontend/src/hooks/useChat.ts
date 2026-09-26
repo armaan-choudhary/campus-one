@@ -1,28 +1,161 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ConversationItem, Message, ClarificationOption } from '@/types';
+import { ConversationItem, Message, ClarificationOption, Citation, HandoffTicket } from '@/types';
 import { INITIAL_CONVERSATIONS } from '@/lib/demoFixtures';
 import { createUniqueId } from '@/lib/utils';
-import { simulateAssistantResponse } from '@/lib/mockEngine';
+import { sendChatMessageApi, BackendChatResponse, loginWithApi, SEEDED_CREDENTIALS } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 export interface UseChatOptions {
   initialConversations?: ConversationItem[];
   defaultActiveId?: string;
 }
 
+function parseBackendAnswer(answer: string): { content: string; checklist?: string[] } {
+  if (!answer) return { content: '' };
+
+  const trimmed = answer.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      let content = '';
+      if (typeof parsed.answer === 'string') {
+        content = parsed.answer;
+      }
+      let checklist: string[] | undefined = undefined;
+      if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
+        checklist = parsed.steps.map((s: unknown) => String(s));
+        if (!content) {
+          content = 'Please follow these steps:';
+        }
+      }
+      if (content) {
+        return { content, checklist };
+      }
+    } catch {
+      // Fall through to plain text
+    }
+  }
+
+  return { content: answer };
+}
+
+function mapBackendResponseToMessage(
+  data: BackendChatResponse,
+  timestamp: string
+): Message {
+  const { content, checklist } = parseBackendAnswer(data.answer);
+
+  const rawDomain = (data.detected_domains?.[0] || data.intent || 'it').toLowerCase();
+  let domain: 'it' | 'finance' | 'facilities' | 'academics' | 'administration' = 'it';
+  let domainLabel = 'IT Support';
+
+  if (rawDomain.includes('it') || rawDomain.includes('network') || rawDomain.includes('tech')) {
+    domain = 'it';
+    domainLabel = 'IT Support';
+  } else if (
+    rawDomain.includes('fee') ||
+    rawDomain.includes('finance') ||
+    rawDomain.includes('bursar') ||
+    rawDomain.includes('account')
+  ) {
+    domain = 'finance';
+    domainLabel = 'Student Accounts & Finance';
+  } else if (
+    rawDomain.includes('facilit') ||
+    rawDomain.includes('mainten') ||
+    rawDomain.includes('housing') ||
+    rawDomain.includes('dorm')
+  ) {
+    domain = 'facilities';
+    domainLabel = 'Campus Facilities';
+  } else if (
+    rawDomain.includes('acad') ||
+    rawDomain.includes('course') ||
+    rawDomain.includes('exam')
+  ) {
+    domain = 'academics';
+    domainLabel = 'Academic Services';
+  } else {
+    domain = 'administration';
+    domainLabel = 'Campus Administration';
+  }
+
+  const citations: Citation[] = (data.retrieved_chunks || []).map((chunk, idx) => {
+    const pageNum = chunk.page ?? chunk.metadata?.page;
+    const pageStr = pageNum !== undefined ? `Page ${pageNum}` : `Section ${idx + 1}`;
+    const docTitle = chunk.metadata?.document_name || chunk.source || 'Institutional Policy Document';
+    return {
+      id: chunk.metadata?.chunk_id || createUniqueId('cit'),
+      marker: `[${idx + 1}]`,
+      title: docTitle,
+      section: pageStr,
+      version: 'v2026.1',
+      excerpt: chunk.content,
+      groundingScore: data.routing_confidence || 0.95,
+      sourceUri: chunk.source,
+      custodian: domainLabel,
+    };
+  });
+
+  let handoff: HandoffTicket | undefined = undefined;
+  if (data.ticket_id || data.ticket) {
+    const ticketObj = data.ticket || {};
+    handoff = {
+      ticketId: data.ticket_id || ticketObj.ticket_id || 'TKT-PENDING',
+      department: ticketObj.department || domainLabel,
+      reason: ticketObj.escalation_reason || data.handoff_reason || 'Requires manual specialist assistance',
+      urgency: ticketObj.priority?.toLowerCase() === 'urgent' ? 'urgent' : 'high',
+      createdAt: 'Just now',
+      status: 'pending',
+      preview: ticketObj.issue_summary || data.handoff_reason || 'Specialist escalation created.',
+    };
+  }
+
+  let clarification = undefined;
+  if (data.intent === 'clarify' || content.toLowerCase().includes('clarify which area')) {
+    const options = (data.detected_domains?.length ? data.detected_domains : ['IT', 'HR', 'Fees', 'Facilities']).map((d) => ({
+      id: d.toLowerCase(),
+      label: d,
+      domain: d.toLowerCase(),
+    }));
+    clarification = {
+      prompt: content,
+      options,
+    };
+  }
+
+  return {
+    id: createUniqueId('asst'),
+    role: 'assistant',
+    domain,
+    domainLabel,
+    confidence: data.routing_confidence || 0.92,
+    timestamp,
+    content,
+    checklist,
+    citations: citations.length > 0 ? citations : undefined,
+    handoff,
+    clarification,
+  };
+}
+
 export function useChat({
   initialConversations = INITIAL_CONVERSATIONS,
-  defaultActiveId = 'conv-1',
+  defaultActiveId,
 }: UseChatOptions = {}) {
+  const { accessToken } = useAuth();
   const [conversations, setConversations] = useState<ConversationItem[]>(initialConversations);
-  const [activeConvId, setActiveConvId] = useState<string>(defaultActiveId);
+  const [activeConvId, setActiveConvId] = useState<string>(() => {
+    return defaultActiveId || initialConversations[0]?.id || 'conv-1';
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [thinkingStage, setThinkingStage] = useState<number>(0);
 
   const activeConversation =
-    conversations.find((c) => c.id === activeConvId) || conversations[0] || {
-      id: 'default',
+    conversations.find((c) => c.id === activeConvId) || {
+      id: activeConvId,
       title: 'New inquiry',
       status: 'open',
       domainKey: 'it',
@@ -32,18 +165,32 @@ export function useChat({
 
   const updateActiveConversation = useCallback(
     (messages: Message[]) => {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConvId
-            ? {
-                ...c,
-                messages,
-                title: messages[0]?.content.slice(0, 36) || c.title,
-                updatedAt: 'Just now',
-              }
-            : c
-        )
-      );
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === activeConvId);
+        if (exists) {
+          return prev.map((c) =>
+            c.id === activeConvId
+              ? {
+                  ...c,
+                  messages,
+                  title: messages[0]?.content.slice(0, 36) || c.title,
+                  updatedAt: 'Just now',
+                }
+              : c
+          );
+        }
+        return [
+          {
+            id: activeConvId,
+            title: messages[0]?.content.slice(0, 36) || 'New inquiry',
+            status: 'open',
+            domainKey: 'it',
+            updatedAt: 'Just now',
+            messages,
+          },
+          ...prev,
+        ];
+      });
     },
     [activeConvId]
   );
@@ -58,7 +205,7 @@ export function useChat({
       updatedAt: 'Just now',
       messages: [],
     };
-    setConversations((prev) => [newConv, ...prev]);
+    setConversations((prev) => [newConv, ...prev.filter((c) => c.messages.length > 0)]);
     setActiveConvId(newId);
   }, []);
 
@@ -68,16 +215,8 @@ export function useChat({
         const remaining = prev.filter((c) => c.id !== id);
         if (remaining.length === 0) {
           const freshId = createUniqueId('conv');
-          const freshConv: ConversationItem = {
-            id: freshId,
-            title: 'New inquiry',
-            status: 'open',
-            domainKey: 'it',
-            updatedAt: 'Just now',
-            messages: [],
-          };
           setActiveConvId(freshId);
-          return [freshConv];
+          return [];
         }
         if (activeConvId === id) {
           setActiveConvId(remaining[0].id);
@@ -110,11 +249,62 @@ export function useChat({
       setIsProcessing(true);
       setThinkingStage(0);
 
+      let token = accessToken;
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('campusone_access_token');
+      }
+
+      if (!token) {
+        try {
+          const auth = await loginWithApi(SEEDED_CREDENTIALS.student);
+          if (auth?.access_token) {
+            token = auth.access_token;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('campusone_access_token', auth.access_token);
+              localStorage.setItem('campusone_refresh_token', auth.refresh_token);
+            }
+          }
+        } catch {
+          // If login fails, will be caught below
+        }
+      }
+
+      const stageTimer1 = setTimeout(() => setThinkingStage(1), 600);
+      const stageTimer2 = setTimeout(() => setThinkingStage(2), 1300);
+
       try {
-        const assistantMsg = await simulateAssistantResponse({
-          text,
-          onStageChange: (stage) => setThinkingStage(stage),
-        });
+        let assistantMsg: Message;
+        if (!token) {
+          assistantMsg = {
+            id: createUniqueId('asst'),
+            role: 'assistant',
+            domain: 'it',
+            domainLabel: 'Authentication Notice',
+            confidence: 1.0,
+            timestamp,
+            content: 'Unable to authenticate with the campus service. Please check your backend connection and try again.',
+          };
+        } else {
+          try {
+            const backendRes = await sendChatMessageApi(token, text);
+            assistantMsg = mapBackendResponseToMessage(backendRes, timestamp);
+          } catch (apiErr) {
+            console.error('Backend chat API request failed:', apiErr);
+            const errStr = apiErr instanceof Error ? apiErr.message : String(apiErr);
+            assistantMsg = {
+              id: createUniqueId('asst'),
+              role: 'assistant',
+              domain: 'it',
+              domainLabel: 'Service Notice',
+              confidence: 1.0,
+              timestamp,
+              content: `Service communication error: ${errStr}. Please check that the backend is responding.`,
+            };
+          }
+        }
+
+        clearTimeout(stageTimer1);
+        clearTimeout(stageTimer2);
         updateActiveConversation([...baseMessages, assistantMsg]);
       } catch (err) {
         console.error('Failed to generate assistant response', err);
@@ -122,7 +312,7 @@ export function useChat({
         setIsProcessing(false);
       }
     },
-    [activeConversation.messages, isProcessing, updateActiveConversation]
+    [accessToken, activeConversation.messages, isProcessing, updateActiveConversation]
   );
 
   const selectClarification = useCallback(
@@ -145,3 +335,4 @@ export function useChat({
     selectClarification,
   };
 }
+

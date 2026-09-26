@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'agent' | 'knowledge_admin' | 'executive' | 'admin';
+export type UserRole = 'student' | 'admin';
 
 export interface Persona {
   id: UserRole;
@@ -60,10 +60,14 @@ export interface HandoffTicket {
   department: string;
   reason: string;
   studentName?: string;
+  studentEmail?: string;
   urgency?: 'normal' | 'high' | 'urgent';
   createdAt?: string;
   status?: 'pending' | 'in_progress' | 'resolved';
   preview?: string;
+  resolutionNote?: string;
+  resolvedAt?: string;
+  assignedTo?: string;
 }
 
 export interface MessagePortalLink {

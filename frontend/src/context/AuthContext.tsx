@@ -43,15 +43,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const savedRole = localStorage.getItem(ACTIVE_ROLE_KEY) as UserRole | null;
 
         if (savedToken) {
-          setAccessToken(savedToken);
-          setRefreshToken(savedRefresh);
-          const currentUser = await fetchCurrentUser(savedToken);
-          if (isMounted) {
-            setUser(currentUser);
-            setRole(currentUser.role);
-            setIsLoading(false);
+          try {
+            const currentUser = await fetchCurrentUser(savedToken);
+            if (isMounted) {
+              setAccessToken(savedToken);
+              setRefreshToken(savedRefresh);
+              setUser(currentUser);
+              setRole(currentUser.role);
+              setIsLoading(false);
+            }
+            return;
+          } catch {
+            // Saved token is invalid or unauthorized; purge and fall through to fresh login below
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
           }
-          return;
         }
 
         // Default to student persona for immediate seamless exploration
