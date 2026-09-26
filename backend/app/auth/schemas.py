@@ -28,6 +28,7 @@ class Role(str, Enum):
 
 class CurrentUser(BaseModel):
     id: str
+    session_id: Optional[str] = None
     external_subject: str
     email: str
     role: Role

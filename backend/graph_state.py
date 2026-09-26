@@ -88,3 +88,55 @@ class ITQueryResponse(BaseModel):
             "for generating the answer."
         )
     )
+
+
+# Structured output for HR, Fees, Facilities, and General agents
+
+class AgentQueryResponse(BaseModel):
+    answer: str = Field(
+        description=(
+            "A clear response to the user's question based on the "
+            "department's guidance."
+        )
+    )
+    answer_confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Confidence that the answer is accurate, appropriate, and "
+            "supported by the available information."
+        )
+    )
+    solved: bool = Field(
+        description=(
+            "Whether the response fully addresses the user's request."
+        )
+    )
+    human_required: bool = Field(
+        description=(
+            "Whether a university staff member must handle the request."
+        )
+    )
+    handoff_reason: Optional[str] = Field(
+        default=None,
+        description=(
+            "Reason human assistance is required, when applicable."
+        )
+    )
+    source_references: List[RetrievedDocument] = Field(
+        default_factory=list,
+        description=(
+            "Optional retrieved document references. The application fills "
+            "this from the retrieved context after the response is generated."
+        )
+    )
+
+
+# Structured output for the final synthesis node
+
+class SynthesisResponse(BaseModel):
+    answer: str = Field(
+        description=(
+            "A concise final answer assembled from the agent response."
+        )
+    )

@@ -7,27 +7,85 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 try:
-    from backend.graph_state import AssistantState, DepartmentRoute, ITQueryResponse
-    from backend.knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
-    from backend.Prompts import IT_QUERY_PROMPT
+    from backend.graph_state import (
+        AgentQueryResponse,
+        AssistantState,
+        DepartmentRoute,
+        ITQueryResponse,
+        SynthesisResponse,
+    )
+    from backend.knowledge_retrieval import (
+        FACILITIES_KNOWLEDGE_BASE,
+        FINANCE_KNOWLEDGE_BASE,
+        HR_KNOWLEDGE_BASE,
+        IT_KNOWLEDGE_BASE,
+        format_retrieved_documents,
+        retrieve_documents,
+    )
+    from backend.Prompts import (
+        FACILITIES_AGENT_PROMPT,
+        FEES_AGENT_PROMPT,
+        GENERAL_AGENT_PROMPT,
+        HR_AGENT_PROMPT,
+        IT_QUERY_PROMPT,
+        ROUTER_PROMPT,
+        SYNTHESIZE_PROMPT,
+    )
 except ModuleNotFoundError:
-    from graph_state import AssistantState, DepartmentRoute, ITQueryResponse
-    from knowledge_retrieval import IT_KNOWLEDGE_BASE, format_retrieved_documents, retrieve_documents
-    from Prompts import IT_QUERY_PROMPT
+    from graph_state import (
+        AgentQueryResponse,
+        AssistantState,
+        DepartmentRoute,
+        ITQueryResponse,
+        SynthesisResponse,
+    )
+    from knowledge_retrieval import (
+        FACILITIES_KNOWLEDGE_BASE,
+        FINANCE_KNOWLEDGE_BASE,
+        HR_KNOWLEDGE_BASE,
+        IT_KNOWLEDGE_BASE,
+        format_retrieved_documents,
+        retrieve_documents,
+    )
+    from Prompts import (
+        FACILITIES_AGENT_PROMPT,
+        FEES_AGENT_PROMPT,
+        GENERAL_AGENT_PROMPT,
+        HR_AGENT_PROMPT,
+        IT_QUERY_PROMPT,
+        ROUTER_PROMPT,
+        SYNTHESIZE_PROMPT,
+    )
 
 
 # Shared cached LLM instances for fast sub-second turn transitions
 _router_llm = None
 _it_llm = None
 _domain_llms = {}
+_general_llm = None
 _synth_llm = None
+
+
+def _conversation_context(state: AssistantState, limit: int = 8) -> str:
+    messages = state.get("messages", [])[-limit:]
+    if not messages:
+        return "No prior conversation context is available."
+
+    return "\n".join(
+        f"{message.get('role', 'unknown').title()}: "
+        f"{message.get('content', '')}"
+        for message in messages
+    )
 
 
 def get_router_llm():
     global _router_llm
     if _router_llm is None:
         llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
-        _router_llm = llm.with_structured_output(DepartmentRoute, method="json_schema")
+        _router_llm = llm.with_structured_output(
+            DepartmentRoute,
+            method="json_schema",
+        )
     return _router_llm
 
 
@@ -35,16 +93,26 @@ def get_it_llm():
     global _it_llm
     if _it_llm is None:
         llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.3)
-        _it_llm = llm.with_structured_output(ITQueryResponse)
+        _it_llm = llm.with_structured_output(
+            ITQueryResponse,
+            method="json_schema",
+        )
     return _it_llm
 
 
 def router(state: AssistantState):
     structured_llm = get_router_llm()
     query = state["current_query"]
-    response = structured_llm.invoke(query)
+    messages = list(state.get("messages", []))
+    if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != query:
+        messages.append({"role": "user", "content": query})
+
+    prompt = ROUTER_PROMPT.format(query=query)
+    prompt += f"\n\nConversation context:\n{_conversation_context({**state, 'messages': messages})}"
+    response = structured_llm.invoke(prompt)
 
     return {
+        "messages": messages,
         "detected_domains": response.departments,
         "routing_confidence": response.confidence,
         "intent": response.route,
@@ -69,6 +137,7 @@ def it_query(state: AssistantState):
         query=state["current_query"],
         context=retrieved_context,
     )
+    prompt += f"\n\nConversation context:\n{_conversation_context(state)}"
 
     response = structured_llm.invoke(prompt)
 
@@ -131,7 +200,11 @@ def clarify(state: AssistantState):
 def _get_general_llm():
     global _general_llm
     if _general_llm is None:
-        _general_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
+        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7)
+        _general_llm = llm.with_structured_output(
+            AgentQueryResponse,
+            method="json_schema",
+        )
     return _general_llm
 
 
@@ -142,74 +215,116 @@ def _get_synth_llm():
     return _synth_llm
 
 
-def _run_domain_agent(state: AssistantState, domain: str):
+def _run_domain_agent(
+    state: AssistantState,
+    domain: str,
+    prompt_template: str,
+    collection_name: str | None = None,
+):
     llm = _get_general_llm()
     query = state["current_query"]
 
-    prompt = f"""
-You are the {domain} support agent for a university.
-
-Answer only questions related to {domain}.
-Give clear, practical next steps.
-Do not invent university-specific policies or facts.
-If the question requires human intervention, say so clearly.
-
-User question:
-{query}
-"""
+    retrieved_documents = (
+        retrieve_documents(
+            query=query,
+            collection_name=collection_name,
+            number_of_documents=4,
+        )
+        if collection_name
+        else []
+    )
+    retrieved_context = format_retrieved_documents(retrieved_documents)
+    prompt = prompt_template.format(
+        query=query,
+        context=retrieved_context or "No retrieved PDF context is available.",
+    )
+    prompt += f"\n\nConversation context:\n{_conversation_context(state)}"
 
     response = llm.invoke(prompt)
 
+    source_references = [
+        (
+            f"{document.metadata.get('source', 'Unknown document')}"
+            f", page {document.metadata['page'] + 1}"
+            if isinstance(document.metadata.get("page"), int)
+            else document.metadata.get("source", "Unknown document")
+        )
+        for document in retrieved_documents
+    ]
+
     return {
-        "agent_response": response.content,
-        "agent_confidence": 0.85,
-        "solved": True,
-        "human_required": False,
-        "handoff_reason": None,
-        "sources": [],
+        "agent_response": response.answer,
+        "agent_confidence": response.answer_confidence,
+        "solved": response.solved,
+        "human_required": response.human_required,
+        "handoff_reason": response.handoff_reason,
+        "sources": source_references,
         "metadata": {
             **state.get("metadata", {}),
             "agent_domain": domain,
+            "retrieved_document_count": len(retrieved_documents),
         },
     }
 
 
 def hr_agent(state: AssistantState):
-    return _run_domain_agent(state, "HR")
+    return _run_domain_agent(
+        state,
+        "HR",
+        HR_AGENT_PROMPT,
+        HR_KNOWLEDGE_BASE,
+    )
 
 
 def fees_agent(state: AssistantState):
-    return _run_domain_agent(state, "Fees and Finance")
+    return _run_domain_agent(
+        state,
+        "Fees and Finance",
+        FEES_AGENT_PROMPT,
+        FINANCE_KNOWLEDGE_BASE,
+    )
 
 
 def facilities_agent(state: AssistantState):
-    return _run_domain_agent(state, "Facilities and Maintenance")
+    return _run_domain_agent(
+        state,
+        "Facilities and Maintenance",
+        FACILITIES_AGENT_PROMPT,
+        FACILITIES_KNOWLEDGE_BASE,
+    )
+
+
+def general_agent(state: AssistantState):
+    return _run_domain_agent(state, "General", GENERAL_AGENT_PROMPT)
 
 
 def synthesize(state: AssistantState):
-    llm = _get_synth_llm()
     query = state["current_query"]
     agent_response = state.get("agent_response")
 
-    prompt = f"""
-You are the final response synthesizer for a university assistant.
+    if state.get("metadata", {}).get("agent_domain") == "General":
+        return {
+            "final_answer": SynthesisResponse(
+                answer=agent_response or "How can I help you today?"
+            ).answer,
+            "metadata": {
+                **state.get("metadata", {}),
+                "outcome": "general_response",
+            },
+        }
 
-Create one concise, clear answer to the user's question.
-Use only the agent response provided below.
-Do not invent facts, policies, links, or sources.
-Include numbered steps when useful.
+    llm = _get_synth_llm()
 
-User question:
-{query}
-
-Agent response:
-{agent_response or "No agent response is available."}
-"""
+    prompt = SYNTHESIZE_PROMPT.format(
+        query=query,
+        agent_response=agent_response or "No agent response is available.",
+    )
 
     response = llm.invoke(prompt)
+    structured_response = SynthesisResponse(answer=response.content)
 
     return {
-        "final_answer": response.content,
+        "final_answer": structured_response.answer,
         "metadata": {
             **state.get("metadata", {}),
             "outcome": "synthesized",
@@ -243,6 +358,12 @@ def respond(state: AssistantState):
 def route_by_confidence(state: AssistantState) -> str:
     confidence = state.get("routing_confidence", 0.0)
     domains = state.get("detected_domains", [])
+    intent = (state.get("intent") or "").lower().strip()
+
+    # Honor an explicit General classification, even if the model omitted
+    # the department list for a greeting or small-talk request.
+    if confidence >= 0.75 and intent == "general":
+        return "general"
 
     # Ambiguous or unsupported request
     if confidence < 0.75 or not domains:
@@ -259,6 +380,10 @@ def route_by_confidence(state: AssistantState) -> str:
         "fees and finance": "fees",
         "facilities": "facilities",
         "facilities and maintenance": "facilities",
+        "general": "general",
     }
 
     return valid_routes.get(department, "clarify")
+
+
+

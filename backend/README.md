@@ -12,6 +12,9 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Verifiable Institutional Citations:** Extracts exact document names and page numbers directly from vector metadata for source attribution.
 - **Confidence-Gated Edge Routing:** Routes to specialized domain agents if confidence $\ge 0.75$; triggers dynamic clarification dialogs or human specialist handoff if confidence $< 0.75$.
 - **Synthesized Final Output:** Condenses domain agent responses into concise, student-friendly answers with actionable numbered steps.
+- **Authenticated Conversations:** Uses the access-token JWT ID (`jti`) as a unique LangGraph thread ID for each login session.
+- **FastAPI Chat API:** Exposes authenticated conversations through `POST /api/v1/chat`.
+- **Streamlit Debug Console:** Provides a developer-only local UI for smoke-testing login, routing, confidence, sources, and conversation context. The dedicated `frontend/` application is the user-facing client.
 
 ---
 
@@ -25,11 +28,14 @@ backend/
 │   ├── Finance/              # Student tuition, payment schedules, bursar FAQs
 │   └── Facilities/           # Dorm maintenance, keycard access, work orders
 ├── docker-compose.yml        # PostgreSQL 16 + pgvector container definition
+├── graph.py                  # LangGraph construction and shared checkpoint lifecycle
 ├── graph_nodes.py            # LangGraph workflow nodes (router, domain agents, clarify, synthesize, respond)
 ├── graph_state.py            # TypedDict state schemas & Pydantic structured output models
 ├── index_documents.py        # PDF loading, recursive chunking, and PGVector indexing pipeline
 ├── knowledge_retrieval.py    # PGVector connection, HuggingFace embeddings, and MMR retrieval helpers
 ├── Prompts.py                # Departmental prompt templates and system instructions
+├── streamlit_app.py          # Developer-only authentication and routing debug console
+├── app/api/v1/endpoints/chat.py # Authenticated chat endpoint
 ├── requirements.txt          # Python dependencies (LangChain, Groq, PGVector, SentenceTransformers)
 ├── test.ipynb                # Interactive notebook for routing & graph evaluation
 └── README.md                 # Backend documentation
@@ -68,6 +74,7 @@ backend/
    ├── HR: hr_agent()
    ├── Fees: fees_agent()
    └── Facilities: facilities_agent()
+      └── General: general_agent() ──► greetings, thanks, and small talk
          │
          ▼
 ┌─────────────────┐
@@ -124,6 +131,54 @@ Place department PDF files into `backend/Documents/<Department>/` and run the in
 python index_documents.py
 ```
 *This splits PDFs into 1,000-character chunks (150-char overlap), computes vector embeddings via `sentence-transformers/all-MiniLM-L6-v2`, and populates the department collections in PostgreSQL.*
+
+### 6. Start the API
+
+From the repository root, start FastAPI with the backend package on the application path:
+
+```bash
+uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+```
+
+The API documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+### 7. Optional: Start the Streamlit Debug Console
+
+Streamlit is only for local backend debugging and routing smoke tests. It is not the production or user-facing frontend; use the dedicated application in `frontend/` for that.
+
+In a second terminal, from the repository root:
+
+```bash
+streamlit run backend/streamlit_app.py --server.port 8501
+```
+
+Open [http://localhost:8501](http://localhost:8501). The console logs in through the API, sends authenticated messages, and displays the selected intent, departments, routing confidence, sources, solved state, and thread ID.
+
+Demo credentials:
+
+```text
+Email: student@example.edu
+Password: demo-password
+```
+
+The API URL can be changed for the console with `CAMPUSONE_API_URL`:
+
+```bash
+CAMPUSONE_API_URL=http://localhost:8000 streamlit run backend/streamlit_app.py
+```
+
+## 🔌 Chat API
+
+Authenticate with `POST /api/v1/auth/login`, then send the access token as a bearer token to `POST /api/v1/chat`:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{"message":"My Wi-Fi is not working"}'
+```
+
+The server derives the LangGraph `thread_id` from the authenticated access token's unique JWT `jti`. Reusing the same access token continues the same conversation; a new login creates a separate conversation thread. Clients do not provide or override the thread ID.
 
 ---
 

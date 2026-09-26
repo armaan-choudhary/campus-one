@@ -220,7 +220,9 @@ class MockAuthProvider:
             user_record = self._users_by_id.get(user_id)
             if not user_record:
                 return None
-            return self._user_to_current_user(user_record)
+            return self._user_to_current_user(user_record).model_copy(
+                update={"session_id": payload.get("jti")}
+            )
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None
 
