@@ -49,8 +49,21 @@ GROQ_API_KEY=
 "@ | Out-File -FilePath $EnvPath -Encoding utf8
         Write-Host "✓ Initialized default backend/.env." -ForegroundColor Green
     }
-} else {
     Write-Host "✓ backend/.env already exists." -ForegroundColor Green
+}
+
+$FrontendEnvPath = Join-Path $ProjectRoot "frontend\.env.local"
+$FrontendEnvExamplePath = Join-Path $ProjectRoot "frontend\.env.example"
+if (-not (Test-Path $FrontendEnvPath)) {
+    if (Test-Path $FrontendEnvExamplePath) {
+        Copy-Item $FrontendEnvExamplePath $FrontendEnvPath
+        Write-Host "✓ Created frontend/.env.local from template." -ForegroundColor Green
+    } else {
+        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1" | Out-File -FilePath $FrontendEnvPath -Encoding utf8
+        Write-Host "✓ Initialized default frontend/.env.local." -ForegroundColor Green
+    }
+} else {
+    Write-Host "✓ frontend/.env.local already exists." -ForegroundColor Green
 }
 
 # 3. Start PostgreSQL container

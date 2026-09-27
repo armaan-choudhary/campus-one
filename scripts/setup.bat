@@ -64,6 +64,18 @@ if not exist "backend\.env" (
     echo [OK] backend\.env already exists.
 )
 
+if not exist "frontend\.env.local" (
+    if exist "frontend\.env.example" (
+        copy "frontend\.env.example" "frontend\.env.local" >nul
+        echo [OK] Created frontend\.env.local from frontend\.env.example
+    ) else (
+        echo NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1 > "frontend\.env.local"
+        echo [OK] Initialized default frontend\.env.local
+    )
+) else (
+    echo [OK] frontend\.env.local already exists.
+)
+
 REM 3. Start PostgreSQL with pgvector
 echo.
 echo [3/5] Starting PostgreSQL + pgvector Container...

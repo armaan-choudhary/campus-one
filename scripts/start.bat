@@ -14,6 +14,7 @@ REM Auto-run setup if environment is missing
 if not exist "backend\.env" goto run_setup
 if not exist "backend\.venv" goto run_setup
 if not exist "frontend\node_modules" goto run_setup
+if not exist "frontend\.env.local" goto run_setup
 goto launch
 
 :run_setup
@@ -31,7 +32,7 @@ docker compose -f backend\docker-compose.yml up -d
 
 echo.
 echo [2/3] Launching FastAPI backend in background window...
-start "CampusOne FastAPI Backend" cmd /k "cd backend && call .venv\Scripts\activate && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start "CampusOne FastAPI Backend" cmd /k "cd backend && call .venv\Scripts\activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 echo.
 echo [3/3] Starting Frontend Development Server...

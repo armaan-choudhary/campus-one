@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { AuthUser, LoginCredentials, UserRole } from '@/types';
+import { AuthTokenResponse, AuthUser, LoginCredentials, UserRole } from '@/types';
 import { PERSONAS } from '@/lib/demoFixtures';
 import { loginWithApi, fetchCurrentUser, logoutApi, SEEDED_CREDENTIALS } from '@/lib/api';
 
@@ -63,7 +63,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Default to student persona for immediate seamless exploration
         const defaultRole = savedRole && savedRole in PERSONAS ? savedRole : 'student';
         const creds = SEEDED_CREDENTIALS[defaultRole];
-        const res = await loginWithApi(creds);
+
+        let res: AuthTokenResponse | null = null;
+        let lastError: unknown = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            res = await loginWithApi(creds);
+            break;
+          } catch (err) {
+            lastError = err;
+            if (attempt < 3 && isMounted) {
+              await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+            }
+          }
+        }
+
+        if (!res) {
+          throw lastError || new Error('Authentication service unreachable');
+        }
 
         if (isMounted) {
           setAccessToken(res.access_token);

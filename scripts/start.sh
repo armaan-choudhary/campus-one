@@ -25,8 +25,14 @@ echo -e "${NC}"
 echo -e "${BOLD}Launching CampusOne Full Stack...${NC}"
 echo "------------------------------------------------------------------"
 
+# Detect if existing backend/.venv is broken (e.g. copied from another machine)
+if [ -d "backend/.venv" ] && ! backend/.venv/bin/python --version >/dev/null 2>&1; then
+    echo -e "${YELLOW}[WARN] backend/.venv is corrupted or was copied from another machine. Re-creating...${NC}"
+    rm -rf "backend/.venv"
+fi
+
 # Auto-run setup if environment is uninitialized
-if [ ! -f "backend/.env" ] || [ ! -d "backend/.venv" ] || [ ! -d "frontend/node_modules" ]; then
+if [ ! -f "backend/.env" ] || [ ! -d "backend/.venv" ] || [ ! -d "frontend/node_modules" ] || [ ! -f "frontend/.env.local" ]; then
     echo -e "${YELLOW}[INFO] First-time setup detected. Running ./scripts/setup.sh...${NC}\n"
     ./scripts/setup.sh
 fi
@@ -45,17 +51,66 @@ fi
 echo -e "${BLUE}▶ [1/3] Checking PostgreSQL pgvector database...${NC}"
 $DOCKER_COMPOSE -f backend/docker-compose.yml up -d
 
+# Locate uvicorn executable across local, activated, and root virtual environments
+UVICORN_BIN=""
+if [ -x "$PROJECT_ROOT/backend/.venv/bin/uvicorn" ]; then
+    UVICORN_BIN="$PROJECT_ROOT/backend/.venv/bin/uvicorn"
+elif [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/uvicorn" ]; then
+    UVICORN_BIN="$VIRTUAL_ENV/bin/uvicorn"
+elif [ -x "$PROJECT_ROOT/.venv/bin/uvicorn" ]; then
+    UVICORN_BIN="$PROJECT_ROOT/.venv/bin/uvicorn"
+elif command -v uvicorn &> /dev/null; then
+    UVICORN_BIN="uvicorn"
+else
+    echo -e "${RED}[ERROR] Uvicorn could not be found. Running setup.sh to repair environment...${NC}"
+    ./scripts/setup.sh
+    UVICORN_BIN="$PROJECT_ROOT/backend/.venv/bin/uvicorn"
+fi
+
 # 2. Check and start FastAPI Backend if not already running on port 8000
 BACKEND_PID=""
-if curl -s http://127.0.0.1:8000/docs >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ [2/3] FastAPI backend is already running on port 8000.${NC}"
+if curl -s http://127.0.0.1:8000/api/v1/health >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ [2/3] FastAPI backend is already running and healthy on port 8000.${NC}"
 else
-    echo -e "${BLUE}▶ [2/3] Starting FastAPI backend on port 8000...${NC}"
+    echo -e "${BLUE}▶ [2/3] Starting FastAPI backend on port 8000 (0.0.0.0:8000)...${NC}"
     cd backend
-    ./.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload >/dev/null 2>&1 &
+    "$UVICORN_BIN" app.main:app --host 0.0.0.0 --port 8000 --reload > uvicorn.log 2>&1 &
     BACKEND_PID=$!
     cd "$PROJECT_ROOT"
-    sleep 2
+
+    echo -n "Waiting for FastAPI backend to be ready..."
+    BACKEND_HEALTHY=false
+    for i in {1..40}; do
+        if curl -s http://127.0.0.1:8000/api/v1/health >/dev/null 2>&1; then
+            BACKEND_HEALTHY=true
+            echo -e "\n${GREEN}✓ [2/3] FastAPI backend is live and healthy!${NC}"
+            break
+        fi
+
+        # Verify backend process did not crash prematurely
+        if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+            echo -e "\n${RED}[ERROR] FastAPI backend process terminated unexpectedly.${NC}"
+            if [ -f "backend/uvicorn.log" ]; then
+                echo -e "${RED}--- Diagnostic details from backend/uvicorn.log: ---${NC}"
+                tail -n 25 backend/uvicorn.log
+                echo -e "${RED}-----------------------------------------------------${NC}"
+            fi
+            exit 1
+        fi
+
+        sleep 0.5
+        echo -n "."
+    done
+
+    if [ "$BACKEND_HEALTHY" != "true" ]; then
+        echo -e "\n${RED}[ERROR] FastAPI backend failed to respond within 20s.${NC}"
+        if [ -f "backend/uvicorn.log" ]; then
+            echo -e "${RED}--- Diagnostic details from backend/uvicorn.log: ---${NC}"
+            tail -n 25 backend/uvicorn.log
+            echo -e "${RED}-----------------------------------------------------${NC}"
+        fi
+        exit 1
+    fi
 fi
 
 # Cleanup hook on script termination
@@ -63,6 +118,7 @@ cleanup() {
     echo -e "\n${YELLOW}Shutting down CampusOne services...${NC}"
     if [ -n "$BACKEND_PID" ]; then
         kill "$BACKEND_PID" 2>/dev/null || true
+        pkill -P "$BACKEND_PID" 2>/dev/null || true
     fi
     exit 0
 }

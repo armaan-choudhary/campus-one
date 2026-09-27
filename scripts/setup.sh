@@ -100,6 +100,20 @@ else
     echo -e "${GREEN}✓ backend/.env already exists.${NC}"
 fi
 
+if [ ! -f "frontend/.env.local" ]; then
+    if [ -f "frontend/.env.example" ]; then
+        cp "frontend/.env.example" "frontend/.env.local"
+        echo -e "${GREEN}✓ Created frontend/.env.local from frontend/.env.example${NC}"
+    else
+        cat <<EOF > "frontend/.env.local"
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+EOF
+        echo -e "${GREEN}✓ Initialized default frontend/.env.local${NC}"
+    fi
+else
+    echo -e "${GREEN}✓ frontend/.env.local already exists.${NC}"
+fi
+
 # Check for GROQ_API_KEY
 if grep -q "GROQ_API_KEY=$" "backend/.env" || grep -q "GROQ_API_KEY=your_groq_api_key_here" "backend/.env"; then
     echo -e "${YELLOW}[NOTE] GROQ_API_KEY is not configured yet in backend/.env.${NC}"
@@ -130,6 +144,12 @@ done
 # 4. Backend Python Environment & Dependencies
 # ------------------------------------------------------------------------------
 echo -e "\n${BLUE}[4/5] Setting up Backend Python Virtual Environment...${NC}"
+
+# Detect if existing backend/.venv is broken/corrupted (e.g. copied from another machine)
+if [ -d "backend/.venv" ] && ! backend/.venv/bin/python --version &>/dev/null; then
+    echo -e "${YELLOW}[WARN] Existing backend/.venv is corrupted or copied from another machine. Re-creating...${NC}"
+    rm -rf "backend/.venv"
+fi
 
 if [ ! -d "backend/.venv" ]; then
     echo "Creating Python virtual environment in backend/.venv..."
