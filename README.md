@@ -30,6 +30,9 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 - **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
 - **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
 - **Confidence-Gated Resolution:** If routing confidence $\ge 0.75$, routes to domain agents (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`); if confidence $< 0.75$, shifts to dynamic clarification (`clarify()`) or flags human specialist escalation.
+- **Durable Conversation Checkpointing:** Persists LangGraph conversational checkpoints in PostgreSQL using `PostgresSaver` keyed by stable user IDs (`current_user.id`), restoring threads across logins via `GET /api/v1/chat/history`.
+- **PostgreSQL Authentication & Student Registration:** Persists user credentials in PostgreSQL (`campus_users`) with PBKDF2-HMAC-SHA256 password hashing, supporting self-service student signup (`POST /api/v1/auth/register`).
+- **LangSmith Tracing & Observability:** Instruments full graph executions, node latencies, and LLM token usage via configurable LangSmith integration (`LANGSMITH_TRACING=true`).
 - **Synthesis Node (`synthesize()`):** Formats raw domain outputs into clear, actionable advice with numbered checklists before returning to the conversation history.
 
 ---
@@ -118,11 +121,13 @@ msInnovateHack/
 │   ├── app/                       # FastAPI application (main.py, auth, chat endpoints)
 │   ├── Documents/                 # Institutional policy PDFs (IT, HR, Finance, Facilities)
 │   ├── docker-compose.yml         # PostgreSQL 16 + pgvector container
+│   ├── graph.py                   # LangGraph construction and PostgresSaver checkpointer lifecycle
 │   ├── graph_nodes.py             # Router, domain RAG nodes, clarify, synthesize, respond
 │   ├── graph_state.py             # State graph schemas and Pydantic structured output models
 │   ├── index_documents.py         # PDF chunking and vector indexing script
 │   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
 │   ├── Prompts.py                 # Domain prompt templates and system instructions
+│   ├── streamlit_app.py           # Developer debug console (auth, student signup, chat reload)
 │   └── requirements.txt           # Python dependencies
 ├── frontend/                      # Next.js 16 App Router application
 │   ├── src/app/

@@ -19,6 +19,7 @@ flowchart TB
     Embeddings[HuggingFace: all-MiniLM-L6-v2]
     Agent[Sarah Jenkins: Support Triage Queue]
     Logs[Structured telemetry / audit logs]
+    LangSmith[LangSmith: LLM Tracing & Observability]
 
     Student --> Web
     Admin --> Web
@@ -28,6 +29,7 @@ flowchart TB
     API --> LLM
     API --> Agent
     API --> Logs
+    API --> LangSmith
 ```
 
 ## 3. Container architecture
@@ -92,11 +94,16 @@ flowchart LR
 
 | Module / File | Owns | Does not own | Implementation |
 |---|---|---|---|
-| `graph_nodes.py` | State graph nodes (`router`, `it_query`, `hr_agent`, `clarify`, `synthesize`, `respond`) | Raw SQL queries, PDF loading | LangChain + ChatGroq (`openai/gpt-oss-120b`) |
+| `graph.py` | LangGraph state graph compilation, PostgreSQL checkpointer (`PostgresSaver`) initialization, connection pool lifecycle (`initialize_graph`, `close_graph`, `get_graph`) | HTTP routing, prompt generation | `langgraph` + `langgraph-checkpoint-postgres` + `psycopg_pool` |
+| `graph_nodes.py` | State graph nodes (`router`, `it_query`, `hr_agent`, `clarify`, `synthesize`, `respond`, `create_ticket`) | Raw SQL queries, PDF loading | LangChain + ChatGroq (`openai/gpt-oss-120b`) |
 | `graph_state.py` | TypedDict schemas (`AssistantState`) & Pydantic models (`DepartmentRoute`, `RetrievedDocument`, `ITQueryResponse`) | Network transport or DB sessions | Pydantic v2 + Typing |
 | `knowledge_retrieval.py` | PGVector connections, HuggingFace embeddings (`all-MiniLM-L6-v2`), MMR search | Presentation formatting for UI | `langchain_postgres` + `HuggingFaceEmbeddings` |
 | `index_documents.py` | PDF parsing (`PyPDFLoader`), recursive character chunking (1000/150), collection seeding | Answering chat queries | `langchain_community` + `RecursiveCharacterTextSplitter` |
 | `Prompts.py` | Department-specific system prompts and grounding instructions | Runtime state transitions | Python string templates |
+| `app/auth/provider.py` | `MockAuthProvider` backed by PostgreSQL `campus_users`, PBKDF2 password hashing, student registration, JWT issuance/revocation | HTTP routing or request parsing | `asyncpg` + `pyjwt` + PBKDF2-HMAC-SHA256 |
+| `app/api/v1/endpoints/auth.py` | Auth endpoints (`/login`, `/register`, `/refresh`, `/me`) | Cryptographic hashing implementation | FastAPI + Pydantic |
+| `app/api/v1/endpoints/chat.py` | Authenticated conversation execution (`POST /chat`) and conversation history retrieval (`GET /chat/history`) | Graph execution internals | FastAPI + LangGraph state reader |
+| `streamlit_app.py` | Developer smoke-test console (login, student signup, conversation history reload, routing inspection) | Production end-user experience | Streamlit + HTTPX |
 | `docker-compose.yml` | PostgreSQL 16 + pgvector container runtime (`campus-one-postgres`) | Application-level graph logic | Docker Compose v2 |
 
 ## 5. Request lifecycle & streaming events
@@ -184,22 +191,27 @@ class ResponseGenerator(Protocol):
 
 ## 7. Data ownership
 
-- PostgreSQL is the source of truth for conversations, messages, decisions, documents, chunks, events, handoffs, feedback, and evaluation runs.
+- PostgreSQL is the source of truth for:
+  - User accounts and authentication credentials (`campus_users`, with PBKDF2 password hashes and roles);
+  - Conversational checkpoint snapshots (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations`) managed by LangGraph's `PostgresSaver`;
+  - Vector embeddings and chunk collections (`langchain_pg_collection`, `langchain_pg_embedding`);
+  - Messages, decisions, documents, events, handoffs, feedback, and evaluation runs.
 - Redis is not a source of truth. It holds locks, rate-limit counters, and queued job metadata.
-- OpenAI responses are transient dependencies. Store model name, latency, token counts if available, and request correlation metadata—not prompts containing unnecessary PII.
-- The frontend stores only access-token/session state and an optimistic view of the current conversation. It refetches authoritative state after a response.
+- LLM provider responses (Groq / OpenAI) are transient dependencies. Store model name, latency, token counts if available, and request correlation metadata—not prompts containing unnecessary PII.
+- The frontend stores only access-token/session state and an optimistic view of the current conversation. It refetches authoritative state after a response or restores saved messages via `GET /chat/history`.
 
 ## 8. Configuration shape
 
 ```dotenv
 APP_ENV=local
 API_BASE_URL=http://localhost:8000
-DATABASE_URL=postgresql+asyncpg://campusone:campusone@db:5432/campusone
+DATABASE_URL=postgresql+psycopg://campus_one:campus_one_secret@localhost:5432/campus_one
+POSTGRES_DB=campus_one
+POSTGRES_USER=campus_one
+POSTGRES_PASSWORD=campus_one_secret
+GROQ_API_KEY=your_groq_api_key_here
 REDIS_URL=redis://redis:6379/0
 OPENAI_API_KEY=replace-me
-OPENAI_CHAT_MODEL=gpt-4.1-mini
-OPENAI_ROUTER_MODEL=gpt-4.1-mini
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ROUTING_HIGH_THRESHOLD=0.75
 ROUTING_LOW_THRESHOLD=0.45
 ROUTING_MAX_DOMAINS=3
@@ -210,24 +222,40 @@ RETRIEVAL_MIN_SCORE=0.65
 JWT_SECRET=local-only-secret
 KNOWLEDGE_STORAGE_PATH=./knowledge
 LOG_LEVEL=INFO
+
+# Optional LangSmith observability & tracing
+LANGSMITH_TRACING=false
+LANGSMITH_API_KEY=your_langsmith_api_key_here
+LANGSMITH_PROJECT=campus-one
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 ```
 
-All settings are loaded by one typed settings object. Environment names are examples; deployment secrets must use the platform's secret manager.
+All settings are loaded by one typed settings object (`Settings` in `app/core/config.py`). Environment names are examples; deployment secrets must use the platform's secret manager.
 
 ## 9. Resilience and degradation
 
 | Failure | Behavior |
 |---|---|
-| OpenAI unavailable during routing | Use deterministic lexical/embedding fallback if available; otherwise hand off with `router_unavailable`. |
-| OpenAI unavailable during answer generation | Return a clear temporary-unavailable message and offer handoff; do not use ungrounded prose. |
-| Database unavailable | Health check is unhealthy; no request claims success. |
+| LLM unavailable during routing | Use deterministic lexical/embedding fallback if available; otherwise hand off with `router_unavailable`. |
+| LLM unavailable during answer generation | Return a clear temporary-unavailable message and offer handoff; do not use ungrounded prose. |
+| Database unavailable | Health check is unhealthy; no request claims success. Checkpointer raises HTTP 502 `conversation_unavailable`. |
 | Redis unavailable | Synchronous ingestion/evaluation may run only if explicitly enabled; chat remains independent of Redis. |
 | No retrieval evidence | `no_evidence` fallback; never pass empty evidence to a factual generation prompt. |
 | Conflicting published evidence | `conflicting_knowledge` handoff, with source references stored. |
 
 ## 10. Observability
 
-Every request carries `request_id`; every turn has `conversation_id`, `user_id_hash`, and `message_id`. JSON logs include event name, duration, outcome, domain keys, and error code. They exclude message text by default, access tokens, API keys, full prompts, and retrieved document bodies. See [12 Security](12_Security.md).
+Observability in CampusOne operates on two synchronized levels:
+
+1. **Structured Request & Audit Telemetry:**
+   Every request carries `request_id`; every turn has `conversation_id`, `user_id_hash`, and `message_id`. JSON logs include event name, duration, outcome, domain keys, and error code. They exclude message text by default, access tokens, API keys, full prompts, and retrieved document bodies. See [12 Security](12_Security.md).
+
+2. **LangSmith Distributed Tracing:**
+   When `LANGSMITH_TRACING=true` and a valid `LANGSMITH_API_KEY` are provided, the FastAPI lifespan (`configure_langsmith()`) exports the required OpenTelemetry and LangChain tracing environment variables (`LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_PROJECT`, etc.). This enables end-to-end tracing across:
+   - State graph node executions (`router`, `create_ticket`, domain retrieval, `synthesize`, `respond`);
+   - LLM generation runs, token consumption, and latencies;
+   - Tool and retriever invocations against PostgreSQL vector collections;
+   - Prompt debugging and confidence score tracking in the LangSmith project dashboard.
 
 ## 11. Architectural acceptance criteria
 

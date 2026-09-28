@@ -6,85 +6,129 @@ The Conversation Manager owns the turn lifecycle. It loads state, invokes the ro
 
 ## 2. Conversation state
 
-```json
-{
-  "conversation_id": "4b4b1f2d-42fd-4da6-8933-0b7e72cc3a55",
-  "user_id": "student-001",
-  "status": "open",
-  "active_domain": "finance",
-  "previous_domains": ["it", "finance"],
-  "unresolved_intents": ["portal_login"],
-  "clarification": null,
-  "resolution_state": "open",
-  "handoff_state": "none",
-  "summary": "Student asked about a payment showing unpaid and then reported portal login trouble.",
-  "summary_version": 3
-}
+Conversation state is represented as `AssistantState` in `backend/graph_state.py` and serialized to PostgreSQL checkpoints via LangGraph:
+
+```python
+class AssistantState(TypedDict, total=False):
+    messages: Annotated[List[Dict[str, Any]], add_messages]
+    detected_domains: List[str]
+    confidence: float
+    reasoning: str
+    clarification_question: Optional[str]
+    suggested_options: List[str]
+    ticket_needed: bool
+    ticket_id: Optional[str]
+    ticket: Optional[Dict[str, Any]]
+    ticket_summary: Optional[str]
+    solved: bool
+    sources: List[str]
+    retrieved_chunks: List[Dict[str, Any]]
+    user_id: Optional[str]
+    role: Optional[str]
 ```
 
-Messages are append-only. Derived fields such as `active_domain` and `summary` are updated transactionally with the assistant turn and can be rebuilt from persisted events if needed.
+### Stable Thread ID Architecture
+Conversation threads are keyed by the authenticated student's stable user ID:
+$$\text{thread\_id} = \text{current\_user.id}$$
+- **Cross-Login Persistence:** Because `thread_id` is bound to the student ID (e.g., `u-student-01` or generated student IDs like `u-student-3a8f...`), the user can log out, close their browser, log in again (or sign up and log in), and immediately resume their conversation.
+- **Client Non-Overridable:** Clients do not pass or override `thread_id` in requests; the backend derives it strictly from the verified JWT `CurrentUser`. This prevents horizontal thread hijacking and IDOR vulnerabilities.
+- **History Restoration:** Clients query `GET /api/v1/chat/history` upon authentication to restore all prior messages from PostgreSQL into the active UI state.
 
 ## 3. Turn state machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> Received
-    Received --> StateLoaded
-    StateLoaded --> Routing
-    Routing --> ClarificationPending
-    Routing --> HandoffPending
-    Routing --> SkillsPending
-    SkillsPending --> SkillsRunning
-    SkillsRunning --> Synthesising
-    SkillsRunning --> NoEvidence
-    Synthesising --> Persisting
-    NoEvidence --> Persisting
-    ClarificationPending --> Persisting
-    HandoffPending --> Persisting
-    Persisting --> Completed
-    Persisting --> Failed
+    Received --> StateLoaded: PostgresSaver loads thread_id state
+    StateLoaded --> Routing: router node (Groq / gpt-oss-120b)
+    Routing --> ClarificationPending: confidence < 0.75
+    Routing --> TicketEscalation: ticket_needed or escalation detected
+    Routing --> SkillsPending: confidence >= 0.75
+    SkillsPending --> SkillsRunning: domain retrieval (MMR)
+    SkillsRunning --> Synthesising: synthesize node
+    Synthesising --> Responding: respond node
+    ClarificationPending --> Responding
+    TicketEscalation --> Responding: two-pass ticket summary & assignment
+    Responding --> Persisting: PostgresSaver checkpoints state
+    Persisting --> Completed: return response to client
     Completed --> [*]
-    Failed --> [*]
 ```
 
-## 4. Turn algorithm & Concurrency Control
+## 4. Turn algorithm & LangGraph Lifecycle
+
+### Application Lifespan & Durable Connection Pool
+The LangGraph checkpointer connects to PostgreSQL through a dedicated `psycopg_pool.ConnectionPool` configured during the FastAPI application lifespan:
 
 ```python
-async def process_turn(command: SendMessage, user: CurrentUser) -> AssistantTurn:
-    conversation = await conversations.require_owned(command.conversation_id, user)
-    idempotent = await turns.find_by_key(command.idempotency_key)
-    if idempotent:
-        return idempotent.response
-
-    # 1. Acquire distributed Turn Mutex (15-second lease)
-    lock_key = f"lock:conversation:{conversation.id}"
-    lock_acquired = await redis.set(lock_key, user.id, nx=True, ex=15)
-    if not lock_acquired:
-        raise TurnConflictError("Another turn is currently being processed for this conversation.")
-
+# backend/app/main.py
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    configure_langsmith()  # Export LangSmith tracing environment if configured
+    initialize_graph(settings.DATABASE_URL)  # Init ConnectionPool & PostgresSaver.setup()
     try:
-        user_message = await messages.append_user(conversation, command.text)
-        context = context_builder.for_routing(conversation, max_messages=8)
-        decision = await router.classify(command.text, context)
-        await routing_store.save(decision, user_message.id)
-
-        if decision.route_mode == "clarify":
-            response = clarification_manager.create(decision, conversation)
-        elif decision.route_mode in {"fallback", "handoff"}:
-            response = await handoff_manager.handle_or_offer(decision, conversation)
-        else:
-            answers = await skill_orchestrator.run(decision, conversation, user_message)
-            response = await synthesiser.combine_micro_drafts(answers, conversation)
-
-        # Optimistic concurrency check on conversation.version
-        await persist_turn_atomically(response, decision, conversation, expected_version=conversation.version)
-        await analytics.emit_for_turn(...)
-        return response
+        yield
     finally:
-        await redis.delete(lock_key)
+        close_graph()  # Drain & close connection pool on shutdown
 ```
 
-The database transaction wraps message/decision/response persistence with an optimistic concurrency check (`UPDATE conversations SET version = version + 1 WHERE id = :id AND version = :expected_version`). If another process updated the conversation concurrently, the transaction fails and prompts an automated client refresh.
+```python
+# backend/graph.py
+def initialize_graph(database_url: str) -> None:
+    global _connection_pool, _checkpointer, _graph
+    if _graph is not None:
+        return
+
+    conn_string = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+    _connection_pool = ConnectionPool(
+        conninfo=conn_string,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+        open=True,
+    )
+    _checkpointer = PostgresSaver(_connection_pool)
+    _checkpointer.setup()  # Auto-creates/migrates checkpoints tables
+    _graph = build_graph(_checkpointer)
+```
+
+### Turn Execution (`POST /api/v1/chat`)
+When a student posts a message, the endpoint executes the compiled graph inside a worker threadpool, preserving session context and persisting checkpoint updates:
+
+```python
+@router.post("", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
+    current_user: CurrentUser = Depends(require_permission("messages:create")),
+) -> ChatResponse:
+    graph = get_graph()
+    thread_id = current_user.id
+
+    result = await run_in_threadpool(
+        graph.ainvoke,
+        {
+            "messages": [{"role": "user", "content": request.message}],
+            "user_id": current_user.id,
+            "role": current_user.role.value,
+        },
+        {"configurable": {"thread_id": thread_id}},
+    )
+    return ChatResponse(...)
+```
+
+### History Retrieval (`GET /api/v1/chat/history`)
+```python
+@router.get("/history", response_model=ChatHistoryResponse)
+async def chat_history(
+    current_user: CurrentUser = Depends(require_permission("messages:create")),
+) -> ChatHistoryResponse:
+    thread_id = current_user.id
+    snapshot = await run_in_threadpool(
+        get_graph().get_state,
+        {"configurable": {"thread_id": thread_id}},
+    )
+    return ChatHistoryResponse(
+        thread_id=thread_id,
+        messages=(snapshot.values or {}).get("messages", []),
+    )
+```
 
 ## 5. Context construction
 
@@ -184,6 +228,14 @@ sequenceDiagram
     C->>S: typed answers + citation refs
     S-->>C: one unified AssistantResponse
 ```
+
+### Ticket Summarization and Safe Department Fallback
+
+When escalation or human assistance is required, `create_ticket()` invokes LLM-assisted conversation summarization. To prevent runtime indexing errors when queries have ambiguous domain boundaries or empty classifications, the prompt resolves the primary department with explicit fallback:
+```python
+department = (state.get("detected_domains") or ["General"])[0]
+```
+This guarantees reliable ticket creation and triage assignment even under zero-evidence or unrecognized intent scenarios.
 
 ## 8. Conflict handling
 

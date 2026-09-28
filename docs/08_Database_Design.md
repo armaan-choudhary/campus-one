@@ -54,6 +54,19 @@ The local mock authentication provider persists seeded demo accounts and self-se
 
 Registration is restricted to the `student` role. Duplicate emails are rejected with `409 email_already_registered`. This implementation table is the current local-auth bridge; the normalized UUID-based `users` model below remains the target production design.
 
+### `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` (LangGraph durable thread store)
+
+Conversational state persistence is managed by LangGraph's PostgreSQL checkpointer (`PostgresSaver` in `backend/graph.py`). The schema is initialized during FastAPI lifespan startup via `_checkpointer.setup()`:
+
+| Table | Primary Key / Index | Description |
+|---|---|---|
+| `checkpoints` | `(thread_id, checkpoint_ns, checkpoint_id)` | Stores serialized graph state snapshots, parent checkpoint links, and step metadata. `thread_id` is set to `current_user.id`. |
+| `checkpoint_blobs` | `(thread_id, checkpoint_ns, channel, version)` | Stores serialized channel values and large message payload blobs. |
+| `checkpoint_writes` | `(thread_id, checkpoint_ns, checkpoint_id, task_id, idx)` | Records pending state writes and graph node outputs for deterministic rehydration and time-travel. |
+| `checkpoint_migrations` | `v` | Tracks internal schema versions and migrations applied by `PostgresSaver`. |
+
+Because `thread_id` matches the user's stable account ID (`current_user.id`), state persists across logins, browser reloads, and multi-worker restarts. The endpoint `GET /api/v1/chat/history` reads from this checkpoint store to reconstruct active message threads.
+
 ### `users`
 
 | Column | Type | Rules |

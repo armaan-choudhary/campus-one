@@ -23,7 +23,7 @@ The university has specialist support areas—IT, Finance, Facilities, Academics
 
 ### Primary User: Student (`student`)
 
-An authenticated student (`student@example.edu`) who interacts with the conversational assistant at `/workspace` to get verified, cited answers across university services and monitor their submitted tickets in the **My Tickets** view.
+An authenticated student—either using the seeded demo profile Alex Rivera (`student@example.edu`) or a self-registered student account (`POST /api/v1/auth/register`) persisted in PostgreSQL—who interacts with the conversational assistant at `/workspace` to get verified, cited answers across university services, seamlessly resume previous conversation threads across logins, and monitor their submitted tickets in the **My Tickets** view.
 
 ### Administrative User: System Administrator / Staff (`admin`)
 
@@ -35,8 +35,8 @@ An authenticated campus administrator or support specialist (`admin@example.edu`
 2. **Evidence before prose:** university-specific facts require retrieved evidence.
 3. **Confidence is a product behavior:** uncertainty produces clarification or handoff, not a confident guess.
 4. **Skills are replaceable:** every domain implements the same interface and can be registered without frontend changes.
-5. **Conversation is stateful:** topic changes and multiple intents are first-class.
-6. **Every outcome is measurable:** routing and resolution decisions emit auditable events.
+5. **Conversation is stateful:** topic changes and multiple intents are first-class, and thread memory durably survives across user logins and backend restarts via PostgreSQL checkpointing.
+6. **Every outcome is measurable:** routing and resolution decisions emit auditable events, and end-to-end LLM/graph execution is traceable via LangSmith.
 7. **Prototype scope stays honest:** one deployable backend, one web app, five domains, and a deterministic evaluation harness are preferred over premature microservices.
 
 ## 4. Goals
@@ -50,6 +50,9 @@ An authenticated campus administrator or support specialist (`admin@example.edu`
 - Ask clarification in the ambiguous confidence band.
 - Refuse to invent answers when retrieval has no adequate evidence.
 - Create a human handoff containing conversation context and reason.
+- Persist conversation checkpoints durably with LangGraph's PostgreSQL `PostgresSaver`, allowing conversation resumption across logins via `/chat/history`.
+- Support self-service student account registration with salted PBKDF2 hashing in PostgreSQL.
+- Enable full LLM and LangGraph observability and tracing via LangSmith.
 - Persist conversation, routing, retrieval, citation, feedback, handoff, and resolution records.
 - Provide an admin analytics view with the required routing and resolution metrics.
 - Ship a deterministic JSONL evaluation dataset and CLI harness.

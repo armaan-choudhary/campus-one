@@ -66,7 +66,10 @@ For each of the five skills:
 
 - append user and assistant messages in order;
 - idempotency key returns the same response;
-- optimistic version conflict returns 409;
+- LangGraph checkpoints are persisted to PostgreSQL `PostgresSaver`;
+- conversation state survives backend restarts and loads across logins;
+- `GET /api/v1/chat/history` accurately returns the latest message history for `current_user.id`;
+- thread isolation ensures users cannot read another user's conversation thread;
 - clarification state carries candidate domains into the next turn;
 - multi-domain skills execute concurrently;
 - skill timeout preserves successful sibling result;
@@ -77,13 +80,20 @@ For each of the five skills:
 
 Use the FastAPI test client with fake dependencies. Test every endpoint in [09 API Reference](09_API_Reference.md) for:
 
+- **Authentication (`/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/me`):**
+  - seeded accounts authenticate with correct passwords;
+  - invalid credentials and unknown emails return `401 invalid_credentials`;
+  - new student registration (`POST /auth/register`) persists to `campus_users`, returns `201` with valid tokens, and enforces `student` role;
+  - duplicate student email registration returns `409 email_already_registered`;
+  - token verification and token refresh lifecycle.
+- **Conversation (`/chat`, `/chat/history`):**
+  - authenticated `POST /chat` resolves with answer, thread ID derived from `current_user.id`, routing metadata, and citations;
+  - unauthenticated requests return `401`;
+  - `GET /chat/history` returns the persisted message list for the authenticated thread;
+  - checkpoint store unavailability returns `502 conversation_unavailable`.
 - valid request and response schema;
 - missing/invalid auth;
-- role denial;
-- ownership denial;
-- malformed and boundary values;
-- idempotency and conflict behavior;
-- rate limit behavior;
+- role denial and route protection (HTTP 403 on `/admin`);
 - safe error envelope and request ID.
 
 ## 6. Retrieval tests

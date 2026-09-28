@@ -96,6 +96,8 @@ POST /api/v1/auth/register
 {
   "answer": "...",
   "thread_id": "u-student-01",
+  "ticket_id": null,
+  "ticket": null,
   "detected_domains": ["IT"],
   "routing_confidence": 0.94,
   "sources": ["wifi-guide.pdf, page 2"],

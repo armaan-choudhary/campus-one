@@ -7,9 +7,12 @@ Protect student identity and conversation data, prevent unauthorised knowledge a
 ## 2. Threat model
 
 | Threat | Example | Control |
+| Threat | Example | Control |
 |---|---|---|
 | account takeover | stolen demo/password token | OIDC seam, strong sessions, rate limits, short access tokens |
-| horizontal access | student guesses another conversation UUID | ownership query and 404/403 policy |
+| horizontal access | student guesses another conversation UUID or thread ID | server derives `thread_id` strictly from `current_user.id`; ownership queries enforce 404/403 |
+| privilege escalation | student self-registers as admin | `POST /auth/register` hardcodes role to `student`; cannot register elevated roles |
+| account duplicate abuse | duplicate account registration collisions | unique lowercase email index rejects duplicates with `409 email_already_registered` |
 | prompt injection | user asks model to ignore evidence rules | structured prompts, untrusted evidence wrapper, output validation |
 | knowledge poisoning | uploaded file says reveal secrets | admin approval, content flagging, domain filter |
 | data exfiltration | source URI or private chunk exposed | role/audience filters and citation proxy |
@@ -22,17 +25,21 @@ Protect student identity and conversation data, prevent unauthorised knowledge a
 
 ```python
 class IdentityProvider(Protocol):
-    async def authenticate(self, credentials) -> AuthenticatedIdentity: ...
-    async def validate_access_token(self, token: str) -> AuthenticatedIdentity: ...
+    async def authenticate(self, email: str, password: str) -> Optional[CurrentUser]: ...
+    async def register_student(self, email: str, password: str, display_name: str) -> Optional[CurrentUser]: ...
+    async def verify_token(self, token: str, token_type: str = "access") -> Optional[CurrentUser]: ...
 
 class CurrentUser(BaseModel):
-    id: UUID
+    id: str
     external_subject: str
+    email: str
     role: Role
-    department: str | None
+    department: str | None = None
+    display_name: str | None = None
+    permissions: List[str] = Field(default_factory=list)
 ```
 
-Local mode uses seeded mock accounts and signed JWTs. Production mode uses the university OIDC provider, validates issuer/audience/signature, and maps group claims to application roles. The rest of the application consumes `CurrentUser`, never raw provider tokens.
+Local mode uses PostgreSQL-persisted accounts in `campus_users` with salted PBKDF2-HMAC-SHA256 password hashes (`100,000` iterations) and signed HMAC JWTs. Self-service registration (`POST /api/v1/auth/register`) enforces the `student` role and rejects duplicate emails (`409`). Production mode uses the university OIDC provider, validates issuer/audience/signature, and maps group claims to application roles. The rest of the application consumes `CurrentUser`, never raw provider tokens.
 
 ## 4. Authorisation model
 
@@ -91,7 +98,8 @@ Retrieval filter requires domain, publication status, effective date, language, 
 - No secret is sent to the browser or stored in database event payloads.
 - Pin dependency versions, run `pip-audit` and `npm audit` in CI, and enable Dependabot/Renovate.
 - Use secret scanning in pre-commit/CI.
-- Rotate OpenAI, database, Redis, JWT/OIDC secrets independently.
+- Rotate Groq, LangSmith, database, Redis, and JWT/OIDC secrets independently.
+- LangSmith API keys and Groq API keys remain exclusively server-side and are never forwarded to client browsers or logged.
 
 ## 10. Audit logging
 
@@ -100,9 +108,11 @@ Audit security-sensitive events: login failures, access denials, knowledge publi
 ## 11. Security acceptance tests
 
 - Student cannot GET another student's conversation, message, citation, or handoff.
+- Student cannot override or access another user's LangGraph thread ID via `/chat` or `/chat/history`.
+- Student self-registration cannot create non-student roles; duplicate emails return HTTP 409.
 - Student cannot call ingestion, publish, analytics, or evaluation endpoints.
 - Prompt injection in user text and source chunks cannot change route mode or expose secrets.
 - Source URI for a restricted document is withheld.
 - Oversized messages, files, and evaluation requests return 413/422.
-- Logs and analytics contain no fixture password, token, card number, or raw secret.
+- Logs, telemetry, and analytics contain no fixture password, token, card number, or raw secret.
 

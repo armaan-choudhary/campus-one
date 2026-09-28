@@ -99,7 +99,7 @@ Startup validates required values and fails with a safe configuration error if `
 1. Provision PostgreSQL 16 with pgvector.
 2. LangGraph's `PostgresSaver.setup()` creates or upgrades checkpoint tables during FastAPI startup; run one backend startup against the target database before serving traffic.
 3. Create HNSW and GIN indexes after initial fixture load or concurrently for large data.
-4. Seed domain skills and demo users in local/staging only.
+4. Seed domain skills and demo users in local/staging only (the local mock auth provider automatically initializes the `campus_users` table and seeds default accounts upon first authentication or registration).
 5. Run a retrieval smoke test after each knowledge publish.
 6. Back up database and verify restore in production.
 

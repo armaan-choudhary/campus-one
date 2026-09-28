@@ -43,10 +43,15 @@ docker ps --filter "name=campus-one-postgres"
 python index_documents.py
 # Expected: Indexed chunks for IT, HR, Finance, and Facilities into PGVector
 
-# 3. Run routing and graph verification
-jupyter notebook test.ipynb # Or run test script
+# 3. Start the FastAPI backend
+# Automatically initializes PostgresSaver checkpoint tables and LangSmith tracing
+PYTHONPATH=. uvicorn app.main:app --reload --port 8000
 
-# 4. Check Frontend accessibility
+# 4. Optional: Start the Streamlit developer console for smoke testing
+streamlit run streamlit_app.py # Runs on http://localhost:8501
+
+# 5. Check Frontend accessibility
+cd ../frontend && npm run dev
 curl -I http://localhost:3000/
 # Expected: HTTP/1.1 200 OK
 ```
@@ -282,8 +287,8 @@ Without opening a new chat, the student switches topics to semester fees. Watch 
 "Now look at what happens when problems collide. The student can't log in after a pending payment. CampusOne identifies a multi-domain dependency, synthesizes IT portal guidance with Finance hold policies, and cites both sources.
 When the student enters an ambiguous phrase like 'My account has a problem', CampusOne refuses to flip a coin. It presents structured clarification options. And when asked about an ungrounded topic like submarine leases, it refuses to hallucinate, packaging a clean handoff to the Registrar."
 
-[2:45 - 3:45] [Switch to Admin Dashboard - Step 7]
-"CampusOne is enterprise-ready today. Here is our live analytics dashboard. Across our 110 automated evaluation suites, we achieve 88% routing accuracy, 98.6% citation coverage, and 76% autonomous resolution. Every routing decision, latency metric, and confidence score is fully auditable."
+[2:45 - 3:45] [Switch to Admin Dashboard & Observability - Step 7]
+"CampusOne is enterprise-ready today. Here is our live analytics dashboard. Across our 110 automated evaluation suites, we achieve 88% routing accuracy, 98.6% citation coverage, and 76% autonomous resolution. Every routing decision, latency metric, and confidence score is fully auditable. Furthermore, conversations are persisted durably via PostgreSQL checkpoints—meaning students can sign back in on any device and resume their conversation seamlessly. With LangSmith tracing enabled, every graph node, MMR vector retrieval, and LLM token stream is visible in real-time."
 
 [3:45 - 5:00] [Conclusion & Architecture]
 "Built as a modular FastAPI and Next.js monolith powered by PostgreSQL and pgvector, new campus domains like Transport or Hostel can be onboarded in minutes with a single YAML manifest. 

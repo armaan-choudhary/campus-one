@@ -15,8 +15,10 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and returns the ticket confirmation to the user.
 - **Synthesized Final Output:** Condenses domain agent responses into concise, student-friendly answers with actionable numbered steps.
 - **Authenticated Conversations:** Uses the authenticated user's ID as the LangGraph thread ID so conversations reload across logins.
-- **FastAPI Chat API:** Exposes authenticated conversations through `POST /api/v1/chat`.
-- **Streamlit Debug Console:** Provides a developer-only local UI for smoke-testing login, routing, confidence, ticket creation, source metadata, and the exact retrieved chunks passed to domain agents. The dedicated `frontend/` application is the user-facing client.
+- **Self-Service Student Registration:** Supports new student signup via `POST /api/v1/auth/register`, persisting credentials with PBKDF2-HMAC-SHA256 password hashing in PostgreSQL (`campus_users`).
+- **LangSmith Tracing & Observability:** Automatically instruments LangChain and LangGraph node executions, MMR searches, and LLM calls when `LANGSMITH_TRACING=true`.
+- **FastAPI Chat & Auth API:** Exposes authenticated conversations through `POST /api/v1/chat` and history reload via `GET /api/v1/chat/history`.
+- **Streamlit Debug Console:** Provides a developer-only local UI with "Sign in" and "Create account" tabs for smoke-testing authentication, routing, confidence, ticket creation, source metadata, and conversation history reload. The dedicated `frontend/` application is the user-facing client.
 
 ---
 
@@ -30,15 +32,21 @@ backend/
 │   ├── Finance/              # Student tuition, payment schedules, bursar FAQs
 │   └── Facilities/           # Dorm maintenance, keycard access, work orders
 ├── docker-compose.yml        # PostgreSQL 16 + pgvector container definition
-├── graph.py                  # LangGraph construction and shared checkpoint lifecycle
+├── graph.py                  # LangGraph construction and PostgresSaver checkpoint lifecycle
 ├── graph_nodes.py            # LangGraph workflow nodes (router, domain agents, clarify, synthesize, respond)
 ├── graph_state.py            # TypedDict state schemas & Pydantic structured output models
 ├── index_documents.py        # PDF loading, recursive chunking, and PGVector indexing pipeline
 ├── knowledge_retrieval.py    # PGVector connection, HuggingFace embeddings, and MMR retrieval helpers
 ├── Prompts.py                # Departmental prompt templates and system instructions
-├── streamlit_app.py          # Developer-only authentication and routing debug console
-├── app/api/v1/endpoints/chat.py # Authenticated chat endpoint
-├── requirements.txt          # Python dependencies (LangChain, Groq, PGVector, SentenceTransformers)
+├── streamlit_app.py          # Developer-only authentication, registration, and routing debug console
+├── app/
+│   ├── api/v1/endpoints/
+│   │   ├── auth.py           # Login, registration, token refresh, and /me endpoints
+│   │   └── chat.py           # Authenticated chat execution and history retrieval
+│   ├── auth/                 # Auth provider protocol, PostgreSQL MockAuthProvider, and schemas
+│   ├── core/config.py        # Settings with Groq, Postgres, and LangSmith configuration
+│   └── main.py               # FastAPI entrypoint with LangSmith and graph lifespan hooks
+├── requirements.txt          # Python dependencies (LangChain, LangGraph, Groq, PGVector, etc.)
 ├── test.ipynb                # Interactive notebook for routing & graph evaluation
 └── README.md                 # Backend documentation
 ```

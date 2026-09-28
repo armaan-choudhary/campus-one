@@ -17,6 +17,7 @@
 | FR-AUTH-002 | A prototype user MUST be able to sign in with a seeded student account. | MUST | Login returns an access token and `/me` returns the seeded identity. |
 | FR-AUTH-003 | Role checks MUST protect administrator routes and ticket triage operations. | MUST | Student requests to `/admin` receive HTTP 403 barrier. |
 | FR-AUTH-004 | The system MUST minimise PII in messages, analytics, and logs. | MUST | Redaction tests pass and raw tokens are never logged. |
+| FR-AUTH-005 | The system MUST support self-service student account registration (`POST /api/v1/auth/register`) with PBKDF2 password hashing, PostgreSQL storage (`campus_users`), role restriction to `student`, and duplicate email rejection. | MUST | Register endpoint returns HTTP 201 with access token; duplicate registration returns HTTP 409. |
 
 ### Conversation
 
@@ -27,6 +28,7 @@
 | FR-CONV-003 | Conversation state MUST retain messages, active domain, previous domains, routing decisions, retrieval sources, resolution state, and handoff state. | MUST | State can be reconstructed from the API and database. |
 | FR-CONV-004 | The system MUST detect a topic switch and re-route instead of blindly inheriting the previous domain. | MUST | IT then Finance fixture routes the second message to Finance. |
 | FR-CONV-005 | The UI MUST show processing, clarification, citations, and handoff states. | MUST | Playwright flow covers each state. |
+| FR-CONV-006 | Conversation checkpoints MUST be persisted durably in PostgreSQL via LangGraph's `PostgresSaver` keyed by the user's stable ID, and reloadable via `GET /chat/history`. | MUST | Signing in with an existing account restores saved conversation turns across process restarts. |
 
 ### Routing and confidence
 
@@ -96,6 +98,7 @@
 | NFR-SEC-001 | Secrets | No secret in frontend bundle, source control, prompt, or analytics payload. |
 | NFR-SEC-002 | Authorisation | Every conversation, knowledge, analytics, and evaluation resource is checked server-side. |
 | NFR-OBS-001 | Correlation | Every request has `request_id`; every turn has `conversation_id` and `message_id`. |
+| NFR-OBS-002 | Tracing & Observability | Backend supports optional LangSmith tracing via `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` for detailed graph execution spans and token metrics. |
 | NFR-MAINT-001 | Testability | Routing, retrieval, orchestration, and skills accept injected clients and deterministic fakes. |
 | NFR-MAINT-002 | Configuration | Thresholds, models, prompts, limits, and source rules are typed settings, not scattered constants. |
 | NFR-DATA-001 | Retention | Raw message retention is configurable; aggregate metrics remain after redaction. |

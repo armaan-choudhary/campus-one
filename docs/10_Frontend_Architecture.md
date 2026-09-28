@@ -82,6 +82,7 @@ frontend/
 ### 1. `AuthContext.tsx`
 - Manages user authentication state, access tokens, and user role (`'student' | 'admin'`).
 - Handles automatic session initialization and JWT persistence in `localStorage` (`campusone_access_token`, `campusone_active_role`).
+- Supports both credential authentication (`/auth/login`) and self-service student registration (`/auth/register`).
 - Enforces role checks (`hasRole('admin')`).
 
 ### 2. `TicketContext.tsx`
@@ -92,9 +93,10 @@ frontend/
   - `claimTicket(ticketId, adminName)`: Transitions ticket from `pending` to `in_progress`.
   - `resolveTicket(ticketId, note)`: Transitions ticket to `resolved` and timestamps resolution.
 
-### 3. `useChat.ts`
+### 3. `useChat.ts` & `lib/api.ts`
 - Drives the conversational turn state machine.
 - Communicates directly with FastAPI backend via `POST /api/v1/chat`.
+- Supports conversational restoration on session initialization via `GET /api/v1/chat/history`, rehydrating previously saved message turns from LangGraph's PostgreSQL checkpoint store.
 - Manages multi-stage thinking indicator (`Detecting intent` &rarr; `Querying pgvector MMR` &rarr; `Synthesizing verified response`).
 - Parses grounded citations, checklist items, and handoff tickets.
 
