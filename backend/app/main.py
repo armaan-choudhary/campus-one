@@ -1,4 +1,5 @@
 """CampusOne FastAPI Application Entrypoint."""
+from contextlib import asynccontextmanager
 from typing import Dict, Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -9,11 +10,26 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import settings
 from app.api.v1 import api_router
 
+try:
+    from backend.graph import close_graph, initialize_graph
+except ModuleNotFoundError:
+    from graph import close_graph, initialize_graph
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    initialize_graph(settings.DATABASE_URL)
+    try:
+        yield
+    finally:
+        close_graph()
+
 app = FastAPI(
     title=settings.APP_NAME,
     version="0.1.0",
     description="CampusOne — Multi-agent campus orchestration and conversational service.",
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 # CORS configuration

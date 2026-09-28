@@ -1,6 +1,8 @@
 """LangGraph construction and shared graph lifecycle."""
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, START, StateGraph
+from psycopg_pool import ConnectionPool
 
 try:
     from backend.graph_state import AssistantState
@@ -37,10 +39,15 @@ except ModuleNotFoundError:
 
 
 _graph = None
+_checkpointer = None
+_connection_pool = None
 
 
-def build_graph():
-    """Build the assistant graph with in-process conversational checkpoints."""
+def build_graph(checkpointer=None):
+    """Build the assistant graph with the supplied conversational checkpointer."""
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+
     builder = StateGraph(AssistantState)
     builder.add_node("router", router)
     builder.add_node("create_ticket", create_ticket)
@@ -83,14 +90,40 @@ def build_graph():
             "finish": END,
         },
     )
+    return builder.compile(checkpointer=checkpointer)
 
 
-    return builder.compile(checkpointer=MemorySaver())
+def initialize_graph(database_url: str) -> None:
+    """Initialize the shared graph and durable PostgreSQL checkpoint store."""
+    global _connection_pool, _checkpointer, _graph
+
+    if _graph is not None:
+        return
+
+    conn_string = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+    _connection_pool = ConnectionPool(
+        conninfo=conn_string,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+        open=True,
+    )
+    _checkpointer = PostgresSaver(_connection_pool)
+    _checkpointer.setup()
+    _graph = build_graph(_checkpointer)
+
+
+def close_graph() -> None:
+    """Close the shared database pool during application shutdown."""
+    global _connection_pool, _checkpointer, _graph
+
+    if _connection_pool is not None:
+        _connection_pool.close()
+    _connection_pool = None
+    _checkpointer = None
+    _graph = None
 
 
 def get_graph():
-    """Return the shared graph so thread memory survives between API requests."""
-    global _graph
+    """Return the initialized shared graph."""
     if _graph is None:
-        _graph = build_graph()
+        raise RuntimeError("Graph has not been initialized")
     return _graph

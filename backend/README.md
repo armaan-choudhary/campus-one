@@ -14,7 +14,7 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Conversation-Based Escalation:** Detects unresolved follow-ups or explicit escalation requests and routes them to internal ticket creation without directly contacting a department.
 - **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and returns the ticket confirmation to the user.
 - **Synthesized Final Output:** Condenses domain agent responses into concise, student-friendly answers with actionable numbered steps.
-- **Authenticated Conversations:** Uses the access-token JWT ID (`jti`) as a unique LangGraph thread ID for each login session.
+- **Authenticated Conversations:** Uses the authenticated user's ID as the LangGraph thread ID so conversations reload across logins.
 - **FastAPI Chat API:** Exposes authenticated conversations through `POST /api/v1/chat`.
 - **Streamlit Debug Console:** Provides a developer-only local UI for smoke-testing login, routing, confidence, ticket creation, source metadata, and the exact retrieved chunks passed to domain agents. The dedicated `frontend/` application is the user-facing client.
 
@@ -179,7 +179,7 @@ curl -X POST http://localhost:8000/api/v1/chat \
       -d '{"message":"My Wi-Fi is not working"}'
 ```
 
-The server derives the LangGraph `thread_id` from the authenticated access token's unique JWT `jti`. Reusing the same access token continues the same conversation; a new login creates a separate conversation thread. Clients do not provide or override the thread ID.
+The server derives the LangGraph `thread_id` from the authenticated user's stable ID. Reusing the same account continues the same conversation across access-token rotation and new logins. Clients do not provide or override the thread ID. `GET /api/v1/chat/history` returns the latest persisted messages for that account.
 
 The response includes routing and grounding inspection data:
 
@@ -209,8 +209,10 @@ The response includes routing and grounding inspection data:
 When escalation is triggered, `ticket_id` and `ticket` are populated. The
 ticket contains the structured summary generated from the conversation,
 department, priority, escalation reason, and conversation history. The current
-ticket store is process-local through `MemorySaver`; production deployments
-should replace it with durable database storage.
+conversation checkpoints are persisted in PostgreSQL through LangGraph's
+`PostgresSaver`, so conversation state survives process restarts and multiple
+API workers. Ticket records remain process-local until a durable ticket store
+is added.
 
 ---
 

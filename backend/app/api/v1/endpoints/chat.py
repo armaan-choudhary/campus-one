@@ -39,6 +39,43 @@ class ChatResponse(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatHistoryResponse(BaseModel):
+    thread_id: str
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+@router.get(
+    "/history",
+    response_model=ChatHistoryResponse,
+    summary="Load conversation history",
+    description="Load the authenticated user's latest persisted conversation state.",
+)
+async def chat_history(
+    current_user: CurrentUser = Depends(require_permission("messages:create")),
+) -> ChatHistoryResponse:
+    thread_id = current_user.id
+
+    try:
+        snapshot = await run_in_threadpool(
+            get_graph().get_state,
+            {"configurable": {"thread_id": thread_id}},
+        )
+    except Exception as exc:
+        logger.exception("Conversation history failed for thread %s", thread_id)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "conversation_unavailable",
+                "message": f"The conversation history could not be loaded: {exc}",
+            },
+        ) from exc
+
+    return ChatHistoryResponse(
+        thread_id=thread_id,
+        messages=(snapshot.values or {}).get("messages", []),
+    )
+
+
 @router.post(
     "",
     response_model=ChatResponse,
@@ -50,16 +87,7 @@ async def chat(
     current_user: CurrentUser = Depends(require_permission("messages:create")),
 ) -> ChatResponse:
     graph = get_graph()
-    if not current_user.session_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "session_missing",
-                "message": "The authenticated session has no conversation identity.",
-            },
-        )
-
-    thread_id = current_user.session_id
+    thread_id = current_user.id
 
     try:
         result = await run_in_threadpool(

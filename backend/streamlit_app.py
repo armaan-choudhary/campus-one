@@ -25,8 +25,24 @@ def api_request(method: str, path: str, **kwargs: Any) -> httpx.Response:
 
 
 def reset_session() -> None:
-    for key in ("access_token", "user", "messages", "thread_id"):
+    for key in ("access_token", "user", "messages", "thread_id", "last_routing"):
         st.session_state.pop(key, None)
+
+
+def load_conversation(token: str) -> list[dict[str, Any]]:
+    response = api_request(
+        "GET",
+        "/api/v1/chat/history",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    if response.is_success:
+        payload = response.json()
+        st.session_state.thread_id = payload.get("thread_id")
+        return payload.get("messages", [])
+
+    detail = response.json().get("message", response.text)
+    st.warning(f"Previous conversation could not be loaded: {detail}")
+    return []
 
 
 def login_panel() -> None:
@@ -49,7 +65,8 @@ def login_panel() -> None:
                 payload = response.json()
                 st.session_state.access_token = payload["access_token"]
                 st.session_state.user = payload["user"]
-                st.session_state.messages = []
+                st.session_state.messages = load_conversation(payload["access_token"])
+                st.session_state.last_routing = None
                 st.rerun()
             else:
                 detail = response.json().get("message", response.text)

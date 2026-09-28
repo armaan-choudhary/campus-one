@@ -37,7 +37,13 @@ python index_documents.py
 # 5. Optional: Run test & evaluation notebook
 jupyter notebook test.ipynb
 
-# 6. Start Frontend Development Server
+# 6. Start the FastAPI backend
+PYTHONPATH=. uvicorn app.main:app --reload --port 8000
+
+# 7. Optional: Start the Streamlit test console
+streamlit run streamlit_app.py
+
+# 8. Start Frontend Development Server
 cd ../frontend
 npm install
 npm run dev # Runs on http://localhost:3000
@@ -83,7 +89,7 @@ Startup validates required values and fails with a safe configuration error if `
 ## 4. Database and vector setup
 
 1. Provision PostgreSQL 16 with pgvector.
-2. Run migrations in a release step, not on every web request.
+2. LangGraph's `PostgresSaver.setup()` creates or upgrades checkpoint tables during FastAPI startup; run one backend startup against the target database before serving traffic.
 3. Create HNSW and GIN indexes after initial fixture load or concurrently for large data.
 4. Seed domain skills and demo users in local/staging only.
 5. Run a retrieval smoke test after each knowledge publish.
@@ -155,11 +161,10 @@ Main branch pipeline:
 
 1. build immutable backend/frontend images;
 2. push registry artifacts;
-3. run migration as a controlled release job;
-4. deploy web and worker;
-5. wait for readiness;
-6. run smoke chat, citation, and handoff checks;
-7. publish deployment metadata (commit, dataset, knowledge versions).
+3. deploy the web process, allowing `PostgresSaver.setup()` to initialize checkpoint tables;
+4. deploy workers and wait for readiness;
+5. run smoke chat, history reload, citation, and handoff checks;
+6. publish deployment metadata (commit, dataset, knowledge versions).
 
 Rollback deploy artifacts without rolling back database migrations unless a reviewed reversible migration plan exists. Knowledge versions are independently reversible through archive/supersede operations.
 

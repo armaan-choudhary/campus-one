@@ -71,6 +71,39 @@ POST /api/v1/auth/login
 
 ## 4. Conversation endpoints
 
+### `POST /chat`
+
+**Auth:** authenticated users with `messages:create`. **Request:** `{ "message": "..." }`; message length is 1–4,000 characters. The backend derives the LangGraph `thread_id` from the authenticated user's stable ID; clients do not provide or override it. **Response 200:** the assistant answer, thread ID, routing metadata, citations, retrieved chunks, and any ticket details. **Errors:** `401`, `403`, `502` when the assistant or checkpoint store is unavailable.
+
+```json
+{
+  "answer": "...",
+  "thread_id": "u-student-01",
+  "detected_domains": ["IT"],
+  "routing_confidence": 0.94,
+  "sources": ["wifi-guide.pdf, page 2"],
+  "retrieved_chunks": []
+}
+```
+
+### `GET /chat/history`
+
+**Auth:** authenticated users with `messages:create`. Returns the latest persisted LangGraph messages for the authenticated user's stable thread. A new access token or login for the same account loads the same conversation.
+
+**Response 200:**
+
+```json
+{
+  "thread_id": "u-student-01",
+  "messages": [
+    {"role": "user", "content": "How do I reset my password?"},
+    {"role": "assistant", "content": "..."}
+  ]
+}
+```
+
+**Errors:** `401`, `403`, `502` when the checkpoint store is unavailable.
+
 ### `POST /conversations`
 
 **Auth:** student/staff. **Request:** `{ "title": "optional", "client_metadata": {} }`; title max 160 and metadata must not contain secrets. **Response 201:** `{ "conversation_id", "status":"open", "resolution_state":"open", "created_at" }`. **Errors:** `401`, `422 invalid_metadata`, `429`. **Example request/response:**
