@@ -1,5 +1,7 @@
 """CampusOne FastAPI Application Entrypoint."""
 from contextlib import asynccontextmanager
+import logging
+import os
 from typing import Dict, Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -10,14 +12,35 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import settings
 from app.api.v1 import api_router
 
+logger = logging.getLogger(__name__)
+
 try:
     from backend.graph import close_graph, initialize_graph
 except ModuleNotFoundError:
     from graph import close_graph, initialize_graph
 
 
+def configure_langsmith() -> None:
+    """Enable LangSmith tracing when explicitly configured with an API key."""
+    if not settings.LANGSMITH_TRACING:
+        return
+    if not settings.LANGSMITH_API_KEY:
+        logger.warning("LANGSMITH_TRACING is enabled but LANGSMITH_API_KEY is missing")
+        return
+
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY
+    os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
+    os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+    os.environ["LANGCHAIN_PROJECT"] = settings.LANGSMITH_PROJECT
+    os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+    os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_langsmith()
     initialize_graph(settings.DATABASE_URL)
     try:
         yield

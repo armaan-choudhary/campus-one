@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.schemas import (
     LoginRequest,
+    RegisterRequest,
     TokenResponse,
     RefreshTokenRequest,
     UserMeResponse,
@@ -41,6 +42,36 @@ async def login(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail={"error": "auth_provider_unavailable", "message": "Unsupported provider flow"},
     )
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register Student Account",
+    description="Create a self-service student account using the mock authentication provider.",
+)
+async def register(
+    request: RegisterRequest,
+    provider: AuthProvider = Depends(get_auth_provider),
+) -> TokenResponse:
+    if not isinstance(provider, MockAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "auth_provider_unavailable", "message": "Self-service registration is unavailable"},
+        )
+
+    user = await provider.register_student(
+        request.email,
+        request.password,
+        request.display_name,
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "email_already_registered", "message": "An account already exists for this email"},
+        )
+    return await provider.issue_tokens(user)
 
 
 @router.post(

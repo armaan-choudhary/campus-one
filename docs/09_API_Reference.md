@@ -42,7 +42,7 @@ interface HandoffSummary { handoff_id: string; status: string; recommended_depar
 
 ### `POST /auth/login`
 
-**Auth:** public in mock mode; disabled in OIDC mode.
+**Auth:** public in mock mode; disabled in OIDC mode. Mock-mode accounts are read from PostgreSQL.
 
 **Request:** `{ "email": "student@example.edu", "password": "demo-password" }`. Email max 254 chars; password max 128; no logging.
 
@@ -59,6 +59,23 @@ POST /api/v1/auth/login
 
 ```json
 {"access_token":"ey...","refresh_token":"rt_...","token_type":"bearer","expires_in":3600,"user":{"id":"u1","email":"student@example.edu","role":"student"}}
+```
+
+### `POST /auth/register`
+
+**Auth:** public in mock mode; unavailable in OIDC mode. Creates a student account in PostgreSQL and returns an access/refresh token pair, so the user is signed in immediately.
+
+**Request:** `{ "email": "new.student@example.edu", "password": "at-least-8-characters", "display_name": "New Student" }`. Email max 254 characters; password 8–128 characters; display name 1–120 characters. Passwords are stored as PBKDF2-HMAC-SHA256 hashes and are never logged or stored in plain text.
+
+**Response 201:** same token response shape as `POST /auth/login`, with `user.role` set to `student`.
+
+**Errors:** `409 email_already_registered`, `422` invalid request, `503 auth_provider_unavailable`.
+
+**Example:**
+
+```http
+POST /api/v1/auth/register
+{"email":"new.student@example.edu","password":"at-least-8-characters","display_name":"New Student"}
 ```
 
 ### `POST /auth/refresh`

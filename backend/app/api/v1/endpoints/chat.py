@@ -93,7 +93,15 @@ async def chat(
         result = await run_in_threadpool(
             graph.invoke,
             {"current_query": request.message},
-            config={"configurable": {"thread_id": thread_id}},
+            config={
+                "configurable": {"thread_id": thread_id},
+                "run_name": "campus-one-chat",
+                "tags": ["campus-one", "chat", current_user.role.value],
+                "metadata": {
+                    "user_id": current_user.id,
+                    "role": current_user.role.value,
+                },
+            },
         )
     except Exception as exc:
         logger.exception("Assistant execution failed for thread %s on query %r", thread_id, request.message)

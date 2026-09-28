@@ -30,6 +30,10 @@ pip install -r requirements.txt
 # POSTGRES_DB=campus_one
 # POSTGRES_USER=campus_one
 # POSTGRES_PASSWORD=your_password
+# LANGSMITH_TRACING=false
+# LANGSMITH_API_KEY=your_langsmith_api_key_here
+# LANGSMITH_PROJECT=campus-one
+# LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 
 # 4. Ingest and index department PDFs (IT, HR, Finance, Facilities)
 python index_documents.py
@@ -83,6 +87,10 @@ Required backend values (in `backend/.env`):
 - `POSTGRES_DB`: Default database name (`campus_one`).
 - `POSTGRES_USER`: Database username (`campus_one`).
 - `POSTGRES_PASSWORD`: Database password.
+- `LANGSMITH_TRACING`: Optional tracing switch; set to `true` to send graph and LLM runs to LangSmith.
+- `LANGSMITH_API_KEY`: LangSmith API key, required when tracing is enabled.
+- `LANGSMITH_PROJECT`: LangSmith project name; defaults to `campus-one`.
+- `LANGSMITH_ENDPOINT`: LangSmith API endpoint; defaults to `https://api.smith.langchain.com`.
 
 Startup validates required values and fails with a safe configuration error if `DATABASE_URL` or `GROQ_API_KEY` is missing.
 

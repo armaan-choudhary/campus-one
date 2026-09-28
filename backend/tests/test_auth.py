@@ -81,6 +81,39 @@ async def test_login_unknown_user(client: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_register_student_account_and_duplicate_email(client: AsyncClient):
+    """New student accounts can authenticate and cannot reuse an email."""
+    registration = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "new.student@example.edu",
+            "password": "new-password",
+            "display_name": "New Student",
+        },
+    )
+    assert registration.status_code == 201
+    assert registration.json()["user"]["role"] == "student"
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "new.student@example.edu", "password": "new-password"},
+    )
+    assert login.status_code == 200
+    assert login.json()["user"]["display_name"] == "New Student"
+
+    duplicate = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "new.student@example.edu",
+            "password": "another-password",
+            "display_name": "Another Student",
+        },
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"] == "email_already_registered"
+
+
+@pytest.mark.anyio
 async def test_get_me_success_and_unauthorized(client: AsyncClient):
     """Test /auth/me with valid and invalid tokens."""
     # 1. Login to get token

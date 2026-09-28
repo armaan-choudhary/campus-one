@@ -2,7 +2,9 @@
 import hashlib
 import hmac
 import secrets
+from uuid import uuid4
 from typing import Optional, Protocol, Dict, Set, runtime_checkable
+import asyncpg
 import jwt
 
 from app.core.config import settings
@@ -104,7 +106,7 @@ class AuthProvider(Protocol):
 
 
 class MockAuthProvider:
-    """In-memory mock identity provider with seeded accounts and signed HMAC JWTs."""
+    """Mock identity provider with PostgreSQL-backed accounts and signed HMAC JWTs."""
 
     def __init__(self) -> None:
         # Track valid active refresh tokens for rotation & revocation
@@ -180,34 +182,117 @@ class MockAuthProvider:
             },
         }
 
-        # Index users by ID
-        self._users_by_id: Dict[str, dict] = {
-            u["id"]: u for u in self._users_by_email.values()
-        }
+        self._database_url = settings.DATABASE_URL.replace(
+            "postgresql+psycopg://", "postgresql://", 1
+        )
+        self._pool: asyncpg.Pool | None = None
 
-    def _user_to_current_user(self, raw_user: dict) -> CurrentUser:
-        role = raw_user["role"]
-        permissions = ROLE_PERMISSIONS.get(role, [])
+    async def _get_pool(self) -> asyncpg.Pool:
+        if self._pool is None:
+            self._pool = await asyncpg.create_pool(
+                self._database_url, min_size=1, max_size=5
+            )
+        return self._pool
+
+    async def _ensure_schema(self, connection: asyncpg.Connection) -> None:
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS campus_users (
+                email VARCHAR(254) PRIMARY KEY,
+                id VARCHAR(128) NOT NULL,
+                external_subject VARCHAR(255) NOT NULL,
+                display_name VARCHAR(120),
+                role VARCHAR(32) NOT NULL,
+                department VARCHAR(255),
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        for user in self._users_by_email.values():
+            await connection.execute(
+                """
+                INSERT INTO campus_users
+                    (email, id, external_subject, display_name, role, department, password_hash)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (email) DO NOTHING
+                """,
+                user["email"],
+                user["id"],
+                user["external_subject"],
+                user.get("display_name"),
+                user["role"].value,
+                user.get("department"),
+                user["password_hash"],
+            )
+
+    @staticmethod
+    def _row_to_current_user(row: asyncpg.Record) -> CurrentUser:
+        role = Role(row["role"])
         return CurrentUser(
-            id=raw_user["id"],
-            external_subject=raw_user["external_subject"],
-            email=raw_user["email"],
+            id=row["id"],
+            external_subject=row["external_subject"],
+            email=row["email"],
             role=role,
-            department=raw_user.get("department"),
-            display_name=raw_user.get("display_name"),
-            permissions=permissions,
+            department=row["department"],
+            display_name=row["display_name"],
+            permissions=ROLE_PERMISSIONS.get(role, []),
         )
 
     async def authenticate(self, email: str, password: str) -> Optional[CurrentUser]:
         clean_email = email.strip().lower()
-        user_record = self._users_by_email.get(clean_email)
-        if not user_record:
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            await self._ensure_schema(connection)
+            user_record = await connection.fetchrow(
+                "SELECT * FROM campus_users WHERE email = $1", clean_email
+            )
+        if not user_record or not _verify_password(password, user_record["password_hash"]):
             return None
+        return self._row_to_current_user(user_record)
 
-        if not _verify_password(password, user_record["password_hash"]):
-            return None
-
-        return self._user_to_current_user(user_record)
+    async def register_student(
+        self, email: str, password: str, display_name: str
+    ) -> Optional[CurrentUser]:
+        clean_email = email.strip().lower()
+        user_record = {
+            "id": f"u-student-{uuid4().hex[:12]}",
+            "external_subject": f"mock-sub-{uuid4().hex}",
+            "email": clean_email,
+            "display_name": display_name.strip(),
+            "role": Role.STUDENT,
+            "department": "Undergraduate College",
+            "password_hash": _hash_password(password),
+        }
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            await self._ensure_schema(connection)
+            try:
+                await connection.execute(
+                    """
+                    INSERT INTO campus_users
+                        (email, id, external_subject, display_name, role, department, password_hash)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
+                    clean_email,
+                    user_record["id"],
+                    user_record["external_subject"],
+                    user_record["display_name"],
+                    user_record["role"].value,
+                    user_record["department"],
+                    user_record["password_hash"],
+                )
+            except asyncpg.UniqueViolationError:
+                return None
+        return CurrentUser(
+            id=user_record["id"],
+            external_subject=user_record["external_subject"],
+            email=clean_email,
+            role=Role.STUDENT,
+            department=user_record["department"],
+            display_name=user_record["display_name"],
+            permissions=ROLE_PERMISSIONS[Role.STUDENT],
+        )
 
     async def verify_token(self, token: str, token_type: str = "access") -> Optional[CurrentUser]:
         try:
@@ -217,10 +302,10 @@ class MockAuthProvider:
             user_id = payload.get("sub")
             if not user_id:
                 return None
-            user_record = self._users_by_id.get(user_id)
-            if not user_record:
+            user = await self.get_user(user_id)
+            if not user:
                 return None
-            return self._user_to_current_user(user_record).model_copy(
+            return user.model_copy(
                 update={"session_id": payload.get("jti")}
             )
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
@@ -270,10 +355,13 @@ class MockAuthProvider:
         return await self.issue_tokens(user)
 
     async def get_user(self, user_id: str) -> Optional[CurrentUser]:
-        user_record = self._users_by_id.get(user_id)
-        if not user_record:
-            return None
-        return self._user_to_current_user(user_record)
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            await self._ensure_schema(connection)
+            user_record = await connection.fetchrow(
+                "SELECT * FROM campus_users WHERE id = $1", user_id
+            )
+        return self._row_to_current_user(user_record) if user_record else None
 
     async def revoke_refresh_token(self, refresh_token: str) -> bool:
         if refresh_token in self._active_refresh_tokens:

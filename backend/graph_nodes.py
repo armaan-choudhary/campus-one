@@ -413,7 +413,7 @@ Conversation:
 {conversation}
 
 Detected department:
-{state.get("detected_domains", ["General"])[0]}
+{(state.get("detected_domains") or ["General"])[0]}
 """
         ticket_summary = _get_ticket_llm().invoke(prompt)
 

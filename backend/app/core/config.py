@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # Database & Vector DB (for future integration)
     DATABASE_URL: str = "postgresql+psycopg://campus_one:campus_one_secret@localhost:5432/campus_one"
 
+    # Optional LangSmith observability
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_API_KEY: str | None = None
+    LANGSMITH_PROJECT: str = "campus-one"
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+
     @model_validator(mode="after")
     def validate_production_guards(self) -> "Settings":
         """ADR-007 Mitigation: Application startup raises a fatal error if

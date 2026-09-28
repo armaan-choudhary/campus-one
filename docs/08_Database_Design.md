@@ -37,6 +37,23 @@ erDiagram
 
 ## 4. Table definitions
 
+### `campus_users` (current local authentication implementation)
+
+The local mock authentication provider persists seeded demo accounts and self-service student accounts in PostgreSQL. The table is created automatically on the first authentication request. Production OIDC deployments should use the university identity provider rather than local password registration.
+
+| Column | Type | Rules |
+|---|---|---|
+| `email` | varchar(254) | primary key, normalized lowercase |
+| `id` | varchar(128) | not null, stable application user ID |
+| `external_subject` | varchar(255) | not null |
+| `display_name` | varchar(120) | nullable |
+| `role` | varchar(32) | not null; student/staff/support_agent/knowledge_admin/analyst/admin |
+| `department` | varchar(255) | nullable |
+| `password_hash` | text | not null; PBKDF2-HMAC-SHA256 hash with per-user salt |
+| `created_at` | timestamptz | not null default `now()` |
+
+Registration is restricted to the `student` role. Duplicate emails are rejected with `409 email_already_registered`. This implementation table is the current local-auth bridge; the normalized UUID-based `users` model below remains the target production design.
+
 ### `users`
 
 | Column | Type | Rules |

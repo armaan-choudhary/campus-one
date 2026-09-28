@@ -49,30 +49,51 @@ def login_panel() -> None:
     st.title("CampusOne Test Console")
     st.caption("Authentication and routing smoke test")
 
-    with st.form("login"):
-        email = st.text_input("Email", value="student@example.edu")
-        password = st.text_input("Password", value="demo-password", type="password")
-        submitted = st.form_submit_button("Sign in", type="primary")
+    sign_in, sign_up = st.tabs(["Sign in", "Create account"])
+    with sign_in:
+        with st.form("login"):
+            email = st.text_input("Email", value="student@example.edu")
+            password = st.text_input("Password", value="demo-password", type="password")
+            submitted = st.form_submit_button("Sign in", type="primary")
 
-    if submitted:
-        try:
-            response = api_request(
-                "POST",
-                "/api/v1/auth/login",
-                json={"email": email, "password": password},
-            )
-            if response.is_success:
-                payload = response.json()
-                st.session_state.access_token = payload["access_token"]
-                st.session_state.user = payload["user"]
-                st.session_state.messages = load_conversation(payload["access_token"])
-                st.session_state.last_routing = None
-                st.rerun()
+        if submitted:
+            authenticate_user("/api/v1/auth/login", {"email": email, "password": password})
+
+    with sign_up:
+        with st.form("signup"):
+            display_name = st.text_input("Name")
+            email = st.text_input("Campus email")
+            password = st.text_input("Password", type="password")
+            confirm_password = st.text_input("Confirm password", type="password")
+            submitted = st.form_submit_button("Create student account", type="primary")
+
+        if submitted:
+            if password != confirm_password:
+                st.error("Passwords do not match.")
+            elif not display_name.strip():
+                st.error("Enter your name.")
             else:
-                detail = response.json().get("message", response.text)
-                st.error(f"Login failed: {detail}")
-        except httpx.HTTPError as exc:
-            st.error(f"API unavailable: {exc}")
+                authenticate_user(
+                    "/api/v1/auth/register",
+                    {"display_name": display_name, "email": email, "password": password},
+                )
+
+
+def authenticate_user(path: str, payload: dict[str, str]) -> None:
+    try:
+        response = api_request("POST", path, json=payload)
+        if response.is_success:
+            auth_payload = response.json()
+            st.session_state.access_token = auth_payload["access_token"]
+            st.session_state.user = auth_payload["user"]
+            st.session_state.messages = load_conversation(auth_payload["access_token"])
+            st.session_state.last_routing = None
+            st.rerun()
+        else:
+            detail = response.json().get("message", response.text)
+            st.error(f"{'Signup' if path.endswith('register') else 'Login'} failed: {detail}")
+    except httpx.HTTPError as exc:
+        st.error(f"API unavailable: {exc}")
 
 
 def chat_panel() -> None:

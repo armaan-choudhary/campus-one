@@ -106,7 +106,15 @@ DATABASE_URL=postgresql+psycopg://campus_one:campus_one_secret@localhost:5432/ca
 POSTGRES_DB=campus_one
 POSTGRES_USER=campus_one
 POSTGRES_PASSWORD=campus_one_secret
+# Optional observability
+LANGSMITH_TRACING=false
+LANGSMITH_API_KEY=your_langsmith_api_key_here
+LANGSMITH_PROJECT=campus-one
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 ```
+
+Set `LANGSMITH_TRACING=true` and provide a LangSmith API key to trace graph
+nodes and LLM calls. Tracing is disabled by default.
 
 ### 3. Create Python Virtual Environment
 ```bash
