@@ -10,7 +10,6 @@ import { AdminTicketPanel } from '@/components/AdminTicketPanel';
 import { AdminAnalyticsPanel } from '@/components/AdminAnalyticsPanel';
 import { CampusLoader } from '@/components/ui/CampusLoader';
 import { CampusOneMark } from '@/components/home/CampusOneMark';
-import { OrangeTicks } from '@/components/home/HandwrittenElements';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -18,10 +17,10 @@ import {
   Moon,
   LogOut,
   ExternalLink,
-  KeyRound,
   ArrowLeft,
-  Activity,
   Inbox,
+  Activity,
+  ArrowRight,
 } from 'lucide-react';
 
 interface AdminNavProps {
@@ -37,7 +36,6 @@ function AdminNav({ currentTheme, onToggleTheme, activeTab, onSelectTab }: Admin
   const router = useRouter();
 
   const pendingCount = tickets.filter((t) => t.status === 'pending').length;
-  const inProgressCount = tickets.filter((t) => t.status === 'in_progress').length;
 
   const handleLogout = () => {
     logout();
@@ -45,102 +43,112 @@ function AdminNav({ currentTheme, onToggleTheme, activeTab, onSelectTab }: Admin
   };
 
   return (
-    <header className="h-14 bg-[#0E0E0E]/95 backdrop-blur-md px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 border-b border-[#1C1C1F] text-white transition-colors">
-      {/* Brand & Admin Badge */}
+    <header className="h-14 bg-[#0B0B0B] px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 border-b border-[#292929] text-[#F5F3ED] transition-colors select-none">
+      {/* Brand & Badge matching TopNav */}
       <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 group py-1 cursor-pointer">
-          <div className="w-5 h-5 flex items-center justify-center text-white transition-transform group-hover:scale-105">
-            <CampusOneMark size={18} />
+        <Link
+          href="/"
+          className="flex items-center gap-2 group py-1 cursor-pointer"
+          title="Return to CampusOne Homepage"
+        >
+          <div className="w-4.5 h-4.5 flex items-center justify-center text-[#F5F3ED] transition-transform group-hover:scale-105">
+            <CampusOneMark size={16} />
           </div>
-          <span className="font-sans font-bold text-base tracking-tight text-white group-hover:text-zinc-200 transition-colors">
+          <span className="font-serif font-bold text-base sm:text-lg tracking-tight text-[#F5F3ED]">
             CampusOne
           </span>
+          <span className="text-[#292929] text-xs font-mono hidden sm:inline">/</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-[#8D8A83] hidden sm:inline">
+            Staff &amp; Admin
+          </span>
         </Link>
-
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1C1E26] border border-[#3F4350] text-xs font-mono font-medium">
-          <span className="w-0.5 h-2.5 bg-[#38BDF8] rounded-full inline-block" />
-          <span>Admin Console</span>
-        </div>
       </div>
 
-      {/* Center Navigation Switcher */}
-      <div className="flex items-center p-1 rounded-xl bg-[#14151B] border border-[#23242A]">
+      {/* Center Navigation Switcher matching TopNav style */}
+      <nav className="hidden sm:flex items-center gap-7 text-xs font-mono ml-4">
         <button
           onClick={() => onSelectTab('tickets')}
-          className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+          className={`relative py-1 transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'tickets'
-              ? 'bg-[#22242D] text-white shadow-xs border border-[#3A3D4A]'
-              : 'text-[#8E8F94] hover:text-white hover:bg-[#1A1C22]'
+              ? 'text-[#F5F3ED] font-semibold'
+              : 'text-[#8D8A83] hover:text-[#F5F3ED]'
           }`}
         >
-          <Inbox className="w-3.5 h-3.5 text-amber-400" />
           <span>Ticket Triage</span>
           {pendingCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-400/10 text-amber-400 border border-amber-400/20">
-              {pendingCount}
+            <span className="text-[10px] text-[#FF7A00] font-mono font-bold">
+              [{pendingCount}]
             </span>
+          )}
+          {activeTab === 'tickets' && (
+            <span className="absolute -bottom-4 left-0 right-0 h-0.5 bg-[#FF7A00]" />
           )}
         </button>
 
         <button
           onClick={() => onSelectTab('analytics')}
-          className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+          className={`relative py-1 transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'analytics'
-              ? 'bg-[#22242D] text-white shadow-xs border border-[#3A3D4A]'
-              : 'text-[#8E8F94] hover:text-white hover:bg-[#1A1C22]'
+              ? 'text-[#F5F3ED] font-semibold'
+              : 'text-[#8D8A83] hover:text-[#F5F3ED]'
           }`}
         >
-          <Activity className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Telemetry & Analytics</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            Live
-          </span>
+          <span>Telemetry &amp; Analytics</span>
+          {activeTab === 'analytics' && (
+            <span className="absolute -bottom-4 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+          )}
         </button>
-      </div>
 
-      {/* Right Controls */}
-      <div className="flex items-center gap-2">
-        {/* Switch to Student Portal */}
         <Link
           href="/workspace"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1C1E26] hover:bg-[#272932] text-xs text-white font-medium border border-[#3F4350] transition-all cursor-pointer shadow-xs"
-          title="Open Student Portal"
+          className="relative py-1 text-[#8D8A83] hover:text-[#F5F3ED] transition-colors cursor-pointer flex items-center gap-1"
+          title="Open Student Assistant Workspace"
         >
-          <span>Student View</span>
-          <ExternalLink className="w-3 h-3 text-[#8E8F94]" />
+          <span>Student Assistant</span>
+          <ExternalLink className="w-3 h-3 text-[#8D8A83]" />
         </Link>
+      </nav>
 
+      {/* Right Controls matching TopNav */}
+      <div className="flex items-center gap-3">
         {/* Theme Toggle */}
         <button
           onClick={onToggleTheme}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#8E8F94] hover:text-white hover:bg-[#16171D] active:scale-95 transition-all cursor-pointer"
+          className="w-7 h-7 rounded flex items-center justify-center text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#151515] transition-colors cursor-pointer"
           title={`Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} mode`}
           aria-label="Toggle color theme"
         >
           {currentTheme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400" />
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 text-indigo-400" />
+            <Moon className="w-3.5 h-3.5 text-indigo-400" />
           )}
         </button>
 
-        {/* User Badge & Logout */}
-        <div className="flex items-center gap-2 pl-2 border-l border-[#23242A]">
-          <div className="w-7 h-7 rounded-full overflow-hidden bg-white border border-[#3F4350] flex items-center justify-center shrink-0 relative">
+        {/* User Identity Chip: Name + Title + Avatar */}
+        <div className="flex items-center gap-2.5 text-right pl-2 border-l border-[#292929]">
+          <div className="hidden sm:flex flex-col text-right leading-tight">
+            <span className="text-xs font-medium text-[#F5F3ED]">
+              {user?.displayName || 'System Administrator'}
+            </span>
+            <span className="text-[10px] text-[#8D8A83] font-mono">
+              Central Administration
+            </span>
+          </div>
+
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-[#292929] flex items-center justify-center shrink-0 relative">
             <Image
               src="/illustrations/wimpy/avatar-4.png"
               alt="Admin Avatar"
               fill
-              sizes="28px"
+              sizes="32px"
               className="object-contain"
             />
           </div>
-          <span className="hidden xl:inline text-xs font-mono text-zinc-300">
-            {user?.email || 'admin@example.edu'}
-          </span>
+
           <button
             onClick={handleLogout}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#8E8F94] hover:text-rose-400 hover:bg-[#1C1E26] active:scale-95 transition-all cursor-pointer"
+            className="w-7 h-7 rounded flex items-center justify-center text-[#8D8A83] hover:text-rose-400 hover:bg-[#151515] transition-colors cursor-pointer"
             title="Sign out of Admin Console"
             aria-label="Sign out"
           >
@@ -178,25 +186,29 @@ function AdminAuthBarrier() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E] flex flex-col justify-center items-center p-4 sm:p-6 text-white">
-      <div className="w-full max-w-md p-6 sm:p-8 rounded-2xl bg-[#121316] border border-[#23242A] shadow-2xl space-y-6">
-        {/* Lock Icon */}
-        <div className="w-12 h-12 rounded-xl bg-[#1C1E26] border border-[#282A33] text-amber-400 flex items-center justify-center mx-auto">
+    <div className="min-h-screen bg-[#0B0B0B] flex flex-col justify-center items-center p-4 sm:p-6 text-[#F5F3ED] relative overflow-hidden">
+      {/* Subtle ambient warm backlight */}
+      <div
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_45%_at_50%_0%,rgba(255,122,0,0.06),transparent_70%)]"
+        aria-hidden="true"
+      />
+
+      <div className="w-full max-w-md p-6 sm:p-8 rounded-2xl bg-[#121317]/90 border border-[#22232B] shadow-2xl space-y-6 relative z-10">
+        {/* Shield Icon */}
+        <div className="w-12 h-12 rounded-xl bg-[#16171E] border border-[#242531] text-[#FF7A00] flex items-center justify-center mx-auto shadow-sm">
           <ShieldAlert className="w-6 h-6" />
         </div>
 
         {/* Heading */}
         <div className="text-center space-y-1.5">
-          <div className="inline-flex items-center gap-2 font-mono text-[11px] sm:text-xs font-semibold tracking-widest text-[#8E8F94] uppercase mb-1">
-            <span className="text-[#F97316] font-bold text-sm">—</span>
-            <span>HTTP 403 • ROLE CLEARANCE</span>
-            <OrangeTicks count={2} />
+          <div className="flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-wider text-[#A1A1AA] mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#FF7A00] shadow-[0_0_8px_rgba(255,122,0,0.8)] animate-pulse" />
+            <span className="text-[#FF7A00] font-semibold">Staff Clearance Required</span>
           </div>
-          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-white tracking-tight leading-tight">
-            Staff triage <br />
-            <span className="italic font-normal">clearance required</span>.
+          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-[#F5F3ED] tracking-tight">
+            Staff Authentication Required<span className="text-[#FF7A00]">.</span>
           </h1>
-          <p className="text-xs text-[#8E8F94] leading-relaxed">
+          <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-1">
             This management console is restricted to university staff and administrators. Please authenticate with administrator credentials to manage student tickets.
           </p>
         </div>
@@ -208,9 +220,9 @@ function AdminAuthBarrier() {
         )}
 
         {/* 1-Click Fast Track for Demonstration */}
-        <div className="p-4 rounded-xl bg-[#18191E] border border-[#282A33] space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono text-[#8E8F94]">
-            <span>Demonstration Access</span>
+        <div className="p-4 rounded-xl bg-[#0E0F13] border border-[#22232B] space-y-3">
+          <div className="flex items-center justify-between text-xs font-mono text-[#8D8A83]">
+            <span>Fast-Track Clearance</span>
             <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
               1-Click
             </span>
@@ -218,57 +230,45 @@ function AdminAuthBarrier() {
           <button
             onClick={handleAdminQuickLogin}
             disabled={isLoading}
-            className="w-full py-2.5 px-4 rounded-xl bg-white text-[#0E0E0E] hover:bg-zinc-200 font-semibold text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold text-xs shadow-[0_0_12px_rgba(255,122,0,0.35)] transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 font-mono"
           >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{isLoading ? 'Authenticating...' : 'Sign in as Administrator (admin@example.edu)'}</span>
+            <ShieldCheck className="w-4 h-4 text-black" />
+            <span>{isLoading ? 'Authenticating...' : 'Sign in as Administrator'}</span>
           </button>
         </div>
 
         {/* Credentials Form */}
-        <form onSubmit={handleCustomLogin} className="space-y-3 pt-2 border-t border-[#23242A]">
-          <div className="text-xs font-mono text-[#8E8F94]">Or Sign In with Email</div>
-          <div>
-            <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
-              Admin Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.edu"
-              required
-              className="w-full px-3 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white font-mono focus:outline-hidden focus:border-[#3F4350]"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              className="w-full px-3 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white font-mono focus:outline-hidden focus:border-[#3F4350]"
-            />
-          </div>
+        <form onSubmit={handleCustomLogin} className="space-y-3 pt-2 border-t border-[#1E1E24]">
+          <div className="text-xs font-mono text-[#8D8A83]">Or Sign In with Email</div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 text-[#F5F3ED] font-mono focus:outline-hidden"
+            placeholder="admin@example.edu"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 text-[#F5F3ED] font-mono focus:outline-hidden"
+            placeholder="••••••••"
+          />
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 px-4 rounded-xl bg-[#272932] hover:bg-[#343743] text-white border border-[#3F4350] text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2 px-4 rounded-xl bg-[#F5F3ED] hover:bg-white text-black font-semibold text-xs transition-all active:scale-[0.98] cursor-pointer"
           >
-            <KeyRound className="w-3.5 h-3.5" />
-            <span>{isLoading ? 'Verifying...' : 'Sign In with Password'}</span>
+            Authenticate
           </button>
         </form>
 
-        {/* Return to Student Portal Link */}
-        <div className="pt-1 text-center">
+        <div className="text-center pt-2">
           <Link
             href="/workspace"
-            className="inline-flex items-center gap-1.5 text-xs text-[#8E8F94] hover:text-white transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-[#8D8A83] hover:text-[#F5F3ED] transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Student Workspace</span>
@@ -281,12 +281,16 @@ function AdminAuthBarrier() {
 
 function AdminConsoleContent() {
   const { role, isAuthenticated, isLoading } = useAuth();
-  const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window === 'undefined') return 'dark';
+  const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
     const saved = localStorage.getItem('campusone-theme') as 'dark' | 'light' | null;
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+    if (saved) {
+      setCurrentTheme(saved);
+    } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+      setCurrentTheme('light');
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', currentTheme === 'dark');
@@ -313,14 +317,19 @@ function AdminConsoleContent() {
   const [activeTab, setActiveTab] = useState<'tickets' | 'analytics'>('tickets');
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#0E0E0E] text-white overflow-hidden transition-colors duration-200">
+    <div className="flex flex-col h-screen w-full bg-[#0B0B0B] text-[#F5F3ED] overflow-hidden transition-colors duration-200">
       <AdminNav
         currentTheme={currentTheme}
         onToggleTheme={toggleTheme}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
       />
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0A0D] relative min-w-0 transition-all duration-200">
+        {/* Subtle ambient warm backlight matching Chat UI */}
+        <div
+          className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_45%_at_50%_0%,rgba(255,122,0,0.06),transparent_70%)]"
+          aria-hidden="true"
+        />
         {activeTab === 'tickets' ? <AdminTicketPanel /> : <AdminAnalyticsPanel />}
       </main>
     </div>
@@ -334,4 +343,3 @@ export default function AdminPage() {
     </TicketProvider>
   );
 }
-

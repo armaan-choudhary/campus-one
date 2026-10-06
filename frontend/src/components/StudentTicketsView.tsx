@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { useTickets } from '@/context/TicketContext';
 import { HandoffTicket } from '@/types';
 import {
@@ -10,6 +9,8 @@ import {
   ArrowRight,
   ShieldCheck,
   X,
+  Inbox,
+  Sparkles,
 } from 'lucide-react';
 
 interface StudentTicketsViewProps {
@@ -62,208 +63,230 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-5xl mx-auto space-y-6 w-full text-[#F5F3ED]">
-      {/* Editorial Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 pb-4 border-b border-[#292929]">
-        <div>
-          <div className="font-mono text-xs text-[#8D8A83] tracking-widest uppercase mb-1">
-            — MY TICKETS //
+    <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0A0D] relative min-w-0 transition-all duration-200 text-[#F5F3ED]">
+      {/* Subtle ambient warm backlight matching Chat UI */}
+      <div
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_45%_at_50%_0%,rgba(255,122,0,0.06),transparent_70%)]"
+        aria-hidden="true"
+      />
+
+      {/* Clean Universal Header matching Chat UI */}
+      <div className="shrink-0 px-4 sm:px-8 pt-5 pb-4 border-b border-[#1E1E24] bg-[#0A0A0D]/90 backdrop-blur-md relative z-10">
+        <div className="max-w-[840px] mx-auto flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-[#A1A1AA]">
+              <span className="w-2 h-2 rounded-full bg-[#FF7A00] shadow-[0_0_8px_rgba(255,122,0,0.8)] animate-pulse" />
+              <span className="text-[#FF7A00] font-semibold">Incident Triage</span>
+            </div>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#F5F3ED] tracking-tight mt-1.5">
+              Escalation Case Index<span className="text-[#FF7A00]">.</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-[#8D8A83] mt-1 font-sans">
+              Formal inquiries dispatched to campus administration and specialist units.
+            </p>
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-medium tracking-tight text-[#F5F3ED]">
-            Escalation Case Index
-          </h1>
-          <p className="text-xs sm:text-sm text-[#8D8A83] mt-1 font-sans">
-            Formal inquiries dispatched to campus administration and specialist units.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowNewTicketModal(true)}
-            className="flex items-center gap-1.5 text-xs font-mono px-3.5 py-1.5 rounded-md bg-[#151515] hover:bg-[#1A1A1A] text-[#F5F3ED] border border-[#292929] hover:border-[#FF7A00] transition-colors cursor-pointer"
-          >
-            <span>+ New Inquiry</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNewTicketModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-[#A1A1AA] hover:text-[#FF7A00] hover:bg-[#FF7A00]/5 border border-[#242531] hover:border-[#FF7A00]/40 transition-all cursor-pointer"
+            >
+              <span>+ New Inquiry</span>
+            </button>
 
-          <button
-            onClick={onGoToChat}
-            className="flex items-center gap-1.5 text-xs font-mono px-3.5 py-1.5 rounded-md bg-[#F5F3ED] text-black hover:bg-white transition-colors cursor-pointer font-medium"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Assistant</span>
-          </button>
+            <button
+              onClick={onGoToChat}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(255,122,0,0.35)]"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-black" />
+              <span>Assistant</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tabs and Search Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Simple Editorial Text Tabs */}
-        <div className="flex items-center gap-6 border-b sm:border-b-0 border-[#292929] pb-2 sm:pb-0">
-          <button
-            onClick={() => setActiveTab('ongoing')}
-            className={`flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
-              activeTab === 'ongoing'
-                ? 'text-[#FF7A00] border-b-2 border-[#FF7A00] font-semibold'
-                : 'text-[#8D8A83] hover:text-[#F5F3ED]'
-            }`}
-          >
-            <span>Open Cases</span>
-            <span className="text-[10px] text-[#8D8A83]">[{ongoingCount}]</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('resolved')}
-            className={`flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
-              activeTab === 'resolved'
-                ? 'text-[#FF7A00] border-b-2 border-[#FF7A00] font-semibold'
-                : 'text-[#8D8A83] hover:text-[#F5F3ED]'
-            }`}
-          >
-            <span>Resolved</span>
-            <span className="text-[10px] text-[#8D8A83]">[{resolvedCount}]</span>
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8D8A83] pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search index by ID or keyword..."
-            className="w-full bg-[#111111] border border-[#292929] focus:border-[#FF7A00] rounded-md pl-9 pr-3.5 py-1.5 text-xs text-[#F5F3ED] placeholder:text-[#8D8A83] focus:outline-none transition-colors font-mono"
-          />
-        </div>
-      </div>
-
-      {/* Ticket List as Editorial Case Index */}
-      <div className="border border-[#292929] rounded-lg bg-[#111111] divide-y divide-[#292929] overflow-hidden">
-        {filteredTickets.length === 0 ? (
-          <div className="p-8 sm:p-12 text-center space-y-4">
-            <div className="relative w-28 h-28 mx-auto opacity-75">
-              <Image
-                src="/illustrations/wimpy/finance-dark.webp"
-                alt="Editorial student"
-                fill
-                sizes="112px"
-                className="object-contain pointer-events-none select-none"
-              />
-            </div>
-            <div className="space-y-1 max-w-sm mx-auto">
-              <div className="font-mono text-xs text-[#8D8A83] uppercase tracking-wider">
-                — {activeTab === 'ongoing' ? 'NO OPEN ESCALATIONS' : 'NO RESOLVED CASES'} {'//'}
-              </div>
-              <h3 className="font-serif text-base text-[#F5F3ED]">
-                {activeTab === 'ongoing' ? 'All student matters are currently clear.' : 'Historical resolutions will be cataloged here.'}
-              </h3>
-              <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-1">
-                {activeTab === 'ongoing'
-                  ? 'Standard campus questions are grounded and answered immediately by CampusOne without escalation.'
-                  : 'Resolved tickets from administrative departments will remain accessible for reference.'}
-              </p>
-            </div>
-            <div className="pt-2">
+      {/* Scrollable Container with exact max-w-[840px] matching Chat UI */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 scroll-smooth scrollbar-none relative z-10">
+        <div className="max-w-[840px] mx-auto space-y-6">
+          {/* Tabs and Search Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Minimalist Editorial Tabs */}
+            <div className="flex items-center gap-6 border-b sm:border-b-0 border-[#1E1E24] pb-2 sm:pb-0">
               <button
-                onClick={onGoToChat}
-                className="inline-flex items-center gap-2 text-xs font-mono px-3.5 py-1.5 rounded-md bg-[#151515] hover:bg-[#1A1A1A] text-[#F5F3ED] border border-[#292929] hover:border-[#FF7A00] transition-colors cursor-pointer"
+                onClick={() => setActiveTab('ongoing')}
+                className={`relative flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
+                  activeTab === 'ongoing'
+                    ? 'text-[#F5F3ED] font-semibold'
+                    : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+                }`}
               >
-                <span>Ask CampusOne</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A00]" />
+                <span>Open Cases</span>
+                <span className="text-[10px] text-[#FF7A00] font-mono font-bold">[{ongoingCount}]</span>
+                {activeTab === 'ongoing' && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+                )}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('resolved')}
+                className={`relative flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
+                  activeTab === 'resolved'
+                    ? 'text-[#F5F3ED] font-semibold'
+                    : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+                }`}
+              >
+                <span>Resolved</span>
+                <span className="text-[10px] text-[#8D8A83] font-mono">[{resolvedCount}]</span>
+                {activeTab === 'resolved' && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+                )}
               </button>
             </div>
+
+            {/* Search Box matching MessageComposer style */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8D8A83] pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search index by ID or keyword..."
+                className="w-full bg-[#121317]/85 border border-[#22232B] focus:border-[#FF7A00]/60 rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-[#F5F3ED] placeholder:text-[#6A6965] focus:outline-hidden transition-all font-mono"
+              />
+            </div>
           </div>
-        ) : (
-          filteredTickets.map((ticket) => {
-            const isResolved = ticket.status === 'resolved';
 
-            return (
-              <div
-                key={ticket.ticketId}
-                className="p-5 sm:p-6 hover:bg-[#151515] transition-colors space-y-3"
-              >
-                {/* Header row: ID, Domain, Status, Timestamp */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-bold text-[#F5F3ED] tracking-wider">
-                      {ticket.ticketId}
-                    </span>
-
-                    <span className="font-mono text-[11px] text-[#8D8A83] uppercase">
-                      — {ticket.department} {'//'}
-                    </span>
-
-                    {/* Status Marker */}
-                    {isResolved ? (
-                      <span className="font-mono text-[11px] text-emerald-400 flex items-center gap-1">
-                        ● RESOLVED
-                      </span>
-                    ) : (
-                      <span className="font-mono text-[11px] text-[#FF7A00] flex items-center gap-1">
-                        ● {ticket.urgency === 'urgent' ? 'URGENT REVIEW' : 'PENDING'}
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="text-xs text-[#8D8A83] font-mono">
-                    {ticket.createdAt}
-                  </span>
+          {/* Ticket Card Stack */}
+          <div className="space-y-3">
+            {filteredTickets.length === 0 ? (
+              <div className="p-8 sm:p-12 text-center rounded-xl bg-[#121317]/85 border border-[#22232B] space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-[#16171E] border border-[#242531] text-[#8D8A83] flex items-center justify-center mx-auto">
+                  <Inbox className="w-6 h-6 stroke-1" />
                 </div>
-
-                {/* Reason & Quotation */}
-                <div className="space-y-1">
-                  <h3 className="font-serif text-base sm:text-lg text-[#F5F3ED] leading-snug">
-                    &ldquo;{ticket.reason}&rdquo;
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <div className="font-mono text-xs text-[#FF7A00] uppercase tracking-wider">
+                    — {activeTab === 'ongoing' ? 'NO OPEN ESCALATIONS' : 'NO RESOLVED CASES'} {'//'}
+                  </div>
+                  <h3 className="font-serif text-lg font-bold text-[#F5F3ED]">
+                    {activeTab === 'ongoing'
+                      ? 'All student matters are clear'
+                      : 'Historical resolutions cataloged here'}
                   </h3>
-                  {ticket.preview && ticket.preview !== ticket.reason && (
-                    <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-1">
-                      {ticket.preview}
-                    </p>
-                  )}
+                  <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-1">
+                    {activeTab === 'ongoing'
+                      ? 'Standard campus questions are grounded and answered immediately by CampusOne without escalation.'
+                      : 'Resolved tickets from administrative departments will remain accessible here for your records.'}
+                  </p>
                 </div>
-
-                {/* Resolution Note if resolved */}
-                {isResolved && ticket.resolutionNote && (
-                  <div className="p-3.5 rounded-md bg-[#151515] border border-[#292929] space-y-1 text-xs">
-                    <div className="font-mono text-[11px] text-emerald-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Resolution Note from Staff:</span>
-                    </div>
-                    <p className="text-[#F5F3ED] leading-relaxed">
-                      {ticket.resolutionNote}
-                    </p>
-                  </div>
-                )}
-
-                {/* Footer metadata */}
-                <div className="flex items-center justify-between text-xs text-[#8D8A83] font-mono pt-1">
-                  <span>Queue: {ticket.department}</span>
-                  {ticket.assignedTo && (
-                    <span>Assigned: {ticket.assignedTo}</span>
-                  )}
+                <div className="pt-2">
+                  <button
+                    onClick={onGoToChat}
+                    className="inline-flex items-center gap-2 text-xs font-mono px-3.5 py-1.5 rounded-lg bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(255,122,0,0.35)]"
+                  >
+                    <span>Ask CampusOne</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            );
-          })
-        )}
+            ) : (
+              filteredTickets.map((ticket) => {
+                const isResolved = ticket.status === 'resolved';
+
+                return (
+                  <div
+                    key={ticket.ticketId}
+                    className="group relative p-4 sm:p-5 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/50 transition-all duration-200 shadow-md hover:shadow-[0_4px_24px_rgba(255,122,0,0.08)] space-y-3 overflow-hidden"
+                  >
+                    {/* Faint orange hover top-edge sheen matching Chat UI */}
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                    {/* Header Row: ID, Department, Status, Timestamp */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-xs font-bold text-[#F5F3ED] tracking-wider">
+                          {ticket.ticketId}
+                        </span>
+
+                        <span className="font-mono text-[11px] text-[#8D8A83] uppercase">
+                          — {ticket.department} {'//'}
+                        </span>
+
+                        {/* Status Marker */}
+                        {isResolved ? (
+                          <span className="font-mono text-[11px] text-emerald-400 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <span>RESOLVED</span>
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[11px] text-[#FF7A00] flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#FF7A00] animate-pulse" />
+                            <span>{ticket.urgency === 'urgent' ? 'URGENT REVIEW' : 'PENDING'}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="text-xs text-[#8D8A83] font-mono">
+                        {ticket.createdAt}
+                      </span>
+                    </div>
+
+                    {/* Reason & Quotation */}
+                    <div className="space-y-1">
+                      <h3 className="font-serif text-base sm:text-lg text-[#F5F3ED] leading-snug">
+                        &ldquo;{ticket.reason}&rdquo;
+                      </h3>
+                      {ticket.preview && ticket.preview !== ticket.reason && (
+                        <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-0.5">
+                          {ticket.preview}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Resolution Note if resolved */}
+                    {isResolved && ticket.resolutionNote && (
+                      <div className="p-3 rounded-lg bg-[#0E1015] border border-emerald-500/25 space-y-1 text-xs">
+                        <div className="font-mono text-[11px] text-emerald-400 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Resolution Note from Staff:</span>
+                        </div>
+                        <p className="text-[#F5F3ED] leading-relaxed">
+                          {ticket.resolutionNote}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Footer metadata */}
+                    <div className="flex items-center justify-between text-xs text-[#8D8A83] font-mono pt-2 border-t border-[#1C1D24] group-hover:border-[#FF7A00]/25 transition-colors">
+                      <span>Queue: {ticket.department}</span>
+                      {ticket.assignedTo && (
+                        <span>Assigned: {ticket.assignedTo}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Manual Support Ticket Modal */}
       {showNewTicketModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#111111] border border-[#292929] rounded-xl p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 text-[#F5F3ED]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#292929]">
+          <div className="w-full max-w-lg bg-[#111216] border border-[#22232B] rounded-2xl p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 text-[#F5F3ED] relative">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1E1E24]">
               <div>
-                <div className="font-mono text-xs text-[#8D8A83] uppercase tracking-wider">
-                  — NEW INQUIRY //
+                <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-[#FF7A00]">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Manual Escalation Dispatch</span>
                 </div>
-                <h3 className="font-serif text-lg font-medium text-[#F5F3ED] mt-0.5">
+                <h3 className="font-serif text-lg font-bold text-[#F5F3ED] mt-0.5">
                   Submit Direct Work Order
                 </h3>
               </div>
               <button
                 onClick={() => setShowNewTicketModal(false)}
-                className="p-1 rounded text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#151515]"
+                className="p-1 rounded-md text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#1C1E26] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -277,12 +300,12 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
                 <select
                   value={newDepartment}
                   onChange={(e) => setNewDepartment(e.target.value)}
-                  className="w-full bg-[#151515] border border-[#292929] rounded-md px-3.5 py-2 text-xs text-[#F5F3ED] focus:outline-none focus:border-[#FF7A00]"
+                  className="w-full bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 rounded-xl px-3.5 py-2 text-xs text-[#F5F3ED] focus:outline-hidden"
                 >
-                  <option value="IT Support">IT Support & Network Services</option>
-                  <option value="Student Accounts & Finance">Student Accounts & Bursar</option>
-                  <option value="Campus Facilities">Campus Facilities & Housing Maintenance</option>
-                  <option value="Academic Services">Academic Services & Registrar</option>
+                  <option value="IT Support">IT Support &amp; Network Services</option>
+                  <option value="Student Accounts & Finance">Student Accounts &amp; Bursar</option>
+                  <option value="Campus Facilities">Campus Facilities &amp; Housing Maintenance</option>
+                  <option value="Academic Services">Academic Services &amp; Registrar</option>
                   <option value="Campus Administration">Campus Administration</option>
                 </select>
               </div>
@@ -294,48 +317,47 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
                 <select
                   value={newUrgency}
                   onChange={(e) => setNewUrgency(e.target.value as 'normal' | 'high' | 'urgent')}
-                  className="w-full bg-[#151515] border border-[#292929] rounded-md px-3.5 py-2 text-xs text-[#F5F3ED] focus:outline-none focus:border-[#FF7A00]"
+                  className="w-full bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 rounded-xl px-3.5 py-2 text-xs text-[#F5F3ED] focus:outline-hidden"
                 >
                   <option value="normal">Normal Priority</option>
                   <option value="high">High Priority</option>
-                  <option value="urgent">Urgent (Immediate Assistance)</option>
+                  <option value="urgent">Urgent Operational Escalation</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-mono text-[#8D8A83] uppercase">
-                  Inquiry / Issue Description
+                  Inquiry Summary / Reason
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   required
                   value={newReason}
                   onChange={(e) => setNewReason(e.target.value)}
-                  placeholder="Describe your issue or request in detail..."
-                  className="w-full bg-[#151515] border border-[#292929] rounded-md p-3 text-xs text-[#F5F3ED] placeholder:text-[#8D8A83] focus:outline-none focus:border-[#FF7A00] resize-none font-sans"
+                  placeholder="Describe your issue or what assistance is required..."
+                  className="w-full bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 rounded-xl p-3 text-xs text-[#F5F3ED] placeholder:text-[#6A6965] focus:outline-hidden resize-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#1E1E24]">
                 <button
                   type="button"
                   onClick={() => setShowNewTicketModal(false)}
-                  className="px-4 py-2 rounded-md text-xs font-mono text-[#8D8A83] hover:text-[#F5F3ED] transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-mono text-[#8D8A83] hover:text-white hover:bg-[#1C1E26] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-md text-xs font-mono bg-[#FF7A00] text-black font-bold hover:bg-[#FF8F26] transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-mono bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold cursor-pointer shadow-[0_0_12px_rgba(255,122,0,0.35)]"
                 >
-                  Submit Inquiry
+                  Create Work Order
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };
-

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Activity,
   CheckCircle2,
@@ -10,7 +10,6 @@ import {
   GitBranch,
   Layers,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   Zap,
 } from 'lucide-react';
@@ -42,11 +41,11 @@ export const AdminAnalyticsPanel: React.FC = () => {
   };
 
   const departments = [
-    { name: 'IT Infrastructure & Wi-Fi', count: 46, percentage: 38, color: 'bg-indigo-500' },
+    { name: 'IT Infrastructure & Wi-Fi', count: 46, percentage: 38, color: 'bg-[#FF7A00]' },
     { name: 'Fees & Finance Accounts', count: 31, percentage: 26, color: 'bg-emerald-500' },
-    { name: 'Hostel & Campus Facilities', count: 20, percentage: 17, color: 'bg-amber-500' },
-    { name: 'General Campus & Lost Items', count: 14, percentage: 12, color: 'bg-sky-500' },
-    { name: 'Human Resources & Staff', count: 9, percentage: 7, color: 'bg-purple-500' },
+    { name: 'Hostel & Campus Facilities', count: 20, percentage: 17, color: 'bg-amber-400' },
+    { name: 'General Campus & Lost Items', count: 14, percentage: 12, color: 'bg-zinc-400' },
+    { name: 'Human Resources & Staff', count: 9, percentage: 7, color: 'bg-orange-300' },
   ];
 
   const recentEvents: OperationalEvent[] = [
@@ -98,129 +97,131 @@ export const AdminAnalyticsPanel: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-6xl mx-auto space-y-8 w-full text-white">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 max-w-6xl mx-auto space-y-6 w-full text-[#F5F3ED] relative z-10">
       <Toast message={toastMessage} />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#23242A]">
+      {/* Header matching Chat UI */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#1E1E24]">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-400" />
-              <span>Operational Telemetry & Evaluation</span>
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Live Audited
-            </span>
+          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-[#A1A1AA] mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#FF7A00] shadow-[0_0_8px_rgba(255,122,0,0.8)] animate-pulse" />
+            <span className="text-[#FF7A00] font-semibold">Operational Telemetry</span>
           </div>
-          <p className="text-xs text-[#8E8F94]">
-            Real-time measurement of intent routing accuracy, autonomous resolution rate, and citation coverage across all campus domains.
+          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-[#F5F3ED] tracking-tight">
+            System Analytics &amp; Health<span className="text-[#FF7A00]">.</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-[#8D8A83] mt-1 font-sans">
+            Real-time telemetry measuring routing accuracy, autonomous resolution rate, and citation coverage.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-[11px] font-mono text-[#8E8F94]">
-            Updated: <span className="text-zinc-300">{lastUpdated}</span>
+          <div className="text-[11px] font-mono text-[#8D8A83]">
+            Updated: <span className="text-[#F5F3ED]">{lastUpdated}</span>
           </div>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1C1E26] hover:bg-[#272932] text-xs font-medium text-white border border-[#3F4350] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#16171E] hover:bg-[#1F212A] text-xs font-mono font-medium text-[#F5F3ED] border border-[#282A35] hover:border-[#FF7A00]/40 transition-all cursor-pointer shadow-xs disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : 'text-[#8E8F94]'}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#FF7A00]' : 'text-[#8D8A83]'}`} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards Grid matching Chat UI */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* KPI 1: Accuracy */}
-        <div className="p-4 rounded-2xl bg-[#121318] border border-[#23242A] space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between text-[#8E8F94]">
-            <span className="text-xs font-medium">Macro Routing Accuracy</span>
-            <Compass className="w-4 h-4 text-indigo-400" />
+        <div className="group relative p-4 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/40 transition-all duration-200 shadow-md space-y-2 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center justify-between text-[#8D8A83]">
+            <span className="text-xs font-mono uppercase tracking-wider">Macro Routing</span>
+            <Compass className="w-4 h-4 text-[#FF7A00]" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white">88.4%</span>
+            <span className="text-2xl font-bold font-mono text-[#F5F3ED]">88.4%</span>
             <span className="text-[11px] font-mono text-emerald-400 font-semibold">+4.2%</span>
           </div>
-          <p className="text-[11px] text-[#8E8F94]">
-            Benchmarked against 110 deterministic multi-domain test cases.
+          <p className="text-[11px] text-[#6A6965] font-sans">
+            Benchmarked against 110 multi-domain tests.
           </p>
         </div>
 
         {/* KPI 2: Resolution Rate */}
-        <div className="p-4 rounded-2xl bg-[#121318] border border-[#23242A] space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between text-[#8E8F94]">
-            <span className="text-xs font-medium">Autonomous Resolution</span>
+        <div className="group relative p-4 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/40 transition-all duration-200 shadow-md space-y-2 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center justify-between text-[#8D8A83]">
+            <span className="text-xs font-mono uppercase tracking-wider">Auto-Resolution</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white">76.0%</span>
+            <span className="text-2xl font-bold font-mono text-[#F5F3ED]">76.0%</span>
             <span className="text-[11px] font-mono text-zinc-400">24% escalated</span>
           </div>
-          <p className="text-[11px] text-[#8E8F94]">
-            Inquiries resolved in 1 turn without requiring a human ticket.
+          <p className="text-[11px] text-[#6A6965] font-sans">
+            Resolved in 1 turn without staff ticket.
           </p>
         </div>
 
         {/* KPI 3: Citation Coverage */}
-        <div className="p-4 rounded-2xl bg-[#121318] border border-[#23242A] space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between text-[#8E8F94]">
-            <span className="text-xs font-medium">Mandatory Citation Rate</span>
+        <div className="group relative p-4 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/40 transition-all duration-200 shadow-md space-y-2 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center justify-between text-[#8D8A83]">
+            <span className="text-xs font-mono uppercase tracking-wider">Provenance Rate</span>
             <FileCheck2 className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white">98.6%</span>
-            <span className="text-[11px] font-mono text-emerald-400">Strict Provenance</span>
+            <span className="text-2xl font-bold font-mono text-[#F5F3ED]">98.6%</span>
+            <span className="text-[11px] font-mono text-emerald-400">Strict Citations</span>
           </div>
-          <p className="text-[11px] text-[#8E8F94]">
-            Every domain response cited with official page-level source evidence.
+          <p className="text-[11px] text-[#6A6965] font-sans">
+            Every response cited with official policy.
           </p>
         </div>
 
         {/* KPI 4: Median Latency */}
-        <div className="p-4 rounded-2xl bg-[#121318] border border-[#23242A] space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between text-[#8E8F94]">
-            <span className="text-xs font-medium">Median Turn Latency</span>
-            <Zap className="w-4 h-4 text-cyan-400" />
+        <div className="group relative p-4 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/40 transition-all duration-200 shadow-md space-y-2 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center justify-between text-[#8D8A83]">
+            <span className="text-xs font-mono uppercase tracking-wider">Median Latency</span>
+            <Zap className="w-4 h-4 text-[#FF7A00]" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white">680ms</span>
-            <span className="text-[11px] font-mono text-zinc-400">p95: 1,420ms</span>
+            <span className="text-2xl font-bold font-mono text-[#F5F3ED]">680ms</span>
+            <span className="text-[11px] font-mono text-zinc-400">p95: 1.4s</span>
           </div>
-          <p className="text-[11px] text-[#8E8F94]">
-            Sub-second execution via Groq LLMs & pgvector MMR indexing.
+          <p className="text-[11px] text-[#6A6965] font-sans">
+            Via Groq LLM &amp; pgvector MMR retrieval.
           </p>
         </div>
       </div>
 
       {/* Two Column Layout: Department Breakdown & Routing Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Department Volume Card */}
-        <div className="p-6 rounded-2xl bg-[#121318] border border-[#23242A] space-y-5">
+        <div className="p-5 sm:p-6 rounded-xl bg-[#121317]/85 border border-[#22232B] space-y-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-400" />
-                <span>Inquiry Volume by Knowledge Store</span>
+              <h2 className="text-sm font-semibold text-[#F5F3ED] flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#FF7A00]" />
+                <span>Volume by Knowledge Store</span>
               </h2>
-              <p className="text-xs text-[#8E8F94]">120 total recorded student queries</p>
+              <p className="text-xs text-[#8D8A83] font-sans">120 total recorded student queries</p>
             </div>
-            <span className="text-xs font-mono text-zinc-400">4 Isolated DBs</span>
+            <span className="text-xs font-mono text-[#8D8A83]">4 Isolated DBs</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-1">
             {departments.map((dept) => (
               <div key={dept.name} className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-zinc-300 font-medium">{dept.name}</span>
-                  <span className="font-mono text-[#8E8F94]">
+                  <span className="text-[#F5F3ED] font-medium">{dept.name}</span>
+                  <span className="font-mono text-[#8D8A83]">
                     {dept.count} inquiries ({dept.percentage}%)
                   </span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-[#1C1E26] overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-[#1C1D24] overflow-hidden">
                   <div
                     className={`h-full rounded-full ${dept.color}`}
                     style={{ width: `${dept.percentage}%` }}
@@ -232,51 +233,51 @@ export const AdminAnalyticsPanel: React.FC = () => {
         </div>
 
         {/* Confidence & Routing Policy Matrix */}
-        <div className="p-6 rounded-2xl bg-[#121318] border border-[#23242A] space-y-5">
+        <div className="p-5 sm:p-6 rounded-xl bg-[#121317]/85 border border-[#22232B] space-y-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-amber-400" />
+              <h2 className="text-sm font-semibold text-[#F5F3ED] flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-[#FF7A00]" />
                 <span>Confidence Band Execution Policy</span>
               </h2>
-              <p className="text-xs text-[#8E8F94]">Margin-guarded routing policy thresholds</p>
+              <p className="text-xs text-[#8D8A83] font-sans">Margin-guarded routing policy thresholds</p>
             </div>
             <span className="text-xs font-mono text-emerald-400">Active Policy</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5 pt-1">
             {/* High confidence */}
-            <div className="p-3.5 rounded-xl bg-[#16171D] border border-[#252730] flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-[#16171E] border border-[#22232B] flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-xs font-semibold text-white">Auto-Route & Synthesize</span>
+                  <span className="text-xs font-semibold text-[#F5F3ED]">Auto-Route &amp; Synthesize</span>
                 </div>
-                <p className="text-[11px] text-[#8E8F94]">Confidence &ge; 0.75 OR Single candidate</p>
+                <p className="text-[11px] text-[#8D8A83] font-mono">Confidence &ge; 0.75 OR Single candidate</p>
               </div>
               <span className="text-sm font-mono font-bold text-emerald-400">82.0%</span>
             </div>
 
             {/* Medium confidence */}
-            <div className="p-3.5 rounded-xl bg-[#16171D] border border-[#252730] flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-[#16171E] border border-[#22232B] flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-xs font-semibold text-white">Targeted Clarification</span>
+                  <span className="text-xs font-semibold text-[#F5F3ED]">Targeted Clarification</span>
                 </div>
-                <p className="text-[11px] text-[#8E8F94]">Confidence 0.45 &ndash; 0.74 (2&ndash;4 choice chips)</p>
+                <p className="text-[11px] text-[#8D8A83] font-mono">Confidence 0.45 &ndash; 0.74 (2&ndash;4 choice chips)</p>
               </div>
               <span className="text-sm font-mono font-bold text-amber-400">13.0%</span>
             </div>
 
             {/* Low confidence / Human */}
-            <div className="p-3.5 rounded-xl bg-[#16171D] border border-[#252730] flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-[#16171E] border border-[#22232B] flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-rose-400" />
-                  <span className="text-xs font-semibold text-white">Human Specialist Handoff</span>
+                  <span className="text-xs font-semibold text-[#F5F3ED]">Human Specialist Escalation</span>
                 </div>
-                <p className="text-[11px] text-[#8E8F94]">Confidence &lt; 0.45 OR explicit user command</p>
+                <p className="text-[11px] text-[#8D8A83] font-mono">Confidence &lt; 0.45 OR explicit user command</p>
               </div>
               <span className="text-sm font-mono font-bold text-rose-400">5.0%</span>
             </div>
@@ -285,26 +286,26 @@ export const AdminAnalyticsPanel: React.FC = () => {
       </div>
 
       {/* Operational Event Feed */}
-      <div className="p-6 rounded-2xl bg-[#121318] border border-[#23242A] space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-5 sm:p-6 rounded-xl bg-[#121317]/85 border border-[#22232B] space-y-4 shadow-md">
+        <div className="flex items-center justify-between pb-2 border-b border-[#1E1E24]">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-indigo-400" />
-            <h2 className="text-sm font-semibold text-white">Recent Routing & Resolution Events</h2>
+            <Clock className="w-4 h-4 text-[#FF7A00]" />
+            <h2 className="text-sm font-semibold text-[#F5F3ED]">Recent Routing &amp; Resolution Events</h2>
           </div>
-          <span className="text-xs font-mono text-[#8E8F94]">Streaming Live</span>
+          <span className="text-xs font-mono text-[#8D8A83]">Streaming Live</span>
         </div>
 
-        <div className="divide-y divide-[#1C1E26] text-xs">
+        <div className="divide-y divide-[#1C1D24] text-xs">
           {recentEvents.map((evt) => (
             <div key={evt.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#1C1E26] text-zinc-300 border border-[#2C2E38]">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#16171E] text-zinc-300 border border-[#252733]">
                     {evt.department}
                   </span>
-                  <span className="font-medium text-white">{evt.summary}</span>
+                  <span className="font-medium text-[#F5F3ED]">{evt.summary}</span>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-[#8E8F94] font-mono">
+                <div className="flex items-center gap-3 text-[11px] text-[#8D8A83] font-mono">
                   <span>{evt.type}</span>
                   <span>&bull;</span>
                   <span>Confidence: {(evt.confidence * 100).toFixed(0)}%</span>
@@ -314,7 +315,7 @@ export const AdminAnalyticsPanel: React.FC = () => {
               </div>
 
               <div className="shrink-0">
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border ${
+                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border ${
                   evt.status.includes('Auto-Resolved') || evt.status.includes('Synthesized')
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                     : evt.status.includes('Clarified')
@@ -330,14 +331,14 @@ export const AdminAnalyticsPanel: React.FC = () => {
       </div>
 
       {/* Observability Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-[#16171D] to-slate-900/40 border border-indigo-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 rounded-xl bg-[#121317]/85 border border-[#22232B] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
+          <div className="w-8 h-8 rounded-lg bg-[#16171E] border border-[#282A35] flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-[#FF7A00]" />
           </div>
           <div>
-            <div className="text-xs font-semibold text-white">LangSmith Real-Time Tracing Enabled</div>
-            <div className="text-[11px] text-zinc-400">
+            <div className="text-xs font-semibold text-[#F5F3ED]">LangSmith Real-Time Tracing Enabled</div>
+            <div className="text-[11px] text-[#8D8A83]">
               Every LangGraph node transition, MMR document similarity score, and Groq token is traced in real time.
             </div>
           </div>
