@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           const currentUser = await fetchCurrentUser(res.access_token);
           setUser(currentUser);
-          setRole(defaultRole);
+          setRole(currentUser.role);
           setIsLoading(false);
         }
       } catch (err) {

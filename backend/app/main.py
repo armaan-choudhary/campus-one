@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
+from app.core.database import close_db_pool
+from app.auth.provider import get_auth_provider
 from app.api.v1 import api_router
 
 logger = logging.getLogger(__name__)
@@ -42,9 +44,13 @@ def configure_langsmith() -> None:
 async def lifespan(app: FastAPI):
     configure_langsmith()
     initialize_graph(settings.DATABASE_URL)
+    provider = get_auth_provider()
+    if hasattr(provider, "initialize_schema"):
+        await provider.initialize_schema()
     try:
         yield
     finally:
+        await close_db_pool()
         close_graph()
 
 app = FastAPI(

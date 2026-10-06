@@ -1,4 +1,5 @@
 """Authentication provider protocol and implementations (Mock & OIDC seam)."""
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import secrets
@@ -8,6 +9,8 @@ import asyncpg
 import jwt
 
 from app.core.config import settings
+from app.core.database import get_db_pool
+from app.conversations import conversation_store
 from app.auth.schemas import Role, CurrentUser, UserSummary, TokenResponse
 from app.auth.jwt import create_access_token, create_refresh_token, decode_token
 
@@ -109,8 +112,7 @@ class MockAuthProvider:
     """Mock identity provider with PostgreSQL-backed accounts and signed HMAC JWTs."""
 
     def __init__(self) -> None:
-        # Track valid active refresh tokens for rotation & revocation
-        self._active_refresh_tokens: Set[str] = set()
+        self._schema_initialized: bool = False
 
         # Seeded demo credentials and persona accounts (docs/15_Demo_Runbook.md & 17_Engineering_Decisions.md)
         demo_pwd_hash = _hash_password("demo-password", salt="campusone_demo_salt_2026")
@@ -182,20 +184,8 @@ class MockAuthProvider:
             },
         }
 
-        self._database_url = settings.DATABASE_URL.replace(
-            "postgresql+psycopg://", "postgresql://", 1
-        )
-        self._pool: asyncpg.Pool | None = None
-
     async def _get_pool(self) -> asyncpg.Pool:
-        import asyncio
-        current_loop = asyncio.get_running_loop()
-        pool_loop = getattr(self._pool, "_loop", None) if self._pool else None
-        if self._pool is None or pool_loop is not current_loop or (pool_loop and pool_loop.is_closed()):
-            self._pool = await asyncpg.create_pool(
-                self._database_url, min_size=1, max_size=5
-            )
-        return self._pool
+        return await get_db_pool()
 
     async def _ensure_schema(self, connection: asyncpg.Connection) -> None:
         await connection.execute(
@@ -209,7 +199,15 @@ class MockAuthProvider:
                 department VARCHAR(255),
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
+            );
+            CREATE TABLE IF NOT EXISTS campus_refresh_tokens (
+                token_hash VARCHAR(64) PRIMARY KEY,
+                user_id VARCHAR(128) NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                revoked BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON campus_refresh_tokens(user_id);
             """
         )
         for user in self._users_by_email.values():
@@ -228,6 +226,14 @@ class MockAuthProvider:
                 user.get("department"),
                 user["password_hash"],
             )
+        await conversation_store.init_schema()
+        self._schema_initialized = True
+
+    async def initialize_schema(self) -> None:
+        """Explicit startup schema initialization for FastAPI lifespan."""
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            await self._ensure_schema(connection)
 
     @staticmethod
     def _row_to_current_user(row: asyncpg.Record) -> CurrentUser:
@@ -246,11 +252,16 @@ class MockAuthProvider:
         clean_email = email.strip().lower()
         pool = await self._get_pool()
         async with pool.acquire() as connection:
-            await self._ensure_schema(connection)
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
             user_record = await connection.fetchrow(
                 "SELECT * FROM campus_users WHERE email = $1", clean_email
             )
-        if not user_record or not _verify_password(password, user_record["password_hash"]):
+        if not user_record:
+            # Constant-time mitigation against email enumeration timing attacks
+            _verify_password(password, "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000")
+            return None
+        if not _verify_password(password, user_record["password_hash"]):
             return None
         return self._row_to_current_user(user_record)
 
@@ -269,7 +280,8 @@ class MockAuthProvider:
         }
         pool = await self._get_pool()
         async with pool.acquire() as connection:
-            await self._ensure_schema(connection)
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
             try:
                 await connection.execute(
                     """
@@ -326,8 +338,23 @@ class MockAuthProvider:
         access_token = create_access_token(claims)
         refresh_token = create_refresh_token(claims)
 
-        # Store refresh token
-        self._active_refresh_tokens.add(refresh_token)
+        token_hash = hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
+            await connection.execute(
+                """
+                INSERT INTO campus_refresh_tokens (token_hash, user_id, expires_at, revoked)
+                VALUES ($1, $2, $3, FALSE)
+                ON CONFLICT (token_hash) DO NOTHING
+                """,
+                token_hash,
+                user.id,
+                expires_at,
+            )
 
         return TokenResponse(
             access_token=access_token,
@@ -344,33 +371,62 @@ class MockAuthProvider:
         )
 
     async def refresh_tokens(self, refresh_token: str) -> Optional[TokenResponse]:
-        if refresh_token not in self._active_refresh_tokens:
-            return None
+        token_hash = hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
+            row = await connection.fetchrow(
+                """
+                SELECT * FROM campus_refresh_tokens
+                WHERE token_hash = $1 AND revoked = FALSE AND expires_at > NOW()
+                """,
+                token_hash,
+            )
+            if not row:
+                return None
 
-        user = await self.verify_token(refresh_token, token_type="refresh")
-        if not user:
-            # Stale or invalid token, discard if present
-            self._active_refresh_tokens.discard(refresh_token)
-            return None
+            user = await self.verify_token(refresh_token, token_type="refresh")
+            if not user:
+                await connection.execute(
+                    "UPDATE campus_refresh_tokens SET revoked = TRUE WHERE token_hash = $1",
+                    token_hash,
+                )
+                return None
 
-        # Rotate refresh token
-        self._active_refresh_tokens.discard(refresh_token)
+            # Atomically revoke old refresh token (rotation)
+            await connection.execute(
+                "UPDATE campus_refresh_tokens SET revoked = TRUE WHERE token_hash = $1",
+                token_hash,
+            )
+
         return await self.issue_tokens(user)
 
     async def get_user(self, user_id: str) -> Optional[CurrentUser]:
         pool = await self._get_pool()
         async with pool.acquire() as connection:
-            await self._ensure_schema(connection)
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
             user_record = await connection.fetchrow(
                 "SELECT * FROM campus_users WHERE id = $1", user_id
             )
         return self._row_to_current_user(user_record) if user_record else None
 
     async def revoke_refresh_token(self, refresh_token: str) -> bool:
-        if refresh_token in self._active_refresh_tokens:
-            self._active_refresh_tokens.remove(refresh_token)
-            return True
-        return False
+        token_hash = hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            if not self._schema_initialized:
+                await self._ensure_schema(connection)
+            result = await connection.execute(
+                """
+                UPDATE campus_refresh_tokens
+                SET revoked = TRUE
+                WHERE token_hash = $1 AND revoked = FALSE
+                """,
+                token_hash,
+            )
+            return result == "UPDATE 1"
 
 
 class OidcAuthProvider:

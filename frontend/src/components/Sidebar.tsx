@@ -18,6 +18,7 @@ interface SidebarProps {
   onToggle: () => void;
   persona: Persona;
   onDeleteConversation?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,12 +29,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggle,
   persona,
   onDeleteConversation,
+  onTogglePin,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
 
+  const isPinned = (c: ConversationItem) => !!c.pinned || pinnedIds.includes(c.id);
+
   const togglePin = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    onTogglePin?.(id);
     setPinnedIds((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
@@ -49,8 +54,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   // Group into Pinned, Today, and Earlier
-  const pinnedList = filteredConversations.filter((c) => pinnedIds.includes(c.id));
-  const unpinnedList = filteredConversations.filter((c) => !pinnedIds.includes(c.id));
+  const pinnedList = filteredConversations.filter((c) => isPinned(c));
+  const unpinnedList = filteredConversations.filter((c) => !isPinned(c));
   const todayList = unpinnedList.filter(
     (c) => c.updatedAt.includes('ago') || c.updatedAt === 'Just now'
   );
@@ -60,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const renderConversationItem = (conv: ConversationItem) => {
     const isActive = conv.id === activeId;
-    const isPinned = pinnedIds.includes(conv.id);
+    const isConvPinnedState = isPinned(conv);
 
     return (
       <div
@@ -81,10 +86,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={(e) => togglePin(conv.id, e)}
               className={`p-0.5 rounded hover:bg-[#202020] transition-colors ${
-                isPinned ? 'text-[#FF7A00] opacity-100' : 'text-[#8D8A83]'
+                isConvPinnedState ? 'text-[#FF7A00] opacity-100' : 'text-[#8D8A83]'
               }`}
-              title={isPinned ? 'Unpin' : 'Pin'}
-              aria-label={isPinned ? 'Unpin inquiry' : 'Pin inquiry'}
+              title={isConvPinnedState ? 'Unpin' : 'Pin'}
+              aria-label={isConvPinnedState ? 'Unpin inquiry' : 'Pin inquiry'}
             >
               <Pin className="w-2.5 h-2.5" />
             </button>

@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'admin';
+export type UserRole = 'student' | 'staff' | 'support_agent' | 'knowledge_admin' | 'analyst' | 'admin';
 
 export interface Persona {
   id: UserRole;
@@ -143,6 +143,7 @@ export interface ConversationItem {
   status: 'resolved' | 'open' | 'clarification' | 'handoff';
   domainKey: string;
   updatedAt: string;
+  pinned?: boolean;
   messages: Message[];
 }
 

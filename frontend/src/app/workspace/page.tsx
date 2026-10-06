@@ -59,6 +59,7 @@ function WorkspaceContent() {
     sendMessage,
     newChat,
     deleteConversation,
+    togglePin,
     selectClarification,
   } = useChat();
 
@@ -164,6 +165,7 @@ function WorkspaceContent() {
               onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
               persona={activePersona}
               onDeleteConversation={deleteConversation}
+              onTogglePin={togglePin}
             />
 
             {/* Conversational Stream */}

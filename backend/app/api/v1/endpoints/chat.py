@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.auth.dependencies import require_permission
 from app.auth.schemas import CurrentUser
+from app.conversations import conversation_store
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,114 @@ class ChatResponse(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ConversationSummaryResponse(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    domain_key: str = "it"
+    status: str = "open"
+    pinned: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class CreateConversationRequest(BaseModel):
+    id: Optional[str] = Field(None, max_length=128)
+    title: Optional[str] = Field(None, max_length=250)
+    domain_key: Optional[str] = Field("it", max_length=64)
+
+
+class UpdateConversationRequest(BaseModel):
+    title: Optional[str] = Field(None, max_length=250)
+    pinned: Optional[bool] = None
+    status: Optional[str] = Field(None, max_length=32)
+
+
 class ChatHistoryResponse(BaseModel):
     thread_id: str
     messages: List[Dict[str, Any]] = Field(default_factory=list)
+    conversation: Optional[ConversationSummaryResponse] = None
+
+
+@router.get(
+    "/conversations",
+    response_model=List[ConversationSummaryResponse],
+    summary="List student conversations",
+    description="Retrieve all persistent conversation sessions for the authenticated user.",
+)
+async def list_conversations(
+    current_user: CurrentUser = Depends(require_permission("conversations:own")),
+) -> List[ConversationSummaryResponse]:
+    return await conversation_store.list_conversations(current_user.id)
+
+
+@router.post(
+    "/conversations",
+    response_model=ConversationSummaryResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new conversation session",
+    description="Provision a persistent conversation record in the student directory.",
+)
+async def create_conversation(
+    request: CreateConversationRequest,
+    current_user: CurrentUser = Depends(require_permission("conversations:own")),
+) -> ConversationSummaryResponse:
+    try:
+        return await conversation_store.create_conversation(
+            user_id=current_user.id,
+            conversation_id=request.id,
+            title=request.title,
+            domain_key=request.domain_key or "it",
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "conversation_conflict", "message": "Conversation identifier is already registered by another account"},
+        )
+
+
+@router.patch(
+    "/conversations/{conversation_id}",
+    response_model=ConversationSummaryResponse,
+    summary="Update conversation metadata",
+    description="Update title, pinned status, or resolution status of a student conversation.",
+)
+async def update_conversation(
+    conversation_id: str,
+    request: UpdateConversationRequest,
+    current_user: CurrentUser = Depends(require_permission("conversations:own")),
+) -> ConversationSummaryResponse:
+    updated = await conversation_store.update_conversation(
+        user_id=current_user.id,
+        conversation_id=conversation_id,
+        title=request.title,
+        pinned=request.pinned,
+        status=request.status,
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "conversation_not_found", "message": "Conversation does not exist"},
+        )
+    return updated
+
+
+@router.delete(
+    "/conversations/{conversation_id}",
+    summary="Delete conversation session",
+    description="Remove a conversation record from the student directory.",
+)
+async def delete_conversation(
+    conversation_id: str,
+    current_user: CurrentUser = Depends(require_permission("conversations:own")),
+) -> Dict[str, Any]:
+    deleted = await conversation_store.delete_conversation(current_user.id, conversation_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "conversation_not_found", "message": "Conversation does not exist"},
+        )
+    return {"status": "success", "id": conversation_id, "deleted": True}
 
 
 @router.get(
@@ -61,6 +167,10 @@ async def chat_history(
         if conversation_id
         else current_user.id
     )
+
+    conv_meta = None
+    if conversation_id:
+        conv_meta = await conversation_store.get_conversation(current_user.id, conversation_id)
 
     try:
         snapshot = await run_in_threadpool(
@@ -80,6 +190,7 @@ async def chat_history(
     return ChatHistoryResponse(
         thread_id=thread_id,
         messages=(snapshot.values or {}).get("messages", []),
+        conversation=conv_meta,
     )
 
 
@@ -126,6 +237,25 @@ async def chat(
         ) from exc
 
     is_new_ticket = bool(result.get("metadata", {}).get("ticket_newly_raised", False))
+
+    if request.conversation_id:
+        detected_domain = (result.get("detected_domains") or ["it"])[0]
+        status_val = (
+            "clarification"
+            if result.get("clarification_options")
+            else ("resolved" if result.get("solved") else "open")
+        )
+        try:
+            await conversation_store.touch_conversation(
+                user_id=current_user.id,
+                conversation_id=request.conversation_id,
+                first_query=request.message,
+                domain_key=detected_domain,
+                status=status_val,
+            )
+        except Exception as store_err:
+            logger.warning("Failed to touch conversation: %s", store_err)
+
     return ChatResponse(
         answer=result.get("final_answer") or result.get("agent_response") or "",
         thread_id=thread_id,
@@ -239,6 +369,25 @@ async def chat_stream(
             "clarification_options": last_state.get("metadata", {}).get("clarification_options"),
             "metadata": last_state.get("metadata", {}),
         }
+
+        if request.conversation_id:
+            detected_domains = last_state.get("detected_domains") or ["it"]
+            status_val = (
+                "clarification"
+                if last_state.get("metadata", {}).get("clarification_options")
+                else ("resolved" if last_state.get("solved") else "open")
+            )
+            try:
+                await conversation_store.touch_conversation(
+                    user_id=current_user.id,
+                    conversation_id=request.conversation_id,
+                    first_query=request.message,
+                    domain_key=detected_domains[0] if detected_domains else "it",
+                    status=status_val,
+                )
+            except Exception as store_err:
+                logger.warning("Failed to touch conversation in stream: %s", store_err)
+
         yield f"event: done\ndata: {json.dumps(final_response)}\n\n"
 
     return StreamingResponse(

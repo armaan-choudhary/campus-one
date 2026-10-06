@@ -4,7 +4,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { ConversationItem, Message, ClarificationOption, Citation, HandoffTicket } from '@/types';
 import { INITIAL_CONVERSATIONS } from '@/lib/demoFixtures';
 import { createUniqueId } from '@/lib/utils';
-import { sendChatMessageApi, sendChatMessageStreamApi, BackendChatResponse, loginWithApi, fetchChatHistoryApi, SEEDED_CREDENTIALS } from '@/lib/api';
+import {
+  sendChatMessageApi,
+  sendChatMessageStreamApi,
+  BackendChatResponse,
+  loginWithApi,
+  fetchChatHistoryApi,
+  fetchUserConversationsApi,
+  createConversationApi,
+  deleteConversationApi,
+  updateConversationApi,
+  SEEDED_CREDENTIALS,
+} from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
 export interface UseChatOptions {
@@ -205,46 +216,102 @@ export function useChat({
       messages: [],
     };
 
-  // Hydrate initial conversation thread from backend checkpointer if available
+  // Hydrate persistent conversations from backend when user is authenticated
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setConversations(initialConversations);
+      return;
+    }
     let isCancelled = false;
 
-    fetchChatHistoryApi(accessToken)
-      .then((history) => {
-        if (isCancelled || !history?.messages || history.messages.length === 0) return;
+    fetchUserConversationsApi(accessToken)
+      .then(async (userConvs) => {
+        if (isCancelled) return;
 
-        const loadedMessages: Message[] = history.messages.map((m, idx) => ({
-          id: `backend-msg-${idx}`,
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content,
-          timestamp: 'Earlier',
-          domain: 'it',
-          domainLabel: 'CampusOne Assistant',
-        }));
+        if (userConvs && userConvs.length > 0) {
+          const targetActiveId =
+            defaultActiveId && userConvs.some((c) => c.id === defaultActiveId)
+              ? defaultActiveId
+              : userConvs[0].id;
 
-        setConversations((prev) => {
-          const convIndex = prev.findIndex((c) => c.id === 'conv-1');
-          if (convIndex >= 0 && prev[convIndex].messages.length === 0) {
-            const updated = [...prev];
-            updated[convIndex] = {
-              ...updated[convIndex],
-              messages: loadedMessages,
-              title: loadedMessages[0]?.content.slice(0, 36) || 'University Thread',
-            };
-            return updated;
+          setActiveConvId(targetActiveId);
+
+          // Preload messages for initial active conversation
+          try {
+            const history = await fetchChatHistoryApi(accessToken, targetActiveId);
+            if (isCancelled) return;
+
+            const loadedMessages: Message[] = (history.messages || []).map((m, idx) => ({
+              id: `backend-msg-${idx}`,
+              role: m.role === 'assistant' ? 'assistant' : 'user',
+              content: m.content,
+              timestamp: 'Earlier',
+              domain: 'it',
+              domainLabel: 'CampusOne Assistant',
+            }));
+
+            setConversations(
+              userConvs.map((c) =>
+                c.id === targetActiveId ? { ...c, messages: loadedMessages } : c
+              )
+            );
+          } catch {
+            setConversations(userConvs);
           }
-          return prev;
-        });
+        } else {
+          // New student without history: create fresh empty session
+          const freshId = createUniqueId('conv');
+          const emptyConv: ConversationItem = {
+            id: freshId,
+            title: 'New inquiry',
+            status: 'open',
+            domainKey: 'it',
+            updatedAt: 'Just now',
+            messages: [],
+          };
+          setConversations([emptyConv]);
+          setActiveConvId(freshId);
+        }
       })
-      .catch(() => {
-        // Fallback gracefully without blocking
+      .catch((err) => {
+        console.warn('Could not load user conversations from backend:', err);
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [accessToken]);
+  }, [accessToken, defaultActiveId, initialConversations]);
+
+  const selectConversation = useCallback(
+    async (convId: string) => {
+      setActiveConvId(convId);
+      const target = conversations.find((c) => c.id === convId);
+      if (accessToken && target && target.messages.length === 0) {
+        try {
+          const history = await fetchChatHistoryApi(accessToken, convId);
+          if (history.messages && history.messages.length > 0) {
+            const loadedMessages: Message[] = history.messages.map((m, idx) => ({
+              id: `backend-msg-${idx}`,
+              role: m.role === 'assistant' ? 'assistant' : 'user',
+              content: m.content,
+              timestamp: 'Earlier',
+              domain: 'it',
+              domainLabel: 'CampusOne Assistant',
+            }));
+
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === convId ? { ...c, messages: loadedMessages } : c
+              )
+            );
+          }
+        } catch (err) {
+          console.error('Failed to load conversation history for thread:', convId, err);
+        }
+      }
+    },
+    [accessToken, conversations]
+  );
 
   const updateActiveConversation = useCallback(
     (messages: Message[]) => {
@@ -256,7 +323,10 @@ export function useChat({
               ? {
                   ...c,
                   messages,
-                  title: messages[0]?.content.slice(0, 36) || c.title,
+                  title:
+                    c.title === 'New inquiry'
+                      ? messages[0]?.content.slice(0, 36) || c.title
+                      : c.title,
                   updatedAt: 'Just now',
                 }
               : c
@@ -278,7 +348,7 @@ export function useChat({
     [activeConvId]
   );
 
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback(async () => {
     const newId = createUniqueId('conv');
     const newConv: ConversationItem = {
       id: newId,
@@ -288,18 +358,44 @@ export function useChat({
       updatedAt: 'Just now',
       messages: [],
     };
+
+    if (accessToken) {
+      try {
+        await createConversationApi(accessToken, { id: newId, title: 'New inquiry' });
+      } catch (err) {
+        console.warn('Initial backend conversation registration notice:', err);
+      }
+    }
+
     setConversations((prev) => [newConv, ...prev.filter((c) => c.messages.length > 0)]);
     setActiveConvId(newId);
-  }, []);
+  }, [accessToken]);
 
   const handleDeleteConversation = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (accessToken) {
+        try {
+          await deleteConversationApi(accessToken, id);
+        } catch (err) {
+          console.error('Failed to delete conversation from backend:', err);
+        }
+      }
+
       setConversations((prev) => {
         const remaining = prev.filter((c) => c.id !== id);
         if (remaining.length === 0) {
           const freshId = createUniqueId('conv');
           setActiveConvId(freshId);
-          return [];
+          return [
+            {
+              id: freshId,
+              title: 'New inquiry',
+              status: 'open',
+              domainKey: 'it',
+              updatedAt: 'Just now',
+              messages: [],
+            },
+          ];
         }
         if (activeConvId === id) {
           setActiveConvId(remaining[0].id);
@@ -307,7 +403,7 @@ export function useChat({
         return remaining;
       });
     },
-    [activeConvId]
+    [accessToken, activeConvId]
   );
 
   const sendMessage = useCallback(
@@ -406,7 +502,28 @@ export function useChat({
         setIsProcessing(false);
       }
     },
-    [accessToken, activeConversation.messages, isProcessing, updateActiveConversation]
+    [accessToken, activeConvId, activeConversation.messages, isProcessing, updateActiveConversation]
+  );
+
+  const togglePin = useCallback(
+    async (id: string) => {
+      const conv = conversations.find((c) => c.id === id);
+      if (!conv) return;
+      const nextPinned = !conv.pinned;
+
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, pinned: nextPinned } : c))
+      );
+
+      if (accessToken) {
+        try {
+          await updateConversationApi(accessToken, id, { pinned: nextPinned });
+        } catch (err) {
+          console.error('Failed to update pinned state on backend:', err);
+        }
+      }
+    },
+    [accessToken, conversations]
   );
 
   const selectClarification = useCallback(
@@ -420,13 +537,14 @@ export function useChat({
   return {
     conversations,
     activeConvId,
-    setActiveConvId,
+    setActiveConvId: selectConversation,
     activeConversation,
     isProcessing,
     thinkingStage,
     sendMessage,
     newChat: handleNewChat,
     deleteConversation: handleDeleteConversation,
+    togglePin,
     selectClarification,
   };
 }

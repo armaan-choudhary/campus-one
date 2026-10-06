@@ -13,6 +13,7 @@ from app.auth.schemas import (
 )
 from app.auth.provider import AuthProvider, MockAuthProvider, get_auth_provider
 from app.auth.dependencies import get_current_user, require_roles
+from app.core.rate_limit import rate_limit
 
 router = APIRouter()
 
@@ -22,6 +23,7 @@ router = APIRouter()
     response_model=TokenResponse,
     summary="User Login",
     description="Authenticate seeded student, staff, agent, knowledge admin, or executive account.",
+    dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))],
 )
 async def login(
     request: LoginRequest,
@@ -50,6 +52,7 @@ async def login(
     status_code=status.HTTP_201_CREATED,
     summary="Register Student Account",
     description="Create a self-service student account using the mock authentication provider.",
+    dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))],
 )
 async def register(
     request: RegisterRequest,

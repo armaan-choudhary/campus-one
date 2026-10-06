@@ -1,10 +1,26 @@
-import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole } from '@/types';
+import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole, ConversationItem } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
 export const SEEDED_CREDENTIALS: Record<UserRole, LoginCredentials> = {
   student: {
     email: 'student@example.edu',
+    password: 'demo-password',
+  },
+  staff: {
+    email: 'student@example.edu',
+    password: 'demo-password',
+  },
+  support_agent: {
+    email: 'agent@example.edu',
+    password: 'demo-password',
+  },
+  knowledge_admin: {
+    email: 'admin.knowledge@example.edu',
+    password: 'demo-password',
+  },
+  analyst: {
+    email: 'executive@example.edu',
     password: 'demo-password',
   },
   admin: {
@@ -20,11 +36,48 @@ const SEEDED_PERMISSIONS: Record<UserRole, string[]> = {
     'knowledge:read_public',
     'handoff:create_own',
   ],
+  staff: [
+    'conversations:own',
+    'messages:create',
+    'knowledge:read_public',
+    'knowledge:read_staff',
+    'handoff:create_own',
+  ],
+  support_agent: [
+    'conversations:assigned',
+    'handoffs:triage',
+    'handoffs:resolve',
+    'knowledge:read',
+  ],
+  knowledge_admin: [
+    'knowledge:ingest',
+    'knowledge:publish',
+    'knowledge:archive',
+    'knowledge:read',
+    'knowledge:manage',
+  ],
+  analyst: [
+    'analytics:read',
+    'evaluation:read',
+    'evaluation:run',
+    'knowledge:read_metadata',
+  ],
   admin: ['*'],
 };
 
 function normalizeRole(backendRole: string): UserRole {
-  return backendRole?.toLowerCase() === 'admin' ? 'admin' : 'student';
+  const r = backendRole?.toLowerCase() || 'student';
+  if (
+    r === 'admin' ||
+    r === 'analyst' ||
+    r === 'knowledge_admin' ||
+    r === 'support_agent' ||
+    r === 'staff' ||
+    r === 'student'
+  ) {
+    return r as UserRole;
+  }
+  return 'student';
 }
 
 export async function loginWithApi(credentials: LoginCredentials): Promise<AuthTokenResponse> {
@@ -344,13 +397,144 @@ export interface BackendHistoryMessage {
   content: string;
 }
 
+export interface BackendConversationSummary {
+  id: string;
+  user_id: string;
+  title: string;
+  domain_key: string;
+  status: 'resolved' | 'open' | 'clarification' | 'handoff';
+  pinned: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface BackendChatHistoryResponse {
   thread_id: string;
   messages: BackendHistoryMessage[];
+  conversation?: BackendConversationSummary;
 }
 
-export async function fetchChatHistoryApi(accessToken: string): Promise<BackendChatHistoryResponse> {
-  const res = await fetch(`${API_BASE_URL}/chat/history`, {
+export function formatTimeAgo(isoString?: string): string {
+  if (!isoString) return 'Just now';
+  try {
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return 'Just now';
+  }
+}
+
+export async function fetchUserConversationsApi(accessToken: string): Promise<ConversationItem[]> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to load student conversations (${res.status})`);
+  }
+
+  const items: BackendConversationSummary[] = await res.json();
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    domainKey: item.domain_key,
+    updatedAt: formatTimeAgo(item.updated_at),
+    pinned: item.pinned,
+    messages: [],
+  }));
+}
+
+export async function createConversationApi(
+  accessToken: string,
+  params?: { id?: string; title?: string; domainKey?: string }
+): Promise<ConversationItem> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      id: params?.id,
+      title: params?.title,
+      domain_key: params?.domainKey || 'it',
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to create conversation (${res.status})`);
+  }
+
+  const item: BackendConversationSummary = await res.json();
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    domainKey: item.domain_key,
+    updatedAt: 'Just now',
+    pinned: item.pinned,
+    messages: [],
+  };
+}
+
+export async function updateConversationApi(
+  accessToken: string,
+  conversationId: string,
+  updates: { title?: string; pinned?: boolean; status?: string }
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to update conversation (${res.status})`);
+  }
+}
+
+export async function deleteConversationApi(
+  accessToken: string,
+  conversationId: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to delete conversation (${res.status})`);
+  }
+}
+
+export async function fetchChatHistoryApi(
+  accessToken: string,
+  conversationId?: string
+): Promise<BackendChatHistoryResponse> {
+  const url = conversationId
+    ? `${API_BASE_URL}/chat/history?conversation_id=${encodeURIComponent(conversationId)}`
+    : `${API_BASE_URL}/chat/history`;
+
+  const res = await fetch(url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
