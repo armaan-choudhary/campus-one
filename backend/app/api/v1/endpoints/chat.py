@@ -142,3 +142,111 @@ async def chat(
         clarification_options=result.get("metadata", {}).get("clarification_options"),
         metadata=result.get("metadata", {}),
     )
+
+
+@router.post(
+    "/stream",
+    summary="Send a chat message with Server-Sent Events (SSE) streaming",
+    description="Stream stage updates, token deltas, and final message payload over SSE.",
+)
+async def chat_stream(
+    request: ChatRequest,
+    current_user: CurrentUser = Depends(require_permission("messages:create")),
+):
+    import asyncio
+    import json
+    from starlette.responses import StreamingResponse
+
+    graph = get_graph()
+    thread_id = (
+        f"{current_user.id}:{request.conversation_id}"
+        if request.conversation_id
+        else current_user.id
+    )
+
+    async def event_generator():
+        yield f"event: stage\ndata: {json.dumps({'stage': 'received', 'label': 'Inquiry received'})}\n\n"
+
+        loop = asyncio.get_running_loop()
+        queue = asyncio.Queue()
+
+        def run_stream():
+            try:
+                for chunk in graph.stream(
+                    {"current_query": request.message},
+                    config={
+                        "configurable": {"thread_id": thread_id},
+                        "run_name": "campus-one-chat-stream",
+                        "tags": ["campus-one", "chat-stream", current_user.role.value],
+                        "metadata": {
+                            "user_id": current_user.id,
+                            "conversation_id": request.conversation_id,
+                            "role": current_user.role.value,
+                        },
+                    },
+                ):
+                    loop.call_soon_threadsafe(queue.put_nowait, ("chunk", chunk))
+                loop.call_soon_threadsafe(queue.put_nowait, ("done", None))
+            except Exception as exc:
+                loop.call_soon_threadsafe(queue.put_nowait, ("error", exc))
+
+        loop.run_in_executor(None, run_stream)
+
+        last_state = {}
+
+        while True:
+            item_type, item_data = await queue.get()
+            if item_type == "done":
+                break
+            elif item_type == "error":
+                yield f"event: error\ndata: {json.dumps({'error': str(item_data)})}\n\n"
+                return
+            elif item_type == "chunk":
+                node_name = list(item_data.keys())[0]
+                node_output = item_data[node_name]
+                last_state.update(node_output)
+
+                if node_name == "router":
+                    yield f"event: stage\ndata: {json.dumps({'stage': 'routing', 'detected_domains': node_output.get('detected_domains', []), 'confidence': node_output.get('routing_confidence', 0.0), 'intent': node_output.get('intent')})}\n\n"
+                elif node_name in {"it_agent", "hr_agent", "fees_agent", "facilities_agent", "general_agent", "multi_domain_agent"}:
+                    yield f"event: stage\ndata: {json.dumps({'stage': 'retrieving', 'domain': node_name, 'sources': node_output.get('sources', [])})}\n\n"
+                elif node_name == "clarify":
+                    yield f"event: stage\ndata: {json.dumps({'stage': 'clarifying', 'options': node_output.get('metadata', {}).get('clarification_options', [])})}\n\n"
+                elif node_name == "synthesize":
+                    yield f"event: stage\ndata: {json.dumps({'stage': 'synthesizing', 'label': 'Synthesizing response'})}\n\n"
+
+        final_answer = last_state.get("final_answer") or last_state.get("agent_response") or ""
+        words = final_answer.split(" ")
+        for i, word in enumerate(words):
+            token = word + (" " if i < len(words) - 1 else "")
+            yield f"event: token\ndata: {json.dumps({'delta': token})}\n\n"
+            await asyncio.sleep(0.015)
+
+        is_new_ticket = bool(last_state.get("metadata", {}).get("ticket_newly_raised", False))
+        final_response = {
+            "answer": final_answer,
+            "thread_id": thread_id,
+            "ticket_id": last_state.get("ticket_id") if is_new_ticket else None,
+            "ticket": last_state.get("metadata", {}).get("ticket") if is_new_ticket else None,
+            "detected_domains": last_state.get("detected_domains", []),
+            "intent": last_state.get("intent"),
+            "routing_confidence": last_state.get("routing_confidence", 0.0),
+            "solved": last_state.get("solved", False),
+            "human_required": last_state.get("human_required", False),
+            "handoff_reason": last_state.get("handoff_reason"),
+            "sources": last_state.get("sources", []),
+            "retrieved_chunks": last_state.get("retrieved_chunks", []),
+            "clarification_options": last_state.get("metadata", {}).get("clarification_options"),
+            "metadata": last_state.get("metadata", {}),
+        }
+        yield f"event: done\ndata: {json.dumps(final_response)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

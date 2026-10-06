@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ConversationItem, Message, ClarificationOption, Citation, HandoffTicket } from '@/types';
 import { INITIAL_CONVERSATIONS } from '@/lib/demoFixtures';
 import { createUniqueId } from '@/lib/utils';
-import { sendChatMessageApi, BackendChatResponse, loginWithApi, fetchChatHistoryApi, SEEDED_CREDENTIALS } from '@/lib/api';
+import { sendChatMessageApi, sendChatMessageStreamApi, BackendChatResponse, loginWithApi, fetchChatHistoryApi, SEEDED_CREDENTIALS } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
 export interface UseChatOptions {
@@ -369,7 +369,18 @@ export function useChat({
           };
         } else {
           try {
-            const backendRes = await sendChatMessageApi(token, text, activeConvId);
+            const backendRes = await sendChatMessageStreamApi(
+              token,
+              text,
+              activeConvId,
+              {
+                onStage: (stageInfo) => {
+                  if (stageInfo.stage === 'routing') setThinkingStage(1);
+                  else if (stageInfo.stage === 'retrieving') setThinkingStage(2);
+                  else if (stageInfo.stage === 'synthesizing') setThinkingStage(2);
+                },
+              }
+            );
             assistantMsg = mapBackendResponseToMessage(backendRes, timestamp);
           } catch (apiErr) {
             console.error('Backend chat API request failed:', apiErr);

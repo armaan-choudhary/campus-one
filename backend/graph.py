@@ -14,6 +14,7 @@ try:
         general_agent,
         hr_agent,
         it_query,
+        multi_domain_orchestrator,
         respond,
         route_after_response,
         route_by_confidence,
@@ -30,6 +31,7 @@ except ModuleNotFoundError:
         general_agent,
         hr_agent,
         it_query,
+        multi_domain_orchestrator,
         respond,
         route_after_response,
         route_by_confidence,
@@ -57,6 +59,7 @@ def build_graph(checkpointer=None):
     builder.add_node("fees_agent", fees_agent)
     builder.add_node("facilities_agent", facilities_agent)
     builder.add_node("general_agent", general_agent)
+    builder.add_node("multi_domain_agent", multi_domain_orchestrator)
     builder.add_node("synthesize", synthesize)
     builder.add_node("respond", respond)
 
@@ -72,6 +75,7 @@ def build_graph(checkpointer=None):
             "fees": "fees_agent",
             "facilities": "facilities_agent",
             "general": "general_agent",
+            "multi_domain": "multi_domain_agent",
         },
     )
     builder.add_edge("clarify", "respond")
@@ -80,6 +84,7 @@ def build_graph(checkpointer=None):
     builder.add_edge("fees_agent", "synthesize")
     builder.add_edge("facilities_agent", "synthesize")
     builder.add_edge("general_agent", "synthesize")
+    builder.add_edge("multi_domain_agent", "synthesize")
     builder.add_edge("synthesize", "respond")
     builder.add_edge("create_ticket", "respond")
     builder.add_conditional_edges(
@@ -123,7 +128,8 @@ def close_graph() -> None:
 
 
 def get_graph():
-    """Return the initialized shared graph."""
+    """Return the initialized shared graph, auto-building with MemorySaver if uninitialized."""
+    global _graph
     if _graph is None:
-        raise RuntimeError("Graph has not been initialized")
+        _graph = build_graph()
     return _graph

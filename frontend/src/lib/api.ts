@@ -163,6 +163,120 @@ export async function sendChatMessageApi(
   return await res.json();
 }
 
+export interface StreamHandlers {
+  onStage?: (stageInfo: { stage: string; label?: string; detected_domains?: string[]; confidence?: number }) => void;
+  onToken?: (token: string) => void;
+  onDone?: (response: BackendChatResponse) => void;
+  onError?: (error: Error) => void;
+}
+
+export async function sendChatMessageStreamApi(
+  accessToken: string,
+  message: string,
+  conversationId?: string,
+  handlers?: StreamHandlers
+): Promise<BackendChatResponse> {
+  let token = accessToken;
+  const requestBody = JSON.stringify({
+    message,
+    ...(conversationId ? { conversation_id: conversationId } : {}),
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: requestBody,
+    });
+  } catch {
+    return sendChatMessageApi(accessToken, message, conversationId);
+  }
+
+  if (res.status === 401) {
+    try {
+      const activeRole = (typeof window !== 'undefined' ? localStorage.getItem('campusone_active_role') : null) as UserRole | null;
+      const creds = SEEDED_CREDENTIALS[activeRole && activeRole in SEEDED_CREDENTIALS ? activeRole : 'student'];
+      const auth = await loginWithApi(creds);
+      if (auth?.access_token) {
+        token = auth.access_token;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campusone_access_token', auth.access_token);
+          localStorage.setItem('campusone_refresh_token', auth.refresh_token);
+        }
+        res = await fetch(`${API_BASE_URL}/chat/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: requestBody,
+        });
+      }
+    } catch {
+      // Re-login failed
+    }
+  }
+
+  if (!res.ok || !res.body) {
+    return sendChatMessageApi(accessToken, message, conversationId);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalResponse: BackendChatResponse | null = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const block of lines) {
+        if (!block.trim()) continue;
+        const eventMatch = block.match(/event:\s*([^\n]+)/);
+        const dataMatch = block.match(/data:\s*([^\n]+)/);
+        const event = eventMatch ? eventMatch[1].trim() : 'message';
+        const dataStr = dataMatch ? dataMatch[1].trim() : '';
+
+        if (!dataStr) continue;
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (event === 'stage') {
+            handlers?.onStage?.(parsed);
+          } else if (event === 'token') {
+            handlers?.onToken?.(parsed.delta || '');
+          } else if (event === 'done') {
+            finalResponse = parsed as BackendChatResponse;
+            handlers?.onDone?.(finalResponse);
+          } else if (event === 'error') {
+            handlers?.onError?.(new Error(parsed.error || 'Stream error'));
+          }
+        } catch {
+          // ignore malformed chunk
+        }
+      }
+    }
+  } catch (err: any) {
+    handlers?.onError?.(err);
+    if (!finalResponse) {
+      return sendChatMessageApi(accessToken, message, conversationId);
+    }
+  }
+
+  if (finalResponse) {
+    return finalResponse;
+  }
+  return sendChatMessageApi(accessToken, message, conversationId);
+}
+
 export interface BackendHealthResponse {
   status: string;
   service: string;

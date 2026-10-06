@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { TicketProvider, useTickets } from '@/context/TicketContext';
 import { AdminTicketPanel } from '@/components/AdminTicketPanel';
+import { AdminAnalyticsPanel } from '@/components/AdminAnalyticsPanel';
 import { CampusLoader } from '@/components/ui/CampusLoader';
 import { CampusOneMark } from '@/components/home/CampusOneMark';
 import { OrangeTicks } from '@/components/home/HandwrittenElements';
@@ -19,9 +20,18 @@ import {
   ExternalLink,
   KeyRound,
   ArrowLeft,
+  Activity,
+  Inbox,
 } from 'lucide-react';
 
-function AdminNav({ currentTheme, onToggleTheme }: { currentTheme: 'dark' | 'light'; onToggleTheme: () => void }) {
+interface AdminNavProps {
+  currentTheme: 'dark' | 'light';
+  onToggleTheme: () => void;
+  activeTab: 'tickets' | 'analytics';
+  onSelectTab: (tab: 'tickets' | 'analytics') => void;
+}
+
+function AdminNav({ currentTheme, onToggleTheme, activeTab, onSelectTab }: AdminNavProps) {
   const { user, logout } = useAuth();
   const { tickets } = useTickets();
   const router = useRouter();
@@ -53,17 +63,39 @@ function AdminNav({ currentTheme, onToggleTheme }: { currentTheme: 'dark' | 'lig
         </div>
       </div>
 
-      {/* Center Operational Live Stats */}
-      <div className="hidden md:flex items-center gap-4 text-xs font-mono">
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Queue Live</span>
-        </div>
-        <div className="flex items-center gap-2 text-[#8E8F94]">
-          <span>Pending: <strong className="text-amber-400">{pendingCount}</strong></span>
-          <span>&bull;</span>
-          <span>Claimed: <strong className="text-blue-400">{inProgressCount}</strong></span>
-        </div>
+      {/* Center Navigation Switcher */}
+      <div className="flex items-center p-1 rounded-xl bg-[#14151B] border border-[#23242A]">
+        <button
+          onClick={() => onSelectTab('tickets')}
+          className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            activeTab === 'tickets'
+              ? 'bg-[#22242D] text-white shadow-xs border border-[#3A3D4A]'
+              : 'text-[#8E8F94] hover:text-white hover:bg-[#1A1C22]'
+          }`}
+        >
+          <Inbox className="w-3.5 h-3.5 text-amber-400" />
+          <span>Ticket Triage</span>
+          {pendingCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-400/10 text-amber-400 border border-amber-400/20">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => onSelectTab('analytics')}
+          className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            activeTab === 'analytics'
+              ? 'bg-[#22242D] text-white shadow-xs border border-[#3A3D4A]'
+              : 'text-[#8E8F94] hover:text-white hover:bg-[#1A1C22]'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Telemetry & Analytics</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            Live
+          </span>
+        </button>
       </div>
 
       {/* Right Controls */}
@@ -278,11 +310,18 @@ function AdminConsoleContent() {
     return <AdminAuthBarrier />;
   }
 
+  const [activeTab, setActiveTab] = useState<'tickets' | 'analytics'>('tickets');
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#0E0E0E] text-white overflow-hidden transition-colors duration-200">
-      <AdminNav currentTheme={currentTheme} onToggleTheme={toggleTheme} />
+      <AdminNav
+        currentTheme={currentTheme}
+        onToggleTheme={toggleTheme}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+      />
       <main className="flex-1 flex overflow-hidden relative">
-        <AdminTicketPanel />
+        {activeTab === 'tickets' ? <AdminTicketPanel /> : <AdminAnalyticsPanel />}
       </main>
     </div>
   );

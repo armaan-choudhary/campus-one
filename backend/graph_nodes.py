@@ -476,6 +476,100 @@ def general_agent(state: AssistantState):
     return _run_domain_agent(state, "General", GENERAL_AGENT_PROMPT)
 
 
+def multi_domain_orchestrator(state: AssistantState) -> dict[str, Any]:
+    """
+    Concurrently executes multiple domain agents for coupled multi-department requests.
+    Aggregates sub-answers, deduplicates sources, and merges retrieved evidence.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    route_map = {
+        "it": ("IT", it_query),
+        "hr": ("HR", hr_agent),
+        "fees": ("Fees", fees_agent),
+        "finance": ("Fees", fees_agent),
+        "facilities": ("Facilities", facilities_agent),
+        "general": ("General", general_agent),
+    }
+
+    domains = state.get("detected_domains", [])
+    matched_domains = []
+    seen = set()
+    for d in domains:
+        key = d.lower().strip()
+        if key in route_map and route_map[key][0] not in seen:
+            seen.add(route_map[key][0])
+            matched_domains.append((route_map[key][0], route_map[key][1]))
+
+    if not matched_domains:
+        return general_agent(state)
+    if len(matched_domains) == 1:
+        return matched_domains[0][1](state)
+
+    # Execute domain agents concurrently in parallel
+    results = []
+    with ThreadPoolExecutor(max_workers=min(len(matched_domains), 4)) as executor:
+        future_to_dept = {
+            executor.submit(agent_fn, state): dept_name
+            for dept_name, agent_fn in matched_domains
+        }
+        for future in as_completed(future_to_dept):
+            dept = future_to_dept[future]
+            try:
+                res = future.result()
+                results.append((dept, res))
+            except Exception:
+                pass
+
+    if not results:
+        return general_agent(state)
+
+    # Maintain consistent ordering based on initial matched_domains
+    results.sort(key=lambda x: [m[0] for m in matched_domains].index(x[0]))
+
+    combined_answers = []
+    combined_sources = []
+    combined_chunks = []
+    confidences = []
+    all_solved = True
+    any_human_required = False
+    handoff_reasons = []
+
+    for dept, res in results:
+        resp_text = res.get("agent_response", "").strip()
+        if resp_text:
+            combined_answers.append(f"### {dept} Department Resolution\n{resp_text}")
+        combined_sources.extend(res.get("sources", []))
+        combined_chunks.extend(res.get("retrieved_chunks", []))
+        confidences.append(res.get("agent_confidence", 0.8))
+        if not res.get("solved", False):
+            all_solved = False
+        if res.get("human_required", False):
+            any_human_required = True
+            if res.get("handoff_reason"):
+                handoff_reasons.append(f"[{dept}] {res.get('handoff_reason')}")
+
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 0.85
+    unique_sources = list(dict.fromkeys(combined_sources))
+
+    return {
+        "agent_response": "\n\n".join(combined_answers),
+        "agent_confidence": avg_confidence,
+        "solved": all_solved,
+        "human_required": any_human_required,
+        "handoff_reason": "; ".join(handoff_reasons) if handoff_reasons else None,
+        "sources": unique_sources,
+        "retrieved_chunks": combined_chunks,
+        "metadata": {
+            **state.get("metadata", {}),
+            "agent_domain": "Multi-Domain",
+            "executed_domains": [m[0] for m in matched_domains],
+            "multi_domain": True,
+            "retrieved_document_count": len(combined_chunks),
+        },
+    }
+
+
 def synthesize(state: AssistantState):
     query = state["current_query"]
     agent_response = state.get("agent_response")
@@ -714,6 +808,12 @@ def route_by_confidence(state: AssistantState) -> str:
                 prev_domain = non_general[0]
         if prev_domain and prev_domain.lower() in valid_routes:
             return valid_routes[prev_domain.lower()]
+
+    # High-confidence multi-domain coupled request:
+    # If confidence >= 0.75 and there are multiple distinct candidate departments,
+    # route to multi_domain to concurrently dispatch and synthesize joint resolution!
+    if confidence >= 0.75 and len(distinct_candidates) > 1:
+        return "multi_domain"
 
     # Ambiguous or low-confidence request across multiple departments
     if confidence < 0.75 or not distinct_candidates or len(distinct_candidates) > 1:
