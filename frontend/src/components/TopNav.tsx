@@ -1,23 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { UserRole, PERSONAS } from '@/lib/demoFixtures';
 import { useAuth } from '@/context/AuthContext';
 import { LoginModal } from '@/components/auth/LoginModal';
+import { CampusOneMark } from '@/components/home/CampusOneMark';
 import {
-  Sun,
-  Moon,
   Plus,
   PanelLeft,
   PanelLeftClose,
-  ShieldCheck,
-  Home,
   MessageSquare,
   Ticket,
-  ExternalLink,
 } from 'lucide-react';
 import { useTickets } from '@/context/TicketContext';
 
@@ -26,42 +21,41 @@ interface TopNavProps {
   onRoleChange?: (role: UserRole) => void;
   activeStudentTab?: 'chat' | 'tickets';
   onStudentTabChange?: (tab: 'chat' | 'tickets') => void;
-  currentTheme: 'dark' | 'light';
-  onToggleTheme: () => void;
+  currentTheme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
   onNewChat: () => void;
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
-  currentRole,
   activeStudentTab = 'chat',
   onStudentTabChange,
-  currentTheme,
-  onToggleTheme,
   onNewChat,
   onToggleSidebar,
   isSidebarOpen,
 }) => {
-  const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { user, role: authRole } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const { role: authRole, user } = useAuth();
   const { ongoingCount } = useTickets();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const activePersona = PERSONAS[authRole] || PERSONAS.student;
+  const displayName = user?.displayName || activePersona.name;
+  const userSubtitle = user?.department || (authRole === 'admin' ? 'Administration' : 'Student');
 
   return (
-    <header className="h-14 bg-[var(--surface-1)]/80 backdrop-blur-md px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 border-b border-[var(--border-subtle)] transition-colors">
-      {/* Left: Sidebar Toggle, Brand Identity */}
-      <div className="flex items-center gap-2 sm:gap-3">
+    <header className="h-14 bg-[#0B0B0B] px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 border-b border-[#292929] text-[#F5F3ED] transition-colors select-none">
+      {/* Left: Sidebar Toggle & Brand Identity */}
+      <div className="flex items-center gap-3">
         {/* Sidebar Toggle for Student Chat View */}
         {activeStudentTab === 'chat' && onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer ${
-              !isSidebarOpen
-                ? 'bg-[var(--surface-2)] text-[var(--accent)] border border-[var(--border-subtle)] shadow-xs'
-                : 'text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]'
-            }`}
+            className="w-7 h-7 rounded flex items-center justify-center text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#151515] transition-colors cursor-pointer"
             title={isSidebarOpen ? 'Hide inquiry history' : 'Show inquiry history'}
             aria-label={isSidebarOpen ? 'Hide inquiry history' : 'Show inquiry history'}
           >
@@ -76,137 +70,132 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Brand Link to Homepage */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 group py-1 cursor-pointer"
+          className="flex items-center gap-2 group py-1 cursor-pointer"
           title="Return to CampusOne Homepage"
         >
-          <div className="w-6 h-6 relative shrink-0 transition-transform duration-200 group-hover:scale-105">
-            <Image
-              src={currentTheme === 'dark' ? '/logo.png' : '/logo-dark.png'}
-              alt="CampusOne Logo"
-              fill
-              sizes="24px"
-              className="object-contain"
-              priority
-            />
+          <div className="w-4.5 h-4.5 flex items-center justify-center text-[#F5F3ED] transition-transform group-hover:scale-105">
+            <CampusOneMark size={16} />
           </div>
-          <span className="font-semibold text-sm tracking-tight text-[var(--foreground)] group-hover:text-indigo-500 transition-colors">
+          <span className="font-serif font-bold text-base sm:text-lg tracking-tight text-[#F5F3ED]">
             CampusOne
           </span>
+          <span className="text-[#292929] text-xs font-mono hidden sm:inline">/</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-[#8D8A83] hidden sm:inline">
+            Service Desk
+          </span>
         </Link>
       </div>
 
-      {/* Center: Student Navigation Tabs (Assistant vs My Tickets) */}
-      {onStudentTabChange && (
-        <div className="flex items-center gap-1 p-1 bg-[var(--surface-2)]/80 rounded-xl border border-[var(--border-subtle)] text-xs">
-          <button
-            onClick={() => onStudentTabChange('chat')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${
-              activeStudentTab === 'chat'
-                ? 'bg-[var(--surface-1)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border-subtle)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Assistant</span>
-          </button>
+      {/* Center/Left: Navigation Links */}
+      <nav className="hidden sm:flex items-center gap-7 text-xs font-mono ml-4">
+        {onStudentTabChange && (
+          <>
+            <button
+              onClick={() => onStudentTabChange('chat')}
+              className={`relative py-1 transition-colors cursor-pointer ${
+                activeStudentTab === 'chat'
+                  ? 'text-[#F5F3ED] font-semibold'
+                  : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+              }`}
+            >
+              <span>Assistant</span>
+              {activeStudentTab === 'chat' && (
+                <span className="absolute -bottom-4 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+              )}
+            </button>
 
-          <button
-            onClick={() => onStudentTabChange('tickets')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all duration-150 cursor-pointer ${
-              activeStudentTab === 'tickets'
-                ? 'bg-[var(--surface-1)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border-subtle)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <Ticket className="w-3.5 h-3.5" />
-            <span>My Tickets</span>
-            {ongoingCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center font-mono">
-                {ongoingCount}
-              </span>
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* Right Controls: New Inquiry, Admin link (if applicable), Theme, Identity */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Link to Admin Console (if user is admin or wants to open separate admin page) */}
-        {authRole === 'admin' ? (
-          <Link
-            href="/admin"
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-xs font-medium transition-all cursor-pointer"
-            title="Open Admin Ticket Console"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin Console</span>
-            <ExternalLink className="w-3 h-3 text-indigo-400/70" />
-          </Link>
-        ) : (
-          <Link
-            href="/admin"
-            className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] text-xs transition-colors cursor-pointer"
-            title="Admin Login Portal"
-          >
-            <span>Staff / Admin</span>
-          </Link>
+            <button
+              onClick={() => onStudentTabChange('tickets')}
+              className={`relative py-1 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeStudentTab === 'tickets'
+                  ? 'text-[#F5F3ED] font-semibold'
+                  : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+              }`}
+            >
+              <span>My Tickets</span>
+              {mounted && ongoingCount > 0 && (
+                <span className="text-[10px] text-[#FF7A00] font-mono font-bold">
+                  [{ongoingCount}]
+                </span>
+              )}
+              {activeStudentTab === 'tickets' && (
+                <span className="absolute -bottom-4 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+              )}
+            </button>
+          </>
         )}
 
-        {/* New Inquiry Button (For Student Assistant chat) */}
+        <Link
+          href="/admin"
+          className="relative py-1 text-[#8D8A83] hover:text-[#F5F3ED] transition-colors cursor-pointer"
+          title="Staff & Administrative Console"
+        >
+          <span>Staff/Admin</span>
+        </Link>
+      </nav>
+
+      {/* Right Controls: User Profile Chip & Actions */}
+      <div className="flex items-center gap-3">
+        {/* Mobile Ticket / Chat Quick Toggle */}
+        {onStudentTabChange && (
+          <button
+            onClick={() => onStudentTabChange(activeStudentTab === 'chat' ? 'tickets' : 'chat')}
+            className="sm:hidden w-7 h-7 rounded flex items-center justify-center text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#151515] transition-colors relative"
+            title={activeStudentTab === 'chat' ? 'View My Tickets' : 'Switch to Assistant'}
+            aria-label={activeStudentTab === 'chat' ? 'View My Tickets' : 'Switch to Assistant'}
+          >
+            {activeStudentTab === 'chat' ? (
+              <>
+                <Ticket className="w-4 h-4" />
+                {mounted && ongoingCount > 0 && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#FF7A00] rounded-full" />
+                )}
+              </>
+            ) : (
+              <MessageSquare className="w-4 h-4 text-[#FF7A00]" />
+            )}
+          </button>
+        )}
+
+        {/* New Inquiry Action */}
         <button
           onClick={onNewChat}
-          className="flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-foreground)] active:scale-95 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150 shadow-xs cursor-pointer group"
-          aria-label="Start new inquiry"
+          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-[#A1A1AA] hover:text-[#FF7A00] hover:bg-[#FF7A00]/5 border border-[#242531] hover:border-[#FF7A00]/40 transition-all cursor-pointer mr-1"
+          title="New inquiry"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span className="hidden sm:inline">New inquiry</span>
+          <Plus className="w-3.5 h-3.5 text-[#FF7A00]" />
+          <span>New inquiry</span>
         </button>
 
-        {/* Compact Theme Switcher */}
-        <button
-          onClick={onToggleTheme}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] active:scale-95 transition-all duration-150 border border-transparent hover:border-[var(--border-subtle)] cursor-pointer group"
-          title={`Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} mode`}
-          aria-label="Toggle color theme"
-        >
-          {currentTheme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 group-hover:rotate-45" />
-          ) : (
-            <Moon className="w-4 h-4 text-indigo-500 transition-transform duration-200 group-hover:-rotate-12" />
-          )}
-        </button>
-
-        {/* User Identity / Role Switcher Modal Trigger */}
+        {/* User Identity Chip: Name + Title + Avatar */}
         <button
           onClick={() => setShowAuthModal(true)}
-          className="flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg bg-[var(--surface-2)]/80 hover:bg-[var(--surface-3)] text-xs border border-[var(--border-subtle)] text-[var(--foreground)] transition-all duration-150 active:scale-95 cursor-pointer shadow-xs group"
+          className="flex items-center gap-2.5 text-right hover:opacity-95 transition-opacity cursor-pointer group"
           title="Campus Identity & Role Access"
-          aria-label="Manage user authentication and roles"
         >
-          <div className="w-5 h-5 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold text-[10px] flex items-center justify-center shrink-0">
-            {activePersona.avatar}
+          <div className="hidden sm:flex flex-col text-right leading-tight">
+            <span className="text-xs font-medium text-[#F5F3ED] group-hover:text-white">
+              {displayName}
+            </span>
+            <span className="text-[10px] text-[#8D8A83] group-hover:text-[#FF7A00] transition-colors font-mono">
+              {userSubtitle}
+            </span>
           </div>
-          <span className="hidden xl:inline text-xs font-medium max-w-[110px] truncate">
-            {user?.displayName || activePersona.name}
-          </span>
-          <span className="text-[10px] font-mono text-[var(--text-secondary)] capitalize px-1 py-0.2 rounded bg-[var(--surface-3)]">
-            {authRole}
-          </span>
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-[#1E1E24] border border-[#2D2D36] group-hover:border-[#FF7A00]/50 transition-colors shrink-0 relative flex items-center justify-center text-xs font-mono font-bold text-[#F5F3ED]">
+            <Image
+              src={authRole === 'admin' ? '/illustrations/wimpy/avatar-4.png' : '/illustrations/wimpy/avatar-1.png'}
+              alt={activePersona.name}
+              fill
+              sizes="32px"
+              className="object-cover"
+            />
+          </div>
         </button>
-
-        {/* Return to Home link icon */}
-        <Link
-          href="/"
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] active:scale-95 transition-all duration-150 border border-transparent hover:border-[var(--border-subtle)] cursor-pointer"
-          title="Return to Home overview"
-          aria-label="Return to Home overview"
-        >
-          <Home className="w-4 h-4" />
-        </Link>
       </div>
 
-      {/* Campus Identity & RBAC Token Manager Modal */}
+      {/* Global Campus Identity & Role Access Modal */}
       <LoginModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </header>
   );
 };
+

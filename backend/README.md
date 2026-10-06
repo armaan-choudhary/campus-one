@@ -10,15 +10,18 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Department-Isolated Vector Retrieval:** Dedicated pgvector collections for IT, HR, Finance, and Facilities, preventing cross-domain hallucinations.
 - **MMR RAG Search:** Combines semantic similarity with diversity weighting (`k=4, fetch_k=16, lambda_mult=0.7`) using normalized `all-MiniLM-L6-v2` embeddings.
 - **Verifiable Institutional Citations:** Extracts exact document names and page numbers directly from vector metadata for source attribution.
-- **Confidence-Gated Edge Routing:** Routes to specialized domain agents if confidence $\ge 0.75$ and returns a clarification response for ambiguous requests.
-- **Conversation-Based Escalation:** Detects unresolved follow-ups or explicit escalation requests and routes them to internal ticket creation without directly contacting a department.
-- **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and returns the ticket confirmation to the user.
-- **Synthesized Final Output:** Condenses domain agent responses into concise, student-friendly answers with actionable numbered steps.
+- **Confidence-Gated Edge Routing & Intra-Domain Gating:** Routes to specialized domain agents if confidence $\ge 0.75$. If candidate options point to the same department, the system routes directly rather than entering a clarification loop. Multi-department divergence triggers structured clarification (`clarify()`).
+- **Conversational Continuation Support:** Recognizes short replies (*"no"*, *"nope"*, *"yes"*, *"not yet"*) in ongoing dialogues and preserves active domain context.
+- **Clarification Loop Guard:** When clarification attempts reach max limits, departmental queries escalate to support tickets, while `General` campus and lost belongings inquiries are exempt and receive authoritative next steps directly.
+- **Conversational Ticket Escalation:** Detects explicit ticket requests (*"help me raise a ticket for the same"*, *"bro ticket"*, *"ticket"*) and triggers internal ticket creation without thread locks from earlier sessions.
+- **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and delivers the creation receipt on that single turn.
+- **Synthesized Final Output & Zero-Emoji Contract:** Formats domain agent responses into concise, student-friendly answers with actionable numbered steps. Emojis are strictly prohibited, and inline keycap numbers are deterministically reformatted into clean Markdown lists.
 - **Authenticated Conversations:** Uses the authenticated user's ID as the LangGraph thread ID so conversations reload across logins.
 - **Self-Service Student Registration:** Supports new student signup via `POST /api/v1/auth/register`, persisting credentials with PBKDF2-HMAC-SHA256 password hashing in PostgreSQL (`campus_users`).
 - **LangSmith Tracing & Observability:** Automatically instruments LangChain and LangGraph node executions, MMR searches, and LLM calls when `LANGSMITH_TRACING=true`.
 - **FastAPI Chat & Auth API:** Exposes authenticated conversations through `POST /api/v1/chat` and history reload via `GET /api/v1/chat/history`.
-- **Streamlit Debug Console:** Provides a developer-only local UI with "Sign in" and "Create account" tabs for smoke-testing authentication, routing, confidence, ticket creation, source metadata, and conversation history reload. The dedicated `frontend/` application is the user-facing client.
+- **Automated Unit Test Suite:** Includes 31 comprehensive unit tests (`tests/test_auth.py`, `tests/test_clarification.py`, `tests/test_ticket_lifecycle.py`).
+- **Streamlit Debug Console:** Provides a developer-only local UI with "Sign in" and "Create account" tabs for smoke-testing authentication, routing, confidence, ticket creation, source metadata, and conversation history reload.
 
 ---
 
@@ -38,6 +41,10 @@ backend/
 ├── index_documents.py        # PDF loading, recursive chunking, and PGVector indexing pipeline
 ├── knowledge_retrieval.py    # PGVector connection, HuggingFace embeddings, and MMR retrieval helpers
 ├── Prompts.py                # Departmental prompt templates and system instructions
+├── tests/                    # Automated unit test suite (31 tests)
+│   ├── test_auth.py          # Hashing, JWT encoding, student registration, RBAC
+│   ├── test_clarification.py # Option bounds, intra-domain gating, continuation routing
+│   └── test_ticket_lifecycle.py # Ticket flags, conversational triggers, Markdown sanitizer
 ├── streamlit_app.py          # Developer-only authentication, registration, and routing debug console
 ├── app/
 │   ├── api/v1/endpoints/

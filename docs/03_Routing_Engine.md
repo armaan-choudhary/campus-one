@@ -134,11 +134,26 @@ The active domain is never a hard lock. The previous domain remains available on
 
 ## 8. Clarification strategy
 
-Clarification questions must be answerable in one short reply. They should use user-facing terms and offer options when the candidates are known:
+Clarification questions must be explicit Choice questions answerable in one short reply or click. They use user-facing terms and offer options when candidates span distinct departments:
 
 ```text
 Do you mean a sign-in problem, a fee/payment problem, or an issue updating your student information?
 ```
+
+### Answer-First & Intra-Domain Gating
+Clarification is strictly reserved for **cross-department ambiguity** (e.g. `IT` vs `Fees`). When all candidate options map to the *same* department (e.g. both candidates point to `facilities`—such as checking the caretaker desk vs lost & found), the router enforces **intra-domain gating**:
+- It routes directly to that department's specialist agent on Turn 1 with structured advice, rather than subjecting the student to an interrogation loop.
+- The clarification model is strictly forbidden from asking open-ended diagnostic probing questions (e.g. *"Have you checked X?"*). Options must always map to distinct candidate departments.
+
+### Conversational Continuation Detection
+In an ongoing dialogue (`messages > 1`), short colloquial replies (*"no"*, *"nope"*, *"yes"*, *"not yet"*, *"haven't"*, *"already did"*) must not be scored as ambiguous, low-confidence standalone queries:
+- The router and confidence gate deterministically preserve the active departmental route (`prev_domain` or `metadata.agent_domain`) with high confidence ($\ge 0.85$).
+- The specialist agent or synthesizer answers their follow-up naturally in context.
+
+### Conversational Ticket Triggers
+Explicit escalation or ticket requests—including colloquial variants (*"help me raise a ticket for the same"*, *"bro ticket"*, *"raise ticket"*, *"ticket please"*, *"ticket"*):
+- Are immediately detected by `should_raise_ticket()` and routed directly to `create_ticket()`.
+- Thread state allows fresh ticket generation for new inquiries without stale ticket locks from earlier sessions.
 
 Store:
 
@@ -152,7 +167,9 @@ Store:
 }
 ```
 
-If the user does not clarify after `CLARIFICATION_MAX_ATTEMPTS`, offer handoff with the candidate departments. Never repeatedly ask the same question.
+If the user does not clarify after `CLARIFICATION_MAX_ATTEMPTS` (default 2), the system applies the loop guard:
+- **General / Lost Belongings Exemption:** Returns actionable campus guidance (e.g. Student Services Center Lost & Found desk) instead of creating internal staff support tickets.
+- **Departmental Queries:** Opens an internal support ticket with conversation context and handoff reason.
 
 ## 9. Router prompt contract
 

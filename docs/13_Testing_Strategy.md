@@ -25,56 +25,29 @@ Recommended stack: `pytest`, `pytest-asyncio`, `httpx` test client, `testcontain
 - `FakeQueue`: inline job execution with recorded submissions.
 - `FrozenClock`: controls effective dates, retention, and latency metrics.
 
-## 4. Unit test suites
+## 4. Unit test suites (`backend/tests/`)
 
-### Routing
+The active test suite (`PYTHONPATH=backend pytest backend/tests/`) contains 31 automated tests organized into three core test files:
 
-- score fusion returns [0,1] and clamps invalid components;
-- thresholds are loaded from settings;
-- high confidence routes automatically;
-- ambiguous top-two margin asks clarification;
-- low score produces fallback;
-- human request overrides classifier;
-- multi-intent requires independent domain signals;
-- active domain does not suppress explicit topic switch;
-- unknown model domain is rejected;
-- schema error invokes deterministic fallback.
+### 1. Clarification & Routing (`backend/tests/test_clarification.py`)
+- **Schema Validation:** Verifies `ClarificationOutput` structured outputs, option bounds ($\ge 2$ choices), and supported department validation.
+- **Node Execution & Resilient Fallback:** Verifies structured LLM invocation and deterministic fallback options on model timeout or API errors.
+- **Metadata Preservation:** Verifies router node preserves existing metadata keys across multi-turn sessions.
+- **Clarification Loop Guard & General Exemption:** Verifies max attempt escalation for departmental queries, and confirms `General` campus/lost-property inquiries are exempt from auto-tickets.
+- **Intra-Domain Gating:** Verifies that when all candidates collapse to a single department, the system routes directly without entering clarification.
+- **Continuation Domain Preservation:** Verifies short conversational replies (*"nope"*, *"no"*) preserve active domain context rather than triggering clarification.
 
-### Retrieval and citations
+### 2. Ticket Lifecycle & Sanitization (`backend/tests/test_ticket_lifecycle.py`)
+- **Receipt Flags & Metadata:** Verifies `create_ticket` sets unique ticket IDs (`TKT-XXXX`), marks `ticket_just_created=True`, and populates metadata.
+- **Single-Turn Delivery vs Conversational Follow-up:** Verifies `respond` delivers formal receipt once on creation turn, and answers subsequent follow-up queries with real domain responses.
+- **Conversational Ticket Commands:** Verifies `should_raise_ticket` recognizes colloquial commands (*"bro ticket"*, *"help me raise a ticket for the same"*, *"ticket"*).
+- **Ticket Re-Creation:** Verifies fresh ticket generation is permitted when a user explicitly requests a ticket even if an earlier ticket existed on the thread.
+- **Zero-Emoji & Markdown Formatting:** Verifies `_clean_content` converts keycap emoji numbers (`1️⃣`, `2️⃣`) into standard Markdown numbered lists and strips all emojis.
 
-- domain/status/role/effective-date filters are applied before rank;
-- stale and archived documents are excluded;
-- vector + lexical merge is deterministic;
-- evidence score threshold controls answerability;
-- citation points to a returned chunk;
-- every factual claim has a citation;
-- conflicting evidence produces conflict outcome;
-- source URI is filtered by audience.
-
-### Domain skills
-
-For each of the five skills:
-
-- descriptor keys/intents are valid;
-- clear intent produces the right query scope;
-- no evidence returns no-answer;
-- injection-like evidence is treated as data;
-- sensitive request triggers skill policy;
-- citations preserve domain and document metadata.
-
-### Orchestration and state
-
-- append user and assistant messages in order;
-- idempotency key returns the same response;
-- LangGraph checkpoints are persisted to PostgreSQL `PostgresSaver`;
-- conversation state survives backend restarts and loads across logins;
-- `GET /api/v1/chat/history` accurately returns the latest message history for `current_user.id`;
-- thread isolation ensures users cannot read another user's conversation thread;
-- clarification state carries candidate domains into the next turn;
-- multi-domain skills execute concurrently;
-- skill timeout preserves successful sibling result;
-- answer transitions resolution appropriately;
-- handoff is required after repeated failures.
+### 3. Authentication & RBAC (`backend/tests/test_auth.py`)
+- **Password Security:** Verifies PBKDF2-HMAC-SHA256 password hashing, salt uniqueness, and constant-time verification.
+- **User Registration & Duplicate Rejection:** Verifies self-service student registration, role assignment, and duplicate email rejection.
+- **JWT & Role Matrix:** Verifies access token creation, claims encoding, expiration checking, token refresh, and RBAC permission enforcement (`student` vs `admin`).
 
 ## 5. API tests
 

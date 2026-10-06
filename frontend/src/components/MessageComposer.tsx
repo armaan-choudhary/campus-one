@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, Paperclip, Mic, Sparkles, MicOff, X, FileCheck, CornerDownLeft } from 'lucide-react';
+import { ArrowRight, Paperclip, Mic, MicOff, X, FileCheck } from 'lucide-react';
 
 interface AttachedFile {
   name: string;
@@ -12,6 +12,7 @@ interface AttachedFile {
 interface MessageComposerProps {
   onSendMessage: (text: string, attachment?: AttachedFile) => void;
   disabled?: boolean;
+  onClearContext?: () => void;
 }
 
 interface SpeechRecognitionResultItem {
@@ -42,6 +43,7 @@ interface SpeechRecognitionInstance {
 export const MessageComposer: React.FC<MessageComposerProps> = ({
   onSendMessage,
   disabled = false,
+  onClearContext,
 }) => {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -53,12 +55,12 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if ((!text.trim() && !attachedFile) || disabled) return;
-    
+
     let submissionText = text.trim();
     if (attachedFile && !submissionText) {
       submissionText = `[Uploaded document: ${attachedFile.name}]`;
     }
-    
+
     onSendMessage(submissionText, attachedFile || undefined);
     setText('');
     setAttachedFile(null);
@@ -71,23 +73,27 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+    } else if (e.key === 'Escape') {
+      setText('');
+      setAttachedFile(null);
+      onClearContext?.();
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const sizeFormatted = file.size > 1024 * 1024 
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.round(file.size / 1024)} KB`;
-      
+      const sizeFormatted =
+        file.size > 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.round(file.size / 1024)} KB`;
+
       setAttachedFile({
         name: file.name,
         size: sizeFormatted,
         type: file.type || 'document',
       });
     }
-    // reset input value so re-uploading same file triggers change
     if (e.target) e.target.value = '';
   };
 
@@ -100,12 +106,13 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
       return;
     }
 
-    const windowWithSpeech = typeof window !== 'undefined'
-      ? (window as unknown as {
-          SpeechRecognition?: new () => SpeechRecognitionInstance;
-          webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
-        })
-      : null;
+    const windowWithSpeech =
+      typeof window !== 'undefined'
+        ? (window as unknown as {
+            SpeechRecognition?: new () => SpeechRecognitionInstance;
+            webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+          })
+        : null;
 
     const SpeechRecognitionAPI =
       windowWithSpeech?.SpeechRecognition || windowWithSpeech?.webkitSpeechRecognition;
@@ -133,24 +140,17 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           setIsListening(false);
         };
 
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
         recognitionRef.current = recognition;
         recognition.start();
         return;
       } catch {
-        // Fallback to simulation if browser policy blocks mic
+        // Fall through to alert
       }
     }
 
-    // Graceful demo simulation fallback
-    setIsListening(true);
-    setTimeout(() => {
-      setText('Where can I download my provisional fee payment slip?');
-      setIsListening(false);
-    }, 1600);
+    // Speech recognition not supported in this browser
+    alert('Voice input is not supported in this browser environment.');
+    setIsListening(false);
   };
 
   useEffect(() => {
@@ -158,13 +158,13 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(
         textareaRef.current.scrollHeight,
-        160
+        140
       )}px`;
     }
   }, [text]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-4 pt-1 transition-all">
+    <div className="w-full max-w-[800px] mx-auto px-1 sm:px-0 transition-all select-none">
       {/* Hidden native file input */}
       <input
         type="file"
@@ -174,21 +174,21 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         className="hidden"
       />
 
-      {/* Floating Gemini-Style Pill Container */}
+      {/* Target Composer Container */}
       <form
         onSubmit={handleSubmit}
-        className="relative bg-[var(--surface-1)] border border-[var(--border-subtle)] focus-within:border-[var(--accent)] rounded-3xl p-2.5 sm:p-3 shadow-lg transition-all"
+        className="relative bg-[#111216]/95 border border-[#23242E] hover:border-[#2F313E] focus-within:border-[#FF7A00]/60 focus-within:shadow-[0_0_24px_rgba(255,122,0,0.12)] rounded-xl p-3.5 sm:p-4 transition-all shadow-lg"
       >
         {/* Attachment Preview Chip */}
         {attachedFile && (
-          <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-2xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-xs text-[var(--foreground)] w-fit animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <FileCheck className="w-4 h-4 text-[var(--accent)]" />
+          <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-[#16171E] border border-[#242531] text-xs text-[#F5F3ED] w-fit animate-in fade-in duration-150">
+            <FileCheck className="w-3.5 h-3.5 text-[#FF7A00]" />
             <span className="font-medium truncate max-w-[200px] sm:max-w-xs">{attachedFile.name}</span>
-            <span className="text-[10px] text-[var(--text-tertiary)] font-mono">({attachedFile.size})</span>
+            <span className="text-[10px] text-[#8D8A83] font-mono">({attachedFile.size})</span>
             <button
               type="button"
               onClick={() => setAttachedFile(null)}
-              className="p-1 text-[var(--text-tertiary)] hover:text-red-400 rounded-full hover:bg-[var(--surface-1)] transition-colors ml-1 cursor-pointer"
+              className="p-0.5 text-[#8D8A83] hover:text-[#FF7A00] rounded transition-colors ml-1 cursor-pointer"
               title="Remove attachment"
               aria-label="Remove attachment"
             >
@@ -197,6 +197,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           </div>
         )}
 
+        {/* Textarea */}
         <textarea
           ref={textareaRef}
           value={text}
@@ -204,72 +205,62 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={
             isListening
-              ? 'Listening to student question...'
-              : 'Ask CampusOne anything across university departments...'
+              ? 'Listening to your inquiry...'
+              : "What's on your mind? Just type your problem."
           }
           rows={1}
           disabled={disabled || isListening}
-          className="w-full bg-transparent text-[var(--foreground)] placeholder-[var(--text-tertiary)] text-[15px] sm:text-base resize-none focus:outline-hidden px-3.5 py-1.5 min-h-[38px] max-h-36 overflow-y-auto leading-relaxed"
+          className="w-full bg-transparent text-[#F5F3ED] placeholder:text-[#6A6965] text-sm sm:text-[15px] resize-none focus:outline-none px-1 py-1 min-h-[44px] sm:min-h-[50px] max-h-36 overflow-y-auto leading-relaxed font-sans"
         />
 
         {/* Bottom Action Bar */}
-        <div className="flex items-center justify-between pt-1.5 px-1 text-xs text-[var(--text-secondary)]">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-[#1F2027] mt-2">
+          {/* Left Controls: Attach, Voice */}
+          <div className="flex items-center gap-1.5 min-w-0">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-full hover:bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-              title="Attach document (e.g. payment receipt, fee challan, photo)"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-[#8D8A83] hover:text-[#FF7A00] hover:bg-[#FF7A00]/10 border border-transparent hover:border-[#FF7A00]/25 transition-all cursor-pointer shrink-0"
+              title="Attach student document (fee slip, ID proof, medical note)"
               aria-label="Attach document"
             >
-              <Paperclip className="w-4 h-4" />
+              <Paperclip className="w-3.5 h-3.5" />
+              <span>Attach</span>
             </button>
+
             <button
               type="button"
               onClick={handleToggleVoice}
-              className={`p-2 rounded-full transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-all cursor-pointer shrink-0 ${
                 isListening
-                  ? 'bg-red-500/15 text-red-400 ring-2 ring-red-400/30 animate-pulse'
-                  : 'hover:bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--foreground)]'
+                  ? 'text-[#FF7A00] bg-[#FF7A00]/10 border border-[#FF7A00]/30 animate-pulse'
+                  : 'text-[#8D8A83] hover:text-[#FF7A00] hover:bg-[#FF7A00]/10'
               }`}
               title={isListening ? 'Stop listening' : 'Voice input'}
               aria-label={isListening ? 'Stop listening' : 'Voice input'}
             >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
             </button>
-            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)] pl-1.5 font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
-              <span>Grounded in 2026 handbook</span>
-            </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Keyboard shortcut guide */}
-            <span className="text-[10px] font-mono text-[var(--text-tertiary)] hidden md:inline-flex items-center gap-1">
-              <span>Return</span>
-              <CornerDownLeft className="w-2.5 h-2.5" />
-              <span>to send</span>
+          {/* Right Controls: Command Hint + Orange Arrow Send */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="hidden sm:inline text-[11px] font-mono text-[#8D8A83]/70">
+              ⌘ + Enter
             </span>
 
-            {text.length > 0 && (
-              <span className="text-[10px] font-mono text-[var(--text-tertiary)] hidden sm:inline">
-                {text.length} chars
-              </span>
-            )}
-
-            {/* Circular FAB Send Button */}
             <button
               type="submit"
               disabled={(!text.trim() && !attachedFile) || disabled || isListening}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center transition-all ${
                 (text.trim() || attachedFile) && !disabled && !isListening
-                  ? 'bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-hover)] shadow-md cursor-pointer scale-100 ring-2 ring-[var(--accent)]/30'
-                  : 'bg-[var(--surface-2)] text-[var(--text-tertiary)] cursor-not-allowed scale-95 opacity-60'
+                  ? 'bg-[#FF7A00] text-black hover:bg-[#FF8A1F] active:scale-95 cursor-pointer font-bold shadow-[0_0_12px_rgba(255,122,0,0.35)]'
+                  : 'bg-[#1C1D24] text-[#8D8A83]/40 cursor-not-allowed border border-[#282935]'
               }`}
-              title="Send message"
-              aria-label="Send message"
+              title="Send inquiry"
+              aria-label="Send inquiry"
             >
-              <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+              <ArrowRight className="w-4 h-4 text-inherit" />
             </button>
           </div>
         </div>

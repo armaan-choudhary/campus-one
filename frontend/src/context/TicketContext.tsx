@@ -24,27 +24,32 @@ const TicketContext = createContext<TicketContextType | undefined>(undefined);
 const TICKETS_STORAGE_KEY = 'campusone_tickets_store';
 
 export const TicketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tickets, setTickets] = useState<HandoffTicket[]>(() => {
-    if (typeof window === 'undefined') return [];
+  const [tickets, setTickets] = useState<HandoffTicket[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load from localStorage on client mount to match SSR initial HTML
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(TICKETS_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        setTickets(JSON.parse(saved));
       }
     } catch (e) {
       console.error('Failed to load tickets from storage', e);
+    } finally {
+      setIsLoaded(true);
     }
-    return [];
-  });
+  }, []);
 
-  // Sync to localStorage
+  // Sync to localStorage only after initial client load completes
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(tickets));
     } catch (e) {
       console.error('Failed to persist tickets to storage', e);
     }
-  }, [tickets]);
+  }, [tickets, isLoaded]);
 
   const addTicket = useCallback((newTicket: HandoffTicket) => {
     setTickets((prev) => {

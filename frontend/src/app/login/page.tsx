@@ -6,32 +6,33 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
+import { CampusOneMark } from '@/components/home/CampusOneMark';
+import { HandwrittenNote, OrangeTicks } from '@/components/home/HandwrittenElements';
 import {
-  GraduationCap,
   ShieldCheck,
   KeyRound,
   ArrowRight,
   Sun,
   Moon,
-  Sparkles,
-  Lock,
   ArrowLeft,
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, switchDemoPersona, isLoading, isAuthenticated, role } = useAuth();
+  const { login, switchDemoPersona, isLoading } = useAuth();
   const [email, setEmail] = useState('student@example.edu');
   const [password, setPassword] = useState('demo-password');
   const [error, setError] = useState<string | null>(null);
-  const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>('dark');
+  const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    const saved = localStorage.getItem('campusone-theme') as 'dark' | 'light' | null;
+    if (saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem('campusone-theme') as 'dark' | 'light' | null;
-    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    setCurrentTheme(theme);
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, []);
+    document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+  }, [currentTheme]);
 
   const toggleTheme = () => {
     setCurrentTheme((prev) => {
@@ -61,7 +62,6 @@ export default function LoginPage() {
     setError(null);
     try {
       await login({ email, password });
-      // Role is updated in AuthContext state
       const isStaffOrAdmin = email.toLowerCase().includes('admin');
       if (isStaffOrAdmin) {
         router.push('/admin');
@@ -74,74 +74,89 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col justify-between selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-[#0E0E0E] text-white flex flex-col justify-between selection:bg-[#F97316]/20 selection:text-white transition-colors duration-200">
       {/* Top Header */}
-      <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--border-subtle)]">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-6 h-6 relative shrink-0 transition-transform duration-200 group-hover:scale-105">
-            <Image
-              src={currentTheme === 'dark' ? '/logo.png' : '/logo-dark.png'}
-              alt="CampusOne Logo"
-              fill
-              sizes="24px"
-              className="object-contain"
-              priority
-            />
+      <header className="h-14 px-6 flex items-center justify-between border-b border-[#1C1C1F] bg-[#0E0E0E]">
+        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+          <div className="w-5 h-5 flex items-center justify-center text-white transition-transform group-hover:scale-105">
+            <CampusOneMark size={18} />
           </div>
-          <span className="font-semibold text-sm tracking-tight text-[var(--foreground)]">
+          <span className="font-sans font-bold text-base tracking-tight text-white">
             CampusOne
           </span>
         </Link>
 
         <button
           onClick={toggleTheme}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] active:scale-95 transition-all cursor-pointer"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[#8E8F94] hover:text-white hover:bg-[#16171D] active:scale-95 transition-all cursor-pointer"
           aria-label="Toggle theme"
         >
           {currentTheme === 'dark' ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 text-indigo-500" />
+            <Moon className="w-4 h-4 text-indigo-400" />
           )}
         </button>
       </header>
 
       {/* Main Login Card */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-4">
         <div className="w-full max-w-lg space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-secondary)]">
-              <Lock className="w-3 h-3 text-[var(--accent)]" />
-              <span>Campus Unified Authentication Gateway</span>
+            <div className="inline-flex items-center gap-2 font-mono text-[11px] sm:text-xs font-semibold tracking-widest text-[#8E8F94] uppercase">
+              <span className="text-[#F97316] font-bold text-sm">—</span>
+              <span>CAMPUS IDENTITY &amp; ACCESS GATEWAY</span>
+              <OrangeTicks count={2} />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
-              Choose your role to sign in
+            <h1 className="font-serif font-bold text-3xl sm:text-4xl text-white tracking-tight leading-[1.1]">
+              Sign in to your <br />
+              <span className="italic font-normal">campus portal</span>.
             </h1>
-            <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
+            <p className="text-xs text-[#8E8F94] max-w-sm mx-auto">
               CampusOne routes students and administrators to specialized portal interfaces.
             </p>
           </div>
 
+          {/* Handwritten Annotation */}
+          <div className="flex justify-center -my-1 pointer-events-none">
+            <HandwrittenNote
+              text={"One front door for\nevery university service."}
+              arrowDirection="curve-down"
+              color="#D4D4D8"
+              textSize="text-xs sm:text-sm"
+            />
+          </div>
+
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-mono text-rose-500 text-center">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-mono text-rose-400 text-center">
               {error}
             </div>
           )}
 
           {/* Dual Role Selector Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Student Role Card */}
-            <div className="p-5 rounded-2xl bg-[var(--surface-1)] border border-[var(--border-subtle)] hover:border-emerald-500/50 flex flex-col justify-between space-y-4 transition-all duration-200 hover:shadow-lg group">
+            {/* Student Role Card with Wimpy Kid Avatar */}
+            <div className="p-5 rounded-2xl bg-[#121316] border border-[#23242A] hover:border-[#3F4350] hover:bg-[#18191E] flex flex-col justify-between space-y-4 transition-all duration-200 group shadow-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center transition-transform group-hover:scale-105">
-                  <GraduationCap className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-[#3F4350] flex items-center justify-center transition-transform group-hover:scale-105 relative">
+                  <Image
+                    src="/illustrations/wimpy/avatar-1.png"
+                    alt="Student Alex"
+                    fill
+                    sizes="40px"
+                    className="object-contain"
+                  />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                    <span>Student Portal</span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-mono border bg-[#1C1E26] text-white border-[#3F4350] mb-1.5">
+                    <span className="w-0.5 h-2.5 bg-[#38BDF8] rounded-full inline-block" />
+                    <span>Student Services</span>
+                  </span>
+                  <h2 className="text-sm font-semibold text-white">
+                    Student Portal
                   </h2>
-                  <p className="text-[11px] text-[var(--text-secondary)] mt-1 leading-relaxed">
-                    AI Assistant for campus inquiries and real-time personal ticket tracking.
+                  <p className="text-[11px] text-[#8E8F94] mt-1 leading-relaxed">
+                    AI Assistant for university inquiries and real-time personal ticket tracking.
                   </p>
                 </div>
               </div>
@@ -150,7 +165,7 @@ export default function LoginPage() {
                 type="button"
                 disabled={isLoading}
                 onClick={() => handleRoleQuickLogin('student')}
-                className="w-full py-2.5 px-3 rounded-xl bg-[var(--surface-2)] hover:bg-emerald-600 hover:text-white text-xs font-medium border border-[var(--border-subtle)] group-hover:border-emerald-500/30 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between"
+                className="w-full py-2.5 px-3 rounded-xl bg-white text-[#0E0E0E] hover:bg-zinc-200 text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-xs"
               >
                 <span>Enter as Student</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -158,16 +173,20 @@ export default function LoginPage() {
             </div>
 
             {/* Admin Role Card */}
-            <div className="p-5 rounded-2xl bg-[var(--surface-1)] border border-[var(--border-subtle)] hover:border-indigo-500/50 flex flex-col justify-between space-y-4 transition-all duration-200 hover:shadow-lg group">
+            <div className="p-5 rounded-2xl bg-[#121316] border border-[#23242A] hover:border-[#3F4350] hover:bg-[#18191E] flex flex-col justify-between space-y-4 transition-all duration-200 group shadow-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center transition-transform group-hover:scale-105">
+                <div className="w-10 h-10 rounded-xl bg-[#1C1E26] border border-[#282A33] text-indigo-400 flex items-center justify-center transition-transform group-hover:scale-105">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                    <span>Admin Console</span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-mono border bg-[#1C1E26] text-white border-[#3F4350] mb-1.5">
+                    <span className="w-0.5 h-2.5 bg-[#38BDF8] rounded-full inline-block" />
+                    <span>Central IT &amp; Staff</span>
+                  </span>
+                  <h2 className="text-sm font-semibold text-white">
+                    Admin Console
                   </h2>
-                  <p className="text-[11px] text-[var(--text-secondary)] mt-1 leading-relaxed">
+                  <p className="text-[11px] text-[#8E8F94] mt-1 leading-relaxed">
                     Dedicated ticket triage console to claim, manage, and resolve student issues.
                   </p>
                 </div>
@@ -177,7 +196,7 @@ export default function LoginPage() {
                 type="button"
                 disabled={isLoading}
                 onClick={() => handleRoleQuickLogin('admin')}
-                className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between"
+                className="w-full py-2.5 px-3 rounded-xl bg-[#272932] hover:bg-[#343743] text-white border border-[#3F4350] text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-xs"
               >
                 <span>Enter as Admin</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -186,19 +205,19 @@ export default function LoginPage() {
           </div>
 
           {/* Form Login */}
-          <div className="p-6 rounded-2xl bg-[var(--surface-1)] border border-[var(--border-subtle)] space-y-4">
+          <div className="p-5 sm:p-6 rounded-2xl bg-[#121316] border border-[#23242A] space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-secondary)] uppercase tracking-wider">
+              <span className="text-xs font-mono text-[#8E8F94] uppercase tracking-wider">
                 Direct Credentials
               </span>
-              <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
-                Default pass: <code className="bg-[var(--surface-2)] px-1 rounded">demo-password</code>
+              <span className="text-[10px] font-mono text-[#666666]">
+                Demo pass: <code className="bg-[#1C1E26] px-1.5 py-0.5 rounded text-zinc-300 border border-[#282A33]">demo-password</code>
               </span>
             </div>
 
             <form onSubmit={handleCustomLogin} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-mono text-[var(--text-secondary)] mb-1">
+                <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
                   Email Address
                 </label>
                 <input
@@ -207,12 +226,12 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="student@example.edu or admin@example.edu"
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[var(--foreground)] font-mono focus:outline-hidden focus:border-[var(--accent)]"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white font-mono focus:outline-hidden focus:border-[#3F4350]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-[var(--text-secondary)] mb-1">
+                <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
                   Password
                 </label>
                 <input
@@ -221,14 +240,14 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[var(--foreground)] font-mono focus:outline-hidden focus:border-[var(--accent)]"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white font-mono focus:outline-hidden focus:border-[#3F4350]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-foreground)] text-xs font-semibold shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-200 text-[#0E0E0E] text-xs font-semibold shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>{isLoading ? 'Signing In...' : 'Sign In and Launch Portal'}</span>
@@ -240,7 +259,7 @@ export default function LoginPage() {
           <div className="text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-[#8E8F94] hover:text-white transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Campus Directory</span>
@@ -250,9 +269,10 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="h-10 px-6 flex items-center justify-center border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] font-mono">
+      <footer className="h-10 px-6 flex items-center justify-center border-t border-[#1C1C1F] text-[11px] text-[#666666] font-mono">
         CampusOne &bull; Dual-Role RBAC Architecture
       </footer>
     </div>
   );
 }
+

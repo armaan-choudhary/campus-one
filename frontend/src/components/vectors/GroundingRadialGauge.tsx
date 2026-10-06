@@ -22,7 +22,7 @@ export const GroundingRadialGauge: React.FC<GroundingRadialGaugeProps> = ({
   const strokeDashoffset = arcLength - (arcLength * percentage) / 100;
 
   return (
-    <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--surface-2)] border border-[var(--border-subtle)] shadow-xs">
+    <div className="flex items-center gap-3.5 p-3 rounded-lg bg-[#151515] border border-[#292929]">
       <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
         <svg
           width={size}

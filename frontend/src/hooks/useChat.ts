@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ConversationItem, Message, ClarificationOption, Citation, HandoffTicket } from '@/types';
 import { INITIAL_CONVERSATIONS } from '@/lib/demoFixtures';
 import { createUniqueId } from '@/lib/utils';
-import { sendChatMessageApi, BackendChatResponse, loginWithApi, SEEDED_CREDENTIALS } from '@/lib/api';
+import { sendChatMessageApi, BackendChatResponse, loginWithApi, fetchChatHistoryApi, SEEDED_CREDENTIALS } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
 export interface UseChatOptions {
@@ -83,11 +83,11 @@ function mapBackendResponseToMessage(
   }
 
   const citations: Citation[] = (data.retrieved_chunks || []).map((chunk, idx) => {
-    const pageNum = chunk.page ?? chunk.metadata?.page;
+    const pageNum = chunk.page ?? (chunk.metadata?.page as number | string | undefined);
     const pageStr = pageNum !== undefined ? `Page ${pageNum}` : `Section ${idx + 1}`;
-    const docTitle = chunk.metadata?.document_name || chunk.source || 'Institutional Policy Document';
+    const docTitle = String(chunk.metadata?.document_name || chunk.source || 'Institutional Policy Document');
     return {
-      id: chunk.metadata?.chunk_id || createUniqueId('cit'),
+      id: String(chunk.metadata?.chunk_id || createUniqueId('cit')),
       marker: `[${idx + 1}]`,
       title: docTitle,
       section: pageStr,
@@ -96,12 +96,38 @@ function mapBackendResponseToMessage(
       groundingScore: data.routing_confidence || 0.95,
       sourceUri: chunk.source,
       custodian: domainLabel,
+      authority: (chunk.metadata?.authority as string) || domainLabel,
+      effectiveDate: (chunk.metadata?.effective_date as string) || (chunk.metadata?.version as string) || undefined,
+      recordId: String(chunk.metadata?.chunk_id || `DOC-${idx + 1}`),
+      matchScore: `${Math.round((data.routing_confidence || 0.95) * 100)}% Match`,
+      mandateStatus: 'Active Policy',
+      ferpaCompliant: true,
     };
   });
 
+  let routingCard = undefined;
+  if (checklist && checklist.length > 0) {
+    routingCard = {
+      departmentTitle: `${domainLabel} — Official Protocol`,
+      routingTag: `• ROUTING TO: ${domainLabel.toUpperCase()}`,
+      summary: content,
+      steps: checklist.map((item, idx) => ({
+        stepNumber: idx + 1,
+        title: `Step ${idx + 1}`,
+        description: item,
+      })),
+      sourceLabel: citations[0]?.title || `Institutional Knowledge Base (${domainLabel})`,
+      portalAction: {
+        label: `Open ${domainLabel} Portal`,
+        url: '#',
+      },
+      proactiveNote: 'I can assist you in filing this request directly through your student profile.',
+    };
+  }
+
   let handoff: HandoffTicket | undefined = undefined;
   if (data.ticket_id || data.ticket) {
-    const ticketObj = data.ticket || {};
+    const ticketObj = (data.ticket || {}) as Record<string, string | undefined>;
     handoff = {
       ticketId: data.ticket_id || ticketObj.ticket_id || 'TKT-PENDING',
       department: ticketObj.department || domainLabel,
@@ -114,12 +140,27 @@ function mapBackendResponseToMessage(
   }
 
   let clarification = undefined;
-  if (data.intent === 'clarify' || content.toLowerCase().includes('clarify which area')) {
-    const options = (data.detected_domains?.length ? data.detected_domains : ['IT', 'HR', 'Fees', 'Facilities']).map((d) => ({
-      id: d.toLowerCase(),
-      label: d,
-      domain: d.toLowerCase(),
-    }));
+  const isClarification =
+    data.intent === 'clarify' ||
+    data.metadata?.outcome === 'clarification' ||
+    content.toLowerCase().includes('clarify which area');
+
+  if (isClarification) {
+    const rawOptions = (data as any).clarification_options || data.metadata?.clarification_options;
+    let options;
+    if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+      options = rawOptions.map((opt: any) => ({
+        id: opt.id || opt.label.toLowerCase().replace(/\s+/g, '_'),
+        label: opt.label,
+        domain: (opt.department || opt.domain || '').toLowerCase(),
+      }));
+    } else {
+      options = (data.detected_domains?.length ? data.detected_domains : ['IT', 'HR', 'Fees', 'Facilities']).map((d) => ({
+        id: d.toLowerCase(),
+        label: d,
+        domain: d.toLowerCase(),
+      }));
+    }
     clarification = {
       prompt: content,
       options,
@@ -138,6 +179,7 @@ function mapBackendResponseToMessage(
     citations: citations.length > 0 ? citations : undefined,
     handoff,
     clarification,
+    routingCard,
   };
 }
 
@@ -162,6 +204,47 @@ export function useChat({
       updatedAt: 'Just now',
       messages: [],
     };
+
+  // Hydrate initial conversation thread from backend checkpointer if available
+  useEffect(() => {
+    if (!accessToken) return;
+    let isCancelled = false;
+
+    fetchChatHistoryApi(accessToken)
+      .then((history) => {
+        if (isCancelled || !history?.messages || history.messages.length === 0) return;
+
+        const loadedMessages: Message[] = history.messages.map((m, idx) => ({
+          id: `backend-msg-${idx}`,
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+          timestamp: 'Earlier',
+          domain: 'it',
+          domainLabel: 'CampusOne Assistant',
+        }));
+
+        setConversations((prev) => {
+          const convIndex = prev.findIndex((c) => c.id === 'conv-1');
+          if (convIndex >= 0 && prev[convIndex].messages.length === 0) {
+            const updated = [...prev];
+            updated[convIndex] = {
+              ...updated[convIndex],
+              messages: loadedMessages,
+              title: loadedMessages[0]?.content.slice(0, 36) || 'University Thread',
+            };
+            return updated;
+          }
+          return prev;
+        });
+      })
+      .catch(() => {
+        // Fallback gracefully without blocking
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [accessToken]);
 
   const updateActiveConversation = useCallback(
     (messages: Message[]) => {
@@ -286,7 +369,7 @@ export function useChat({
           };
         } else {
           try {
-            const backendRes = await sendChatMessageApi(token, text);
+            const backendRes = await sendChatMessageApi(token, text, activeConvId);
             assistantMsg = mapBackendResponseToMessage(backendRes, timestamp);
           } catch (apiErr) {
             console.error('Backend chat API request failed:', apiErr);
@@ -317,7 +400,8 @@ export function useChat({
 
   const selectClarification = useCallback(
     (option: ClarificationOption) => {
-      sendMessage(`I need help with: ${option.label}`);
+      const deptSuffix = option.domain ? ` [${option.domain.toUpperCase()}]` : '';
+      sendMessage(`I need help with: ${option.label}${deptSuffix}`);
     },
     [sendMessage]
   );

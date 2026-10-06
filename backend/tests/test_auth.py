@@ -83,10 +83,12 @@ async def test_login_unknown_user(client: AsyncClient):
 @pytest.mark.anyio
 async def test_register_student_account_and_duplicate_email(client: AsyncClient):
     """New student accounts can authenticate and cannot reuse an email."""
+    import uuid
+    unique_email = f"new.student.{uuid.uuid4().hex[:8]}@example.edu"
     registration = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": "new.student@example.edu",
+            "email": unique_email,
             "password": "new-password",
             "display_name": "New Student",
         },
@@ -96,7 +98,7 @@ async def test_register_student_account_and_duplicate_email(client: AsyncClient)
 
     login = await client.post(
         "/api/v1/auth/login",
-        json={"email": "new.student@example.edu", "password": "new-password"},
+        json={"email": unique_email, "password": "new-password"},
     )
     assert login.status_code == 200
     assert login.json()["user"]["display_name"] == "New Student"
@@ -104,7 +106,7 @@ async def test_register_student_account_and_duplicate_email(client: AsyncClient)
     duplicate = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": "new.student@example.edu",
+            "email": unique_email,
             "password": "another-password",
             "display_name": "Another Student",
         },

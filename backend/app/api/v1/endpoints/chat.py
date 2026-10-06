@@ -21,6 +21,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
+    conversation_id: Optional[str] = Field(None, max_length=128)
 
 
 class ChatResponse(BaseModel):
@@ -36,6 +37,7 @@ class ChatResponse(BaseModel):
     handoff_reason: Optional[str] = None
     sources: List[str] = Field(default_factory=list)
     retrieved_chunks: List[Dict[str, Any]] = Field(default_factory=list)
+    clarification_options: Optional[List[Dict[str, Any]]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -51,9 +53,14 @@ class ChatHistoryResponse(BaseModel):
     description="Load the authenticated user's latest persisted conversation state.",
 )
 async def chat_history(
+    conversation_id: Optional[str] = None,
     current_user: CurrentUser = Depends(require_permission("messages:create")),
 ) -> ChatHistoryResponse:
-    thread_id = current_user.id
+    thread_id = (
+        f"{current_user.id}:{conversation_id}"
+        if conversation_id
+        else current_user.id
+    )
 
     try:
         snapshot = await run_in_threadpool(
@@ -87,7 +94,11 @@ async def chat(
     current_user: CurrentUser = Depends(require_permission("messages:create")),
 ) -> ChatResponse:
     graph = get_graph()
-    thread_id = current_user.id
+    thread_id = (
+        f"{current_user.id}:{request.conversation_id}"
+        if request.conversation_id
+        else current_user.id
+    )
 
     try:
         result = await run_in_threadpool(
@@ -99,6 +110,7 @@ async def chat(
                 "tags": ["campus-one", "chat", current_user.role.value],
                 "metadata": {
                     "user_id": current_user.id,
+                    "conversation_id": request.conversation_id,
                     "role": current_user.role.value,
                 },
             },
@@ -113,11 +125,12 @@ async def chat(
             },
         ) from exc
 
+    is_new_ticket = bool(result.get("metadata", {}).get("ticket_newly_raised", False))
     return ChatResponse(
         answer=result.get("final_answer") or result.get("agent_response") or "",
         thread_id=thread_id,
-        ticket_id=result.get("ticket_id"),
-        ticket=result.get("metadata", {}).get("ticket"),
+        ticket_id=result.get("ticket_id") if is_new_ticket else None,
+        ticket=result.get("metadata", {}).get("ticket") if is_new_ticket else None,
         detected_domains=result.get("detected_domains", []),
         intent=result.get("intent"),
         routing_confidence=result.get("routing_confidence", 0.0),
@@ -126,5 +139,6 @@ async def chat(
         handoff_reason=result.get("handoff_reason"),
         sources=result.get("sources", []),
         retrieved_chunks=result.get("retrieved_chunks", []),
+        clarification_options=result.get("metadata", {}).get("clarification_options"),
         metadata=result.get("metadata", {}),
     )

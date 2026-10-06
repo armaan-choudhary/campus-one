@@ -229,13 +229,21 @@ sequenceDiagram
     S-->>C: one unified AssistantResponse
 ```
 
-### Ticket Summarization and Safe Department Fallback
+### Ticket Summarization, Lifecycle Management, and Safe Department Fallback
 
-When escalation or human assistance is required, `create_ticket()` invokes LLM-assisted conversation summarization. To prevent runtime indexing errors when queries have ambiguous domain boundaries or empty classifications, the prompt resolves the primary department with explicit fallback:
-```python
-department = (state.get("detected_domains") or ["General"])[0]
-```
-This guarantees reliable ticket creation and triage assignment even under zero-evidence or unrecognized intent scenarios.
+When escalation or human assistance is required, `create_ticket()` coordinates structured ticket creation:
+1. **Fresh Request Detection:** When a student explicitly requests a ticket (via `"raise a ticket"`, `"bro ticket"`, etc.), `create_ticket()` triggers fresh summary generation by setting `ticket_requested: True` and resetting `ticket_summary: None`. This prevents stale session lockouts even if an earlier ticket existed on the thread.
+2. **Safe Department Fallback:** To prevent runtime indexing errors when queries have ambiguous domain boundaries or empty classifications, the prompt resolves the primary department with explicit fallback:
+   ```python
+   department = (state.get("detected_domains") or ["General"])[0]
+   ```
+3. **One-Time Creation Receipt Delivery:** The system sets `ticket_just_created: True`, delivering the formal confirmation receipt (`"Your issue has been raised as internal support ticket TKT-XXXX..."`) on that single turn. On subsequent turns, `ticket_just_created` is reset to `False`, allowing specialist agents to answer conversational follow-up questions without re-delivering canned creation receipts.
+
+### Zero-Emoji Contract & Clean Markdown Delivery
+
+To ensure professional accessibility and visual clarity across all client interfaces:
+- **Zero-Emoji Rule:** All system prompts strictly prohibit the generation of emojis (including numbered keycaps like 1️⃣, 2️⃣, and decorative symbols).
+- **Deterministic List Sanitization (`_clean_content()`):** Any legacy or stray keycap numbers are automatically converted by regular expressions into standard Markdown numbered lists (`1. `, `2. `) with preceding blank lines. All other unicode emojis are stripped before delivery.
 
 ## 8. Conflict handling
 

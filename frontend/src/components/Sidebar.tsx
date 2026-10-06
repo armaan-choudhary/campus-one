@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { ConversationItem, Persona } from '@/lib/demoFixtures';
 import {
-  MessageSquare,
-  CheckCircle2,
-  HelpCircle,
-  ArrowUpRight,
   PanelLeftClose,
-  Clock,
   Search,
   Pin,
   Trash2,
@@ -70,68 +66,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div
         key={conv.id}
         onClick={() => onSelectConversation(conv.id)}
-        className={`group relative w-full text-left p-3 rounded-2xl transition-all flex flex-col gap-1.5 cursor-pointer ${
+        className={`group relative w-full text-left py-2.5 px-3 transition-colors cursor-pointer border-b border-[#1A1A1A] ${
           isActive
-            ? 'bg-[var(--surface-2)] text-[var(--foreground)] font-medium shadow-xs border-l-2 border-l-[var(--accent)] border-y border-r border-[var(--border-subtle)] pl-2.5'
-            : 'text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]/60'
+            ? 'border-l-2 border-l-[#FF7A00] bg-[#151515] text-[#F5F3ED] font-medium'
+            : 'border-l-2 border-l-transparent text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#111111]'
         }`}
       >
-        {/* Title and Pin Status */}
+        {/* Title and Pin/Delete Status */}
         <div className="flex items-center justify-between gap-1.5 w-full">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <MessageSquare
-              className={`w-4 h-4 shrink-0 ${
-                isActive ? 'text-[var(--accent)]' : 'text-[var(--text-tertiary)]'
-              }`}
-            />
-            <span className="truncate text-[13.5px] leading-snug">{conv.title}</span>
-          </div>
+          <span className="truncate text-xs leading-snug">{conv.title}</span>
 
           {/* Action buttons on hover */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               onClick={(e) => togglePin(conv.id, e)}
-              className={`p-1 rounded hover:bg-[var(--surface-1)] transition-colors ${
-                isPinned ? 'text-[var(--accent)] opacity-100' : 'text-[var(--text-tertiary)]'
+              className={`p-0.5 rounded hover:bg-[#202020] transition-colors ${
+                isPinned ? 'text-[#FF7A00] opacity-100' : 'text-[#8D8A83]'
               }`}
               title={isPinned ? 'Unpin' : 'Pin'}
               aria-label={isPinned ? 'Unpin inquiry' : 'Pin inquiry'}
             >
-              <Pin className="w-3 h-3" />
+              <Pin className="w-2.5 h-2.5" />
             </button>
             {conversations.length > 1 && (
               <button
                 onClick={(e) => handleDelete(conv.id, e)}
-                className="p-1 rounded hover:bg-[var(--surface-1)] text-[var(--text-tertiary)] hover:text-red-400 transition-colors"
+                className="p-0.5 rounded hover:bg-[#202020] text-[#8D8A83] hover:text-red-400 transition-colors"
                 title="Delete inquiry"
                 aria-label="Delete inquiry"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Status & Time */}
-        <div className="flex items-center justify-between w-full text-xs text-[var(--text-tertiary)] pl-6">
+        {/* Status & Time in Monospace */}
+        <div className="flex items-center justify-between w-full text-[10px] text-[#8D8A83] pt-0.5 font-mono">
           <span>{conv.updatedAt}</span>
           {conv.status === 'resolved' && (
-            <span className="inline-flex items-center gap-1 bg-[var(--surface-1)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-full text-[11px] text-[var(--text-secondary)]">
-              <CheckCircle2 className="w-2.5 h-2.5 text-[var(--accent)]" />
-              Resolved
-            </span>
+            <span className="text-[#8D8A83]">· resolved</span>
           )}
           {conv.status === 'clarification' && (
-            <span className="inline-flex items-center gap-1 bg-[var(--surface-1)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-full text-[11px] text-[var(--accent)]">
-              <HelpCircle className="w-2.5 h-2.5" />
-              Clarifying
-            </span>
+            <span className="text-[#8D8A83]">· clarifying</span>
           )}
           {conv.status === 'handoff' && (
-            <span className="inline-flex items-center gap-1 bg-[var(--surface-1)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-full text-[11px] text-[var(--text-secondary)]">
-              <ArrowUpRight className="w-2.5 h-2.5" />
-              Escalated
-            </span>
+            <span className="text-[#FF7A00]">· escalated</span>
           )}
         </div>
       </div>
@@ -144,59 +124,64 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpen && (
         <div
           onClick={onToggle}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 sm:hidden transition-opacity"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed sm:static inset-y-0 left-0 z-40 sm:z-auto w-72 shrink-0 bg-[var(--surface-1)] flex flex-col h-full select-none border-r border-[var(--border-subtle)] transition-all duration-200 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full sm:hidden'
+        className={`fixed lg:static inset-y-0 left-0 z-40 lg:z-auto w-[215px] shrink-0 bg-[#0B0B0B] flex flex-col h-full select-none border-r border-[#292929] text-[#F5F3ED] transition-all duration-200 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:hidden'
         }`}
       >
-        {/* Drawer Header */}
-        <div className="py-3.5 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-            <Clock className="w-3.5 h-3.5 text-[var(--accent)]" />
-            <span className="tracking-tight text-xs font-medium">Inquiry History</span>
-          </div>
+        {/* Drawer Header: Printed Index Eyebrow */}
+        <div className="py-2.5 px-3 flex items-center justify-between border-b border-[#292929]">
+          <span className="font-mono text-[9.5px] uppercase tracking-widest text-[#8D8A83]/80">
+            — INQUIRY HISTORY //
+          </span>
+
           <button
             onClick={onToggle}
-            className="text-[var(--text-secondary)] hover:text-[var(--foreground)] p-1.5 rounded-full hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
-            title="Collapse Sidebar"
-            aria-label="Collapse Sidebar"
+            className="lg:hidden text-[#8D8A83] hover:text-white p-1 rounded"
+            title="Close sidebar"
+            aria-label="Close sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Inquiry Search Filter */}
-        <div className="px-3 pb-2.5">
-          <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 text-[var(--text-tertiary)] pointer-events-none" />
+        {/* Minimal Search Field */}
+        <div className="p-2.5 border-b border-[#292929]">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-[#8D8A83]/60 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search past inquiries..."
-              className="w-full bg-[var(--surface-2)] border border-[var(--border-subtle)] focus:border-[var(--accent)] rounded-full pl-8 pr-3 py-1.5 text-[13px] placeholder:text-[13px] text-[var(--foreground)] placeholder-[var(--text-tertiary)] focus:outline-hidden transition-all"
+              placeholder="Search index..."
+              className="w-full bg-[#111111] border border-[#292929] text-[#F5F3ED] placeholder:text-[#8D8A83]/40 text-xs font-mono rounded pl-7 pr-2 py-1 focus:outline-none focus:border-[#FF7A00] transition-colors"
             />
           </div>
         </div>
 
         {/* Conversation List with Timeline Sections */}
-        <div className="flex-1 overflow-y-auto px-3 space-y-3 pb-2">
+        <div className="flex-1 overflow-y-auto divide-y divide-[#1A1A1A]">
           {filteredConversations.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[var(--text-tertiary)]">
-              {searchQuery ? `No inquiries match "${searchQuery}"` : 'No past inquiries yet'}
+            <div className="py-6 px-3 space-y-1">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#8D8A83]/40">
+                {searchQuery ? 'NO MATCHES' : 'INDEX IS EMPTY'}
+              </div>
+              <p className="text-[10px] text-[#8D8A83]/25 font-mono leading-relaxed">
+                Inquiries will be catalogued here.
+              </p>
             </div>
           ) : (
             <>
               {/* Pinned Section */}
               {pinnedList.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] px-2">
-                    Pinned
+                <div>
+                  <div className="text-[9.5px] font-mono uppercase tracking-widest text-[#8D8A83] px-3 pt-2.5 pb-1 bg-[#0B0B0B]">
+                    PINNED
                   </div>
                   {pinnedList.map(renderConversationItem)}
                 </div>
@@ -204,9 +189,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Today Section */}
               {todayList.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] px-2">
-                    Today
+                <div>
+                  <div className="text-[9.5px] font-mono uppercase tracking-widest text-[#8D8A83] px-3 pt-2.5 pb-1 bg-[#0B0B0B]">
+                    TODAY
                   </div>
                   {todayList.map(renderConversationItem)}
                 </div>
@@ -214,9 +199,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Earlier Section */}
               {earlierList.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-tertiary)] px-2">
-                    Earlier This Week
+                <div>
+                  <div className="text-[9.5px] font-mono uppercase tracking-widest text-[#8D8A83] px-3 pt-2.5 pb-1 bg-[#0B0B0B]">
+                    EARLIER
                   </div>
                   {earlierList.map(renderConversationItem)}
                 </div>
@@ -225,17 +210,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Profile Card */}
-        <div className="p-3 m-3 rounded-2xl bg-[var(--surface-2)] border border-[var(--border-subtle)] flex items-center gap-2.5 shadow-xs">
-          <div className="w-8 h-8 rounded-full bg-[var(--surface-1)] border border-[var(--border-subtle)] flex items-center justify-center text-xs font-semibold text-[var(--accent)] shrink-0">
-            {persona.avatar}
+        {/* Minimal Footer Index Item */}
+        <div className="p-3 border-t border-[#292929] flex items-center gap-2.5 text-xs font-mono text-[#8D8A83]">
+          <div className="w-5 h-5 rounded-full overflow-hidden bg-white border border-[#292929] shrink-0 relative">
+            <Image
+              src="/illustrations/wimpy/avatar-1.png"
+              alt={persona.name}
+              fill
+              sizes="20px"
+              className="object-contain"
+            />
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium text-[var(--foreground)] truncate">{persona.name}</span>
-            <span className="text-xs text-[var(--text-secondary)] truncate">{persona.title}</span>
-          </div>
+          <span className="truncate text-[#F5F3ED] text-xs">{persona.name}</span>
+          <span className="text-[10px] ml-auto text-[#8D8A83]">Student</span>
         </div>
       </aside>
     </>
   );
 };
+

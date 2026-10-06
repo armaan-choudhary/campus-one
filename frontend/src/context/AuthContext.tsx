@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { AuthTokenResponse, AuthUser, LoginCredentials, UserRole } from '@/types';
 import { PERSONAS } from '@/lib/demoFixtures';
-import { loginWithApi, fetchCurrentUser, logoutApi, SEEDED_CREDENTIALS } from '@/lib/api';
+import { loginWithApi, fetchCurrentUser, logoutApi, refreshAuthTokenApi, SEEDED_CREDENTIALS } from '@/lib/api';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -54,9 +54,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return;
           } catch {
-            // Saved token is invalid or unauthorized; purge and fall through to fresh login below
-            localStorage.removeItem(ACCESS_TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            // Access token failed, attempt refresh
+            if (savedRefresh) {
+              try {
+                const refreshed = await refreshAuthTokenApi(savedRefresh);
+                const currentUser = await fetchCurrentUser(refreshed.access_token);
+                if (isMounted) {
+                  setAccessToken(refreshed.access_token);
+                  setRefreshToken(refreshed.refresh_token);
+                  setUser(currentUser);
+                  setRole(currentUser.role);
+                  localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.access_token);
+                  localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refresh_token);
+                  setIsLoading(false);
+                }
+                return;
+              } catch {
+                localStorage.removeItem(ACCESS_TOKEN_KEY);
+                localStorage.removeItem(REFRESH_TOKEN_KEY);
+              }
+            } else {
+              localStorage.removeItem(ACCESS_TOKEN_KEY);
+              localStorage.removeItem(REFRESH_TOKEN_KEY);
+            }
           }
         }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -104,7 +105,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const currentPersona = PERSONAS[role] || PERSONAS.student;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
       {/* Backdrop click to dismiss */}
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
@@ -114,26 +115,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative z-10 w-full max-w-md my-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="relative z-10 w-full max-w-md my-auto rounded-2xl border border-[#23242A] bg-[#121316] text-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Modal Header */}
-        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--surface-2)]/50">
+        <div className="px-5 py-4 border-b border-[#23242A] flex items-center justify-between bg-[#16171D]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--surface-3)] text-[var(--foreground)] flex items-center justify-center border border-[var(--border-subtle)]">
-              <Lock className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-[#1C1E26] text-white flex items-center justify-center border border-[#282A33]">
+              <Lock className="w-4 h-4 text-[#38BDF8]" />
             </div>
             <div>
-              <h2 id="auth-modal-title" className="text-sm font-semibold text-[var(--foreground)] tracking-tight">
+              <h2 id="auth-modal-title" className="text-sm font-semibold text-white tracking-tight">
                 Campus Identity &amp; Access
               </h2>
-              <p className="text-[11px] font-mono text-[var(--text-secondary)]">
+              <p className="text-[11px] font-mono text-[#8E8F94]">
                 2 Roles &bull; Separate Portals (/workspace &amp; /admin)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-md flex items-center justify-center text-[#8E8F94] hover:text-white hover:bg-[#1C1E26] transition-colors cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -143,16 +144,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         {/* Modal Body */}
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Active Principal Badge */}
-          <div className="p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] flex items-center justify-between text-xs">
+          <div className="p-3 rounded-xl bg-[#18191E] border border-[#282A33] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-[var(--accent)] text-[var(--accent-foreground)] font-bold font-mono text-xs flex items-center justify-center shrink-0">
-                {currentPersona.avatar}
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-[#3F4350] flex items-center justify-center shrink-0 relative">
+                <Image
+                  src={role === 'admin' ? '/illustrations/wimpy/avatar-4.png' : '/illustrations/wimpy/avatar-1.png'}
+                  alt="Principal Avatar"
+                  fill
+                  sizes="32px"
+                  className="object-contain"
+                />
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-[var(--foreground)] truncate">
+                <div className="font-semibold text-white truncate">
                   {user?.displayName || currentPersona.name}
                 </div>
-                <div className="text-[11px] font-mono text-[var(--text-secondary)] truncate">
+                <div className="text-[11px] font-mono text-[#8E8F94] truncate">
                   {user?.email || 'student@example.edu'} &bull; {currentPersona.badge}
                 </div>
               </div>
@@ -160,7 +167,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleLogout}
-                className="text-[11px] font-mono text-[var(--text-secondary)] hover:text-rose-400 p-1 rounded hover:bg-[var(--surface-3)] transition-colors cursor-pointer"
+                className="text-[11px] font-mono text-[#8E8F94] hover:text-rose-400 p-1.5 rounded hover:bg-[#1C1E26] transition-colors cursor-pointer"
                 title="Sign out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -169,18 +176,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {error && (
-            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-mono text-rose-500">
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-mono text-rose-400">
               {error}
             </div>
           )}
 
           {/* Quick Role Switch Cards */}
           <div className="space-y-2">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="text-[10.5px] font-mono uppercase tracking-wider text-[#8E8F94]">
               Switch Role &amp; Open Portal
             </div>
             <div className="grid grid-cols-1 gap-2">
-              {PRIMARY_ROLES.map(({ role: itemRole, label, page, icon: Icon }) => {
+              {PRIMARY_ROLES.map(({ role: itemRole, label, page }) => {
                 const p = PERSONAS[itemRole];
                 const creds = SEEDED_CREDENTIALS[itemRole];
                 const isSelected = role === itemRole;
@@ -193,30 +200,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     onClick={() => handlePersonaSelect(itemRole)}
                     className={`p-3 rounded-xl text-left flex items-center justify-between transition-all border cursor-pointer active:scale-[0.98] ${
                       isSelected
-                        ? 'bg-[var(--surface-2)] border-[var(--foreground)] shadow-xs'
-                        : 'bg-[var(--surface-2)]/40 hover:bg-[var(--surface-2)] border-[var(--border-subtle)]'
+                        ? 'bg-[#18191E] border-[#3F4350] shadow-xs'
+                        : 'bg-[#16171D] hover:bg-[#1C1E26] border-[#252730]'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[var(--surface-3)] text-[var(--foreground)] flex items-center justify-center border border-[var(--border-subtle)] shrink-0">
-                        <Icon className="w-4 h-4 text-[var(--accent)]" />
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-[#3F4350] flex items-center justify-center shrink-0 relative">
+                        <Image
+                          src={itemRole === 'admin' ? '/illustrations/wimpy/avatar-4.png' : '/illustrations/wimpy/avatar-1.png'}
+                          alt={label}
+                          fill
+                          sizes="32px"
+                          className="object-contain"
+                        />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5 truncate">
+                        <div className="text-xs font-semibold text-white flex items-center gap-1.5 truncate">
                           <span>{label}</span>
-                          <span className="text-[10px] font-mono text-[var(--text-secondary)] px-1.5 py-0.2 rounded bg-[var(--surface-3)]">
+                          <span className="text-[10px] font-mono text-[#8E8F94] px-1.5 py-0.2 rounded bg-[#121316] border border-[#23242A]">
                             {page}
                           </span>
                         </div>
-                        <div className="text-[11px] font-mono text-[var(--text-secondary)] truncate">
+                        <div className="text-[11px] font-mono text-[#8E8F94] truncate">
                           {p.name} &bull; {creds?.email || `${itemRole}@example.edu`}
                         </div>
                       </div>
                     </div>
                     {isSelected ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 ml-2" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />
                     ) : (
-                      <ArrowRight className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 ml-2" />
+                      <ArrowRight className="w-3.5 h-3.5 text-[#8E8F94] shrink-0 ml-2" />
                     )}
                   </button>
                 );
@@ -225,19 +238,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Direct Sign-In Form */}
-          <div className="pt-2 border-t border-[var(--border-subtle)] space-y-3">
+          <div className="pt-2 border-t border-[#23242A] space-y-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-secondary)]">
+              <span className="font-mono text-[10.5px] uppercase tracking-wider text-[#8E8F94]">
                 Sign In with Credentials
               </span>
-              <span className="font-mono text-[10px] text-[var(--text-secondary)]">
-                Demo pass: <code className="bg-[var(--surface-2)] px-1 rounded">demo-password</code>
+              <span className="font-mono text-[10px] text-[#666666]">
+                Demo pass: <code className="bg-[#1C1E26] px-1 rounded text-zinc-300">demo-password</code>
               </span>
             </div>
 
             <form onSubmit={handleCustomLogin} className="space-y-2.5">
               <div>
-                <label className="block text-[11px] font-mono text-[var(--text-secondary)] mb-1">
+                <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
                   Email
                 </label>
                 <input
@@ -246,12 +259,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="student@example.edu or admin@example.edu"
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[var(--foreground)] placeholder:text-[var(--text-secondary)] focus:outline-hidden focus:border-[var(--accent)] font-mono transition-colors"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white placeholder:text-[#666666] focus:outline-hidden focus:border-[#3F4350] font-mono transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-[var(--text-secondary)] mb-1">
+                <label className="block text-[11px] font-mono text-[#8E8F94] mb-1">
                   Password
                 </label>
                 <input
@@ -260,14 +273,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[var(--foreground)] placeholder:text-[var(--text-secondary)] focus:outline-hidden focus:border-[var(--accent)] font-mono transition-colors"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#1A1C22] border border-[#282A33] text-white placeholder:text-[#666666] focus:outline-hidden focus:border-[#3F4350] font-mono transition-colors"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-2 py-2 px-4 rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-hover)] active:scale-[0.98] text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-200 text-[#0E0E0E] active:scale-[0.98] text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>{isLoading ? 'Authenticating...' : 'Sign In and Load Portal'}</span>
@@ -277,29 +290,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
           {/* JWT Token Claims */}
           {accessToken && (
-            <div className="pt-2 border-t border-[var(--border-subtle)]">
+            <div className="pt-2 border-t border-[#23242A]">
               <button
                 type="button"
                 onClick={() => setShowDevClaims(!showDevClaims)}
-                className="w-full flex items-center justify-between text-[11px] font-mono text-[var(--text-secondary)] hover:text-[var(--foreground)] py-1 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between text-[11px] font-mono text-[#8E8F94] hover:text-white py-1 transition-colors cursor-pointer"
               >
                 <span>Authorization Token (JWT)</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDevClaims ? 'rotate-180' : ''}`} />
               </button>
 
               {showDevClaims && (
-                <div className="mt-2 p-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[10px] font-mono space-y-2">
-                  <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                <div className="mt-2 p-2.5 rounded-xl bg-[#16171D] border border-[#23242A] text-[10px] font-mono space-y-2">
+                  <div className="flex items-center justify-between text-[#8E8F94]">
                     <span>Bearer Token</span>
                     <button
                       type="button"
                       onClick={copyToken}
-                      className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[#38BDF8] hover:underline cursor-pointer"
                     >
                       {copiedToken ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-500" />
-                          <span className="text-emerald-500">Copied</span>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copied</span>
                         </>
                       ) : (
                         <>
@@ -309,7 +322,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       )}
                     </button>
                   </div>
-                  <div className="break-all text-[var(--text-secondary)] select-all bg-[var(--surface-1)] p-2 rounded-lg border border-[var(--border-subtle)] max-h-16 overflow-y-auto">
+                  <div className="break-all text-[#8E8F94] select-all bg-[#121316] p-2 rounded-lg border border-[#23242A] max-h-16 overflow-y-auto">
                     {accessToken}
                   </div>
                 </div>
@@ -322,3 +335,4 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     document.body
   );
 };
+

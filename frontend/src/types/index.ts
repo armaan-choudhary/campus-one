@@ -37,6 +37,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface CitationSubclause {
+  marker: string;
+  title: string;
+  text: string;
+}
+
 export interface Citation {
   id: string;
   marker: string;
@@ -47,6 +53,17 @@ export interface Citation {
   groundingScore: number;
   sourceUri?: string;
   custodian?: string;
+  authority?: string;
+  effectiveDate?: string;
+  recordId?: string;
+  matchScore?: string | number;
+  subclause?: string;
+  statuteTitle?: string;
+  subclauses?: CitationSubclause[];
+  associatedForm?: string;
+  destination?: string;
+  mandateStatus?: string;
+  ferpaCompliant?: boolean;
 }
 
 export interface ClarificationOption {
@@ -80,6 +97,25 @@ export interface MessageClarification {
   options: ClarificationOption[];
 }
 
+export interface RoutingActionStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+}
+
+export interface DepartmentRoutingCardData {
+  departmentTitle: string;
+  routingTag: string;
+  summary: string;
+  steps: RoutingActionStep[];
+  sourceLabel: string;
+  portalAction?: {
+    label: string;
+    url?: string;
+  };
+  proactiveNote?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -94,6 +130,11 @@ export interface Message {
   checklist?: string[];
   portalLink?: MessagePortalLink;
   followUps?: string[];
+  routingCard?: DepartmentRoutingCardData;
+  userCategory?: string;
+  userUrgency?: 'urgent' | 'normal' | 'high';
+  authorName?: string;
+  authorRole?: string;
 }
 
 export interface ConversationItem {

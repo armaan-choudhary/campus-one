@@ -188,7 +188,10 @@ class MockAuthProvider:
         self._pool: asyncpg.Pool | None = None
 
     async def _get_pool(self) -> asyncpg.Pool:
-        if self._pool is None:
+        import asyncio
+        current_loop = asyncio.get_running_loop()
+        pool_loop = getattr(self._pool, "_loop", None) if self._pool else None
+        if self._pool is None or pool_loop is not current_loop or (pool_loop and pool_loop.is_closed()):
             self._pool = await asyncpg.create_pool(
                 self._database_url, min_size=1, max_size=5
             )

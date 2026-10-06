@@ -24,6 +24,7 @@ class AssistantState(TypedDict):
     handoff_reason: Optional[str]
     ticket_id: Optional[str]
     ticket_requested: bool
+    ticket_just_created: Optional[bool]
     ticket_summary: Optional[Dict[str, Any]]
 
     # Grounding
@@ -35,6 +36,27 @@ class AssistantState(TypedDict):
 
     # Misc
     metadata: Dict[str, Any]
+
+
+# Structured Output for Clarification LLM
+
+class ClarificationOption(BaseModel):
+    id: str = Field(description="Unique snake_case identifier, e.g. 'portal_login'")
+    label: str = Field(description="User-friendly action label, e.g. 'Student Portal & Wi-Fi Login'")
+    department: Literal["IT", "HR", "Fees", "Facilities", "General"] = Field(
+        description="Target department responsible for handling this issue."
+    )
+
+
+class ClarificationOutput(BaseModel):
+    question: str = Field(
+        description="A concise, student-facing question asking the user to clarify their intent."
+    )
+    options: List[ClarificationOption] = Field(
+        min_length=2,
+        max_length=4,
+        description="2 to 4 distinct options the student can choose from."
+    )
 
 
 # Structure Output for Router LLM

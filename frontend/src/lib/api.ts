@@ -1,5 +1,4 @@
 import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole } from '@/types';
-import { PERSONAS } from '@/lib/demoFixtures';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
@@ -91,14 +90,14 @@ export interface BackendRetrievedChunk {
   content: string;
   source: string;
   page?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BackendChatResponse {
   answer: string;
   thread_id: string;
   ticket_id?: string | null;
-  ticket?: Record<string, any> | null;
+  ticket?: Record<string, unknown> | null;
   detected_domains: string[];
   intent?: string | null;
   routing_confidence: number;
@@ -107,14 +106,19 @@ export interface BackendChatResponse {
   handoff_reason?: string | null;
   sources: string[];
   retrieved_chunks: BackendRetrievedChunk[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export async function sendChatMessageApi(
   accessToken: string,
-  message: string
+  message: string,
+  conversationId?: string
 ): Promise<BackendChatResponse> {
   let token = accessToken;
+  const requestBody = JSON.stringify({
+    message,
+    ...(conversationId ? { conversation_id: conversationId } : {}),
+  });
 
   let res = await fetch(`${API_BASE_URL}/chat`, {
     method: 'POST',
@@ -122,7 +126,7 @@ export async function sendChatMessageApi(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ message }),
+    body: requestBody,
   });
 
   // If token is invalid or expired (e.g. stale dummy token from localStorage), re-authenticate and retry once
@@ -143,7 +147,7 @@ export async function sendChatMessageApi(
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ message }),
+          body: requestBody,
         });
       }
     } catch {
@@ -154,6 +158,94 @@ export async function sendChatMessageApi(
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.message || `Chat request failed with status ${res.status}`);
+  }
+
+  return await res.json();
+}
+
+export interface BackendHealthResponse {
+  status: string;
+  service: string;
+  environment: string;
+  auth_provider: string;
+}
+
+export async function checkHealthApi(): Promise<BackendHealthResponse> {
+  const res = await fetch(`${API_BASE_URL}/health`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Health check failed with status ${res.status}`);
+  }
+
+  return await res.json();
+}
+
+export async function refreshAuthTokenApi(refreshToken: string): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Token refresh failed with status ${res.status}`);
+  }
+
+  return await res.json();
+}
+
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  display_name: string;
+}
+
+export async function registerWithApi(payload: RegisterPayload): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Registration failed with status ${res.status}`);
+  }
+
+  return await res.json();
+}
+
+export interface BackendHistoryMessage {
+  role: 'user' | 'assistant' | string;
+  content: string;
+}
+
+export interface BackendChatHistoryResponse {
+  thread_id: string;
+  messages: BackendHistoryMessage[];
+}
+
+export async function fetchChatHistoryApi(accessToken: string): Promise<BackendChatHistoryResponse> {
+  const res = await fetch(`${API_BASE_URL}/chat/history`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to load conversation history (${res.status})`);
   }
 
   return await res.json();

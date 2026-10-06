@@ -26,6 +26,11 @@ CampusOne replaces disjointed chatbots, confusing portal links, and bouncing ema
 The backend (`backend/`) is a LangGraph orchestration service combining Groq high-throughput LLMs and PostgreSQL with `pgvector`:
 
 - **Structured Intent Routing (`router()`):** Employs JSON Schema structured outputs (`DepartmentRoute`) to determine target departments, routing confidence, and classification reasoning.
+- **Intra-Domain Gating (Answer-First):** When candidate options collapse to a single department, the system routes directly without entering clarification loops; clarification is strictly reserved for cross-department divergence.
+- **Conversational Continuation Support:** Recognizes short replies (*"no"*, *"nope"*, *"yes"*, *"not yet"*) in ongoing conversations to maintain domain context.
+- **Clarification Loop Guard:** Exempts `General` campus and lost personal property inquiries from internal ticket creation, providing direct actionable guidance.
+- **Conversational Ticket Triggers & Lifecycle:** Recognizes explicit ticket requests (*"help me raise a ticket for the same"*, *"bro ticket"*, *"ticket"*) and delivers single-turn creation receipts without stale session locks.
+- **Zero-Emoji Markdown Delivery:** Formats domain agent responses into clean, accessible Markdown lists; emojis are strictly prohibited and sanitized.
 - **Isolated PGVector Knowledge Bases:** Dedicated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) to prevent multi-department cross-contamination.
 - **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
 - **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
@@ -33,19 +38,22 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 - **Durable Conversation Checkpointing:** Persists LangGraph conversational checkpoints in PostgreSQL using `PostgresSaver` keyed by stable user IDs (`current_user.id`), restoring threads across logins via `GET /api/v1/chat/history`.
 - **PostgreSQL Authentication & Student Registration:** Persists user credentials in PostgreSQL (`campus_users`) with PBKDF2-HMAC-SHA256 password hashing, supporting self-service student signup (`POST /api/v1/auth/register`).
 - **LangSmith Tracing & Observability:** Instruments full graph executions, node latencies, and LLM token usage via configurable LangSmith integration (`LANGSMITH_TRACING=true`).
+- **Automated Unit Testing:** 31 automated tests verifying auth, clarification schemas, intra-domain routing, ticket lifecycle, and sanitization (`pytest backend/tests/`).
 - **Synthesis Node (`synthesize()`):** Formats raw domain outputs into clear, actionable advice with numbered checklists before returning to the conversation history.
 
 ---
 
 ## 💻 Frontend Dual-Role Architecture
 
-The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, and **Inter**, enforcing clean page separation across two primary roles:
+The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, **Inter**, **Playfair Display**, and **Geist Mono**, enforcing clean page separation across two primary roles:
 
 ### 1. Student Portal (`/workspace`)
 - **Primary Audience:** Alex Rivera (`student@example.edu` / `demo-password`)
-- **Assistant Chat:** Zero-clutter conversational stream with architectural SVG knowledge mesh hero, suggested prompts, inline citation badges opening the slide-out `CitationDrawer`, dynamic clarification chips, and a floating pill composer.
+- **Campus Intelligence Workspace:** Sleek obsidian dark canvas (`#0A0A0D`) with subtle radial ambient glow, unified header (*"Let’s figure it out."* with glowing `#FF7A00` status indicator), common student prompt suggestion cards positioned cleanly above the input section, and a docked bottom message composer with voice input (`Web Speech API`), document attachments, and amber submit glow.
+- **Docked Official Record Inspector:** Slide-out right inspection drawer with 2x2 metadata grid (Authority, Effective Date, Record ID, Match Score), verbatim subclause formatting, FERPA compliance badge, copy citation utility, and direct form action.
 - **My Tickets:** Real-time tracking of personal inquiries split into **Ongoing** and **Resolved** tabs. Automatically captures escalated handoff tickets produced by the assistant.
-- **Isolated Context:** Strictly student-focused; no administrative panels or controls in this window.
+- **Quiet Catalog Drawer:** 215px collapsible history sidebar that recedes into the perimeter to keep focus on active inquiries.
+- **Isolated Context:** Strictly student-focused; administrative panels or controls are completely segregated.
 
 ### 2. Administrator Console (`/admin`)
 - **Primary Audience:** System Administrator (`admin@example.edu` / `demo-password`)
@@ -127,22 +135,29 @@ msInnovateHack/
 │   ├── index_documents.py         # PDF chunking and vector indexing script
 │   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
 │   ├── Prompts.py                 # Domain prompt templates and system instructions
+│   ├── tests/                     # Automated unit test suite (31 tests)
+│   │   ├── test_auth.py           # Password hashing, registration, JWT, and RBAC
+│   │   ├── test_clarification.py  # Clarification bounds, intra-domain gating, continuation
+│   │   └── test_ticket_lifecycle.py # Single-turn receipts, conversational ticket commands
 │   ├── streamlit_app.py           # Developer debug console (auth, student signup, chat reload)
 │   └── requirements.txt           # Python dependencies
 ├── frontend/                      # Next.js 16 App Router application
 │   ├── src/app/
-│   │   ├── page.tsx               # Campus wayfinding landing page
+│   │   ├── page.tsx               # Editorial campus wayfinding landing page
 │   │   ├── login/page.tsx         # Unified dual-role authentication gateway
 │   │   ├── workspace/page.tsx     # Student workspace (Assistant Chat & My Tickets)
 │   │   └── admin/page.tsx         # Dedicated Administrator Ticket Console (RBAC protected)
-│   ├── src/components/            # UI components (Chat, TopNav, Sidebar, Ticket views)
+│   ├── src/components/
+│   │   ├── home/                  # Editorial landing sections (Hero, Problem, Features, Footer)
 │   │   ├── StudentTicketsView.tsx # Student ticket list (Ongoing / Resolved tabs)
 │   │   ├── AdminTicketPanel.tsx   # Consolidated ticket triage & resolution console
-│   │   └── TopNav.tsx             # Clean student navigation bar
+│   │   ├── TopNav.tsx             # Clean student navigation bar
+│   │   ├── MessageBubble.tsx      # Turns, checklists, citations, deduplicated clarification
+│   │   └── CitationDrawer.tsx     # Docked policy inspection panel
 │   ├── src/context/               # AuthContext and reactive TicketContext
 │   ├── src/lib/                   # API client (FastAPI bridge), fixtures, utilities
 │   └── README.md                  # Frontend documentation
-├── docs/                          # Architectural specification suite
+├── docs/                          # Architectural specification suite (00-15 & DESIGN_GUIDE)
 ├── assets/                        # Brand marks, vector assets, and design artifacts
 └── README.md                      # Monorepo master documentation
 ```
