@@ -365,3 +365,46 @@ export async function fetchChatHistoryApi(accessToken: string): Promise<BackendC
   return await res.json();
 }
 
+export interface QuickRepliesResponse {
+  templates: string[];
+  source: string;
+}
+
+export async function fetchQuickRepliesApi(
+  accessToken: string,
+  department: string,
+  issueSummary: string,
+  conversationSummary?: string,
+  target: 'ticket_resolution' | 'chat_followup' = 'ticket_resolution'
+): Promise<QuickRepliesResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/quick-replies`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        department,
+        issue_summary: issueSummary,
+        conversation_summary: conversationSummary,
+        target,
+      }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.error('Failed to fetch AI quick replies:', err);
+  }
+
+  return {
+    templates: [
+      `Verified with ${department} office. Action completed and recorded.`,
+      `Work order dispatched to ${department} operational team.`,
+      `Student profile and service configuration refreshed.`,
+    ],
+    source: 'client_fallback',
+  };
+}
+

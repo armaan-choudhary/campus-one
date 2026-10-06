@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -250,3 +250,118 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class QuickReplyRequest(BaseModel):
+    department: str = Field(default="General", description="Department managing the issue")
+    issue_summary: str = Field(..., min_length=1, max_length=1000, description="Summary of the ticket or issue")
+    conversation_summary: Optional[str] = Field(None, max_length=2000, description="Optional conversation context")
+    target: Literal["ticket_resolution", "chat_followup"] = Field(
+        default="ticket_resolution",
+        description="Whether to generate resolution action templates or student follow-up prompts",
+    )
+
+
+class QuickReplyResponse(BaseModel):
+    templates: List[str]
+    source: str = "llm"
+
+
+class _QuickReplyOutput(BaseModel):
+    options: List[str] = Field(description="List of 3 distinct, concise response templates or actions.")
+
+
+_quick_reply_llm = None
+
+
+def _get_quick_reply_llm():
+    global _quick_reply_llm
+    if _quick_reply_llm is None:
+        from langchain_groq import ChatGroq
+        llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.3)
+        _quick_reply_llm = llm.with_structured_output(_QuickReplyOutput, method="json_schema")
+    return _quick_reply_llm
+
+
+@router.post(
+    "/quick-replies",
+    response_model=QuickReplyResponse,
+    summary="Generate LLM-based Quick-Reply Templates",
+    description="Generate context-aware resolution notes or conversational follow-up suggestions.",
+)
+async def generate_quick_replies(
+    request: QuickReplyRequest,
+    current_user: CurrentUser = Depends(require_permission("messages:create")),
+) -> QuickReplyResponse:
+    dept = request.department or "General"
+    issue = request.issue_summary
+    context = request.conversation_summary or ""
+
+    if request.target == "ticket_resolution":
+        prompt = f"""You are an experienced university operations administrator.
+Generate exactly 3 professional, practical, and distinct resolution templates that a staff specialist can use to close this support ticket.
+
+Department: {dept}
+Issue Summary: {issue}
+Conversation Context: {context}
+
+Rules:
+- Each template should describe a concrete action taken by university staff (e.g., dispatched technician, cleared account hold, verified records, rebooted access point).
+- Keep each template concise (1-2 sentences).
+- Do not use emojis.
+- Provide practical resolutions tailored to {dept}."""
+    else:
+        prompt = f"""You are a university student assistant.
+Generate exactly 3 helpful, concise follow-up questions or actions a student might ask next.
+
+Department: {dept}
+Issue Summary: {issue}
+Conversation Context: {context}
+
+Rules:
+- Keep each suggestion under 10 words.
+- Natural, supportive student tone.
+- Do not use emojis."""
+
+    try:
+        llm = _get_quick_reply_llm()
+        result: _QuickReplyOutput = await run_in_threadpool(llm.invoke, prompt)
+        if result and result.options and len(result.options) > 0:
+            return QuickReplyResponse(templates=result.options[:4], source="llm")
+    except Exception as exc:
+        logger.warning("LLM quick reply generation failed, falling back to deterministic defaults: %s", exc)
+
+    # Deterministic resilient fallback templates by department
+    dept_lower = dept.lower()
+    if "it" in dept_lower or "wifi" in dept_lower or "network" in dept_lower:
+        fallback = [
+            "Credentials re-synchronized across campus IAM and Eduroam RADIUS access points.",
+            "Dispatched technician to inspect local network switch. Student connection verified.",
+            "Temporary browser cache cleared and authentication session reset in portal database.",
+        ]
+    elif "fee" in dept_lower or "finan" in dept_lower or "account" in dept_lower:
+        fallback = [
+            "Finance hold cleared in student ledger; academic hold release queued in Registrar sync.",
+            "Verified payment receipt against university merchant gateway. Ledger updated.",
+            "Late fee waiver approved under academic circumstance code. Records updated.",
+        ]
+    elif "facil" in dept_lower or "hostel" in dept_lower or "mainten" in dept_lower:
+        fallback = [
+            "Work order dispatched to Facilities Maintenance team for urgent on-site repair.",
+            "Room fixtures inspected and repair completed by campus block caretaker.",
+            "Maintenance order logged in central facilities dispatch directory.",
+        ]
+    elif "hr" in dept_lower or "employ" in dept_lower or "staff" in dept_lower:
+        fallback = [
+            "Official documentation verified with HR Directorate. Staff records updated.",
+            "Onboarding verification completed and transmitted to payroll coordinator.",
+            "Inquiry reviewed by University Employee Relations desk.",
+        ]
+    else:
+        fallback = [
+            "Issue reviewed and verified by Central Administration. Resolution logged in directory.",
+            "Official documentation transmitted to student portal records.",
+            "Inquiry processed and filed with central student services coordinator.",
+        ]
+
+    return QuickReplyResponse(templates=fallback, source="fallback")

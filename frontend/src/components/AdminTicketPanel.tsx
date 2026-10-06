@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useTickets } from '@/context/TicketContext';
+import { useAuth } from '@/context/AuthContext';
+import { fetchQuickRepliesApi } from '@/lib/api';
 import { HandoffTicket } from '@/types';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
@@ -15,16 +17,22 @@ import {
   X,
   Inbox,
   Sparkles,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { HandwrittenNote, OrangeTicks } from '@/components/home/HandwrittenElements';
 
 export const AdminTicketPanel: React.FC = () => {
   const { tickets, updateTicketStatus } = useTickets();
+  const { accessToken } = useAuth();
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [resolvingTicket, setResolvingTicket] = useState<HandoffTicket | null>(null);
   const [resolutionNote, setResolutionNote] = useState<string>('');
+  const [aiTemplates, setAiTemplates] = useState<string[]>([]);
+  const [isLoadingAiTemplates, setIsLoadingAiTemplates] = useState<boolean>(false);
+  const [aiSource, setAiSource] = useState<string | null>(null);
   const { toastMessage, showToast } = useToast();
 
   const totalCount = tickets.length;
@@ -68,11 +76,36 @@ export const AdminTicketPanel: React.FC = () => {
     showToast(`Ticket ${ticketId} claimed and assigned to your admin workstation.`);
   };
 
+  const loadTemplates = async (ticket: HandoffTicket) => {
+    setIsLoadingAiTemplates(true);
+    try {
+      const res = await fetchQuickRepliesApi(
+        accessToken || '',
+        ticket.department,
+        ticket.reason,
+        ticket.preview,
+        'ticket_resolution'
+      );
+      setAiTemplates(res.templates);
+      setAiSource(res.source);
+    } catch {
+      setAiTemplates([
+        `Verified with ${ticket.department} office. Action completed and recorded.`,
+        `Work order dispatched to ${ticket.department} operational team.`,
+        `Student profile and service configuration refreshed.`,
+      ]);
+      setAiSource('client_fallback');
+    } finally {
+      setIsLoadingAiTemplates(false);
+    }
+  };
+
   const handleOpenResolveModal = (ticket: HandoffTicket) => {
     setResolvingTicket(ticket);
     setResolutionNote(
       `Issue reviewed and verified by Central Administration. Resolution has been logged in the campus directory.`
     );
+    loadTemplates(ticket);
   };
 
   const handleQuickTemplate = (template: string) => {
@@ -401,26 +434,59 @@ export const AdminTicketPanel: React.FC = () => {
             </div>
 
             {/* Quick Reply Templates */}
-            <div className="space-y-1.5">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[#8E8F94] block">
-                Quick-Reply Templates
-              </span>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  'Verified with Registrar. Official updated records transmitted.',
-                  'Work order dispatched to Facilities Maintenance team.',
-                  'Network port recalibrated and student credential refreshed.',
-                ].map((tmpl, idx) => (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#8E8F94] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    AI Quick-Reply Templates
+                  </span>
+                  {aiSource && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono border border-amber-500/30 bg-amber-500/10 text-amber-400">
+                      {aiSource === 'llm' ? 'AI-Generated' : 'Department Preset'}
+                    </span>
+                  )}
+                </div>
+                {resolvingTicket && (
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => handleQuickTemplate(tmpl)}
-                    className="text-left text-xs p-2 rounded-lg bg-[#18191E] hover:bg-[#1C1E26] text-zinc-300 hover:text-white border border-[#282A33] transition-colors cursor-pointer"
+                    onClick={() => loadTemplates(resolvingTicket)}
+                    disabled={isLoadingAiTemplates}
+                    className="flex items-center gap-1 text-[11px] text-[#8E8F94] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    &ldquo;{tmpl}&rdquo;
+                    <RefreshCw className={`w-3 h-3 ${isLoadingAiTemplates ? 'animate-spin text-amber-400' : ''}`} />
+                    <span>Regenerate</span>
                   </button>
-                ))}
+                )}
               </div>
+
+              {isLoadingAiTemplates ? (
+                <div className="flex items-center justify-center py-4 rounded-lg bg-[#18191E] border border-[#282A33] text-zinc-400 text-xs gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  <span>Synthesizing contextual resolution templates...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {(aiTemplates.length > 0
+                    ? aiTemplates
+                    : [
+                        `Verified with ${resolvingTicket?.department || 'Registrar'}. Official updated records transmitted.`,
+                        `Work order dispatched to ${resolvingTicket?.department || 'Facilities'} Maintenance team.`,
+                        'Network port recalibrated and student credential refreshed.',
+                      ]
+                  ).map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleQuickTemplate(tmpl)}
+                      className="text-left text-xs p-2.5 rounded-lg bg-[#18191E] hover:bg-[#1C1E26] text-zinc-300 hover:text-white border border-[#282A33] hover:border-amber-500/40 transition-colors cursor-pointer flex items-start gap-2 group"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-400/60 group-hover:text-amber-400 mt-0.5 shrink-0" />
+                      <span>&ldquo;{tmpl}&rdquo;</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleConfirmResolve} className="space-y-4">
