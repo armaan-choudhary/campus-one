@@ -282,6 +282,7 @@ function AdminAuthBarrier() {
 function AdminConsoleContent() {
   const { role, isAuthenticated, isLoading } = useAuth();
   const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>('dark');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'analytics'>('tickets');
 
   useEffect(() => {
     const saved = localStorage.getItem('campusone-theme') as 'dark' | 'light' | null;
@@ -313,8 +314,6 @@ function AdminConsoleContent() {
   if (!isAuthenticated || role !== 'admin') {
     return <AdminAuthBarrier />;
   }
-
-  const [activeTab, setActiveTab] = useState<'tickets' | 'analytics'>('tickets');
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#0B0B0B] text-[#F5F3ED] overflow-hidden transition-colors duration-200">
