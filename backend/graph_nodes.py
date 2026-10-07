@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from langsmith import traceable
 
 # Robustly load .env relative to this file
 env_path = Path(__file__).parent / ".env"
@@ -213,6 +214,19 @@ def _get_ticket_llm():
     return _ticket_llm
 
 
+@traceable(name="campus-one-normalize-router-output", run_type="chain")
+def _normalize_router_output(response: DepartmentRoute) -> DepartmentRoute:
+    """Canonicalize router fields after structured LLM output."""
+    departments = list(dict.fromkeys(department.strip() for department in response.departments))
+    return response.model_copy(
+        update={
+            "route": response.route.strip(),
+            "departments": departments,
+        }
+    )
+
+
+@traceable(name="campus-one-router", run_type="chain")
 def router(state: AssistantState):
     structured_llm = get_router_llm()
     query = state["current_query"]
@@ -222,7 +236,7 @@ def router(state: AssistantState):
 
     prompt = ROUTER_PROMPT.format(query=query)
     prompt += f"\n\nConversation context:\n{_conversation_context({**state, 'messages': messages})}"
-    response = structured_llm.invoke(prompt)
+    response = _normalize_router_output(structured_llm.invoke(prompt))
 
     return {
         "messages": messages,
@@ -236,6 +250,7 @@ def router(state: AssistantState):
     }
 
 
+@traceable(name="campus-one-it-agent", run_type="chain")
 def it_query(state: AssistantState):
     structured_llm = get_it_llm()
 
@@ -293,6 +308,37 @@ def it_query(state: AssistantState):
     }
 
 
+@traceable(name="campus-one-clarification-question", run_type="chain")
+def _generate_clarification_question(
+    state: AssistantState,
+    domains: list[str],
+    dept_str: str,
+) -> tuple[str, list[dict[str, str]], list[str]]:
+    """Generate and normalize the student-facing clarification options."""
+    try:
+        llm = get_clarify_llm()
+        prompt = CLARIFY_PROMPT.format(
+            departments=dept_str,
+            context=_conversation_context(state),
+            query=state["current_query"],
+        )
+        result: ClarificationOutput = llm.invoke(prompt)
+        question = result.question
+        options = [opt.model_dump() for opt in result.options]
+        target_domains = [opt.department for opt in result.options]
+    except Exception:
+        # Resilient fallback to deterministic options on LLM timeout or error
+        question = f"Could you clarify which area you need help with: {dept_str}?"
+        target_domains = domains or ["IT", "HR", "Fees", "Facilities"]
+        options = [
+            {"id": d.lower(), "label": d, "department": d}
+            for d in target_domains
+        ]
+
+    return question, options, target_domains
+
+
+@traceable(name="campus-one-clarify", run_type="chain")
 def clarify(state: AssistantState):
     attempts = state.get("metadata", {}).get("clarification_attempts", 0)
 
@@ -339,25 +385,11 @@ def clarify(state: AssistantState):
     domains = [d for d in state.get("detected_domains", []) if d.lower() != "general"]
     dept_str = ", ".join(domains) if domains else "IT, HR, Fees, Facilities"
 
-    try:
-        llm = get_clarify_llm()
-        prompt = CLARIFY_PROMPT.format(
-            departments=dept_str,
-            context=_conversation_context(state),
-            query=state["current_query"],
-        )
-        result: ClarificationOutput = llm.invoke(prompt)
-        question = result.question
-        options = [opt.model_dump() for opt in result.options]
-        target_domains = [opt.department for opt in result.options]
-    except Exception:
-        # Resilient fallback to deterministic options on LLM timeout or error
-        question = f"Could you clarify which area you need help with: {dept_str}?"
-        target_domains = domains or ["IT", "HR", "Fees", "Facilities"]
-        options = [
-            {"id": d.lower(), "label": d, "department": d}
-            for d in target_domains
-        ]
+    question, options, target_domains = _generate_clarification_question(
+        state,
+        domains,
+        dept_str,
+    )
 
     return {
         "final_answer": question,
@@ -392,6 +424,7 @@ def _get_synth_llm():
     return _synth_llm
 
 
+@traceable(name="campus-one-domain-agent", run_type="chain")
 def _run_domain_agent(
     state: AssistantState,
     domain: str,
@@ -445,6 +478,7 @@ def _run_domain_agent(
     }
 
 
+@traceable(name="campus-one-hr-agent", run_type="chain")
 def hr_agent(state: AssistantState):
     return _run_domain_agent(
         state,
@@ -454,6 +488,7 @@ def hr_agent(state: AssistantState):
     )
 
 
+@traceable(name="campus-one-fees-agent", run_type="chain")
 def fees_agent(state: AssistantState):
     return _run_domain_agent(
         state,
@@ -463,6 +498,7 @@ def fees_agent(state: AssistantState):
     )
 
 
+@traceable(name="campus-one-facilities-agent", run_type="chain")
 def facilities_agent(state: AssistantState):
     return _run_domain_agent(
         state,
@@ -472,10 +508,12 @@ def facilities_agent(state: AssistantState):
     )
 
 
+@traceable(name="campus-one-general-agent", run_type="chain")
 def general_agent(state: AssistantState):
     return _run_domain_agent(state, "General", GENERAL_AGENT_PROMPT)
 
 
+@traceable(name="campus-one-multi-domain-orchestrator", run_type="chain")
 def multi_domain_orchestrator(state: AssistantState) -> dict[str, Any]:
     """
     Concurrently executes multiple domain agents for coupled multi-department requests.
@@ -570,6 +608,7 @@ def multi_domain_orchestrator(state: AssistantState) -> dict[str, Any]:
     }
 
 
+@traceable(name="campus-one-synthesize", run_type="chain")
 def synthesize(state: AssistantState):
     query = state["current_query"]
     agent_response = state.get("agent_response")
@@ -605,6 +644,7 @@ def synthesize(state: AssistantState):
         },
     }
 
+@traceable(name="campus-one-respond", run_type="chain")
 def respond(state: AssistantState):
     if state.get("ticket_requested") and not state.get("ticket_summary"):
         conversation = _conversation_context(state, limit=20)
@@ -728,6 +768,7 @@ def should_raise_ticket(state: AssistantState) -> bool:
         or direct_ticket_request
     )
 
+@traceable(name="campus-one-follow-up-routing", run_type="chain")
 def route_by_confidence(state: AssistantState) -> str:
     if should_raise_ticket(state):
         return "create_ticket"
@@ -821,6 +862,7 @@ def route_by_confidence(state: AssistantState) -> str:
 
     return distinct_candidates[0]
 
+@traceable(name="campus-one-create-ticket", run_type="chain")
 def create_ticket(state: AssistantState):
     # If a summary hasn't been generated for this ticket request yet,
     # request fresh summary generation from the respond node.

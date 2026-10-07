@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
 from langchain_core.documents import Document
+from langsmith import traceable
 
 # Robustly load .env relative to this file
 env_path = Path(__file__).parent / ".env"
@@ -100,6 +101,7 @@ def get_collection_documents(collection_name: str, force_refresh: bool = False) 
     return documents
 
 
+@traceable(name="campus-one-dense-retrieval", run_type="retriever")
 def retrieve_dense_documents(
     query: str,
     collection_name: str,
@@ -118,6 +120,7 @@ def retrieve_dense_documents(
     return retriever.invoke(query)
 
 
+@traceable(name="campus-one-sparse-retrieval", run_type="retriever")
 def retrieve_sparse_documents(
     query: str,
     collection_name: str,
@@ -146,6 +149,7 @@ def retrieve_sparse_documents(
     return [doc for _, doc in scored[:number_of_documents]]
 
 
+@traceable(name="campus-one-hybrid-retrieval", run_type="retriever")
 def retrieve_hybrid_documents(
     query: str,
     collection_name: str,
@@ -197,6 +201,7 @@ def retrieve_hybrid_documents(
     return [doc_registry[k] for k in ranked_keys[:number_of_documents]]
 
 
+@traceable(name="campus-one-document-retrieval", run_type="retriever")
 def retrieve_documents(
     query: str,
     collection_name: str,

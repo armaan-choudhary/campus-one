@@ -1,7 +1,7 @@
 """LangGraph construction and shared graph lifecycle."""
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg_pool import ConnectionPool
 
 try:

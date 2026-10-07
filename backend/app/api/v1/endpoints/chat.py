@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from langsmith import traceable
 
 from app.auth.dependencies import require_permission
 from app.auth.schemas import CurrentUser
@@ -438,6 +439,7 @@ def _get_quick_reply_llm():
     summary="Generate LLM-based Quick-Reply Templates",
     description="Generate context-aware resolution notes or conversational follow-up suggestions.",
 )
+@traceable(name="campus-one-quick-replies", run_type="chain")
 async def generate_quick_replies(
     request: QuickReplyRequest,
     current_user: CurrentUser = Depends(require_permission("messages:create")),
