@@ -54,18 +54,83 @@ The local mock authentication provider persists seeded demo accounts and self-se
 
 Registration is restricted to the `student` role. Duplicate emails are rejected with `409 email_already_registered`. This implementation table is the current local-auth bridge; the normalized UUID-based `users` model below remains the target production design.
 
+### `campus_refresh_tokens` (cryptographic refresh token lifecycle)
+
+Manages single-use refresh token rotation and revocation in PostgreSQL.
+
+| Column | Type | Rules |
+|---|---|---|
+| `token_hash` | varchar(64) | primary key, SHA-256 hash of refresh token |
+| `user_id` | varchar(128) | not null, indexed via `idx_refresh_tokens_user` |
+| `expires_at` | timestamptz | not null; checked on rotation |
+| `revoked` | boolean | not null default false |
+| `created_at` | timestamptz | not null default `now()` |
+
+Upon token refresh, the old token is atomically marked `revoked = true` and a new token pair is issued to prevent replay attacks.
+
+### `campus_conversations` (multi-session student directory)
+
+Persists high-level conversation directory metadata so users can manage multiple simultaneous support threads.
+
+| Column | Type | Rules |
+|---|---|---|
+| `id` | varchar(128) | primary key (e.g. `conv-a0096b2e`) |
+| `user_id` | varchar(128) | not null; owner validation |
+| `title` | varchar(255) | not null default 'New inquiry', auto-updated from first user query |
+| `domain_key` | varchar(64) | not null default 'it' |
+| `status` | varchar(32) | not null default 'open' (open/clarification/resolved) |
+| `pinned` | boolean | not null default false |
+| `created_at` | timestamptz | not null default `now()` |
+| `updated_at` | timestamptz | not null default `now()`; indexed via `(user_id, updated_at desc)` |
+
 ### `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` (LangGraph durable thread store)
 
 Conversational state persistence is managed by LangGraph's PostgreSQL checkpointer (`PostgresSaver` in `backend/graph.py`). The schema is initialized during FastAPI lifespan startup via `_checkpointer.setup()`:
 
 | Table | Primary Key / Index | Description |
 |---|---|---|
-| `checkpoints` | `(thread_id, checkpoint_ns, checkpoint_id)` | Stores serialized graph state snapshots, parent checkpoint links, and step metadata. `thread_id` is set to `current_user.id`. |
+| `checkpoints` | `(thread_id, checkpoint_ns, checkpoint_id)` | Stores serialized graph state snapshots, parent checkpoint links, and step metadata. |
 | `checkpoint_blobs` | `(thread_id, checkpoint_ns, channel, version)` | Stores serialized channel values and large message payload blobs. |
 | `checkpoint_writes` | `(thread_id, checkpoint_ns, checkpoint_id, task_id, idx)` | Records pending state writes and graph node outputs for deterministic rehydration and time-travel. |
 | `checkpoint_migrations` | `v` | Tracks internal schema versions and migrations applied by `PostgresSaver`. |
 
-Because `thread_id` matches the user's stable account ID (`current_user.id`), state persists across logins, browser reloads, and multi-worker restarts. The endpoint `GET /api/v1/chat/history` reads from this checkpoint store to reconstruct active message threads.
+#### Thread ID Scoping Model
+To support multiple distinct conversations per student without cross-talk:
+$$\text{thread\_id} = \begin{cases} \text{current\_user.id} : \text{conversation\_id} & \text{if } \text{conversation\_id} \text{ is supplied} \\ \text{current\_user.id} & \text{fallback (legacy / unpartitioned)} \end{cases}$$
+
+- **Session Isolation:** Each conversation session has its own isolated timeline in `checkpoints` and `checkpoint_blobs`.
+- **IDOR Protection:** The backend verifies that `conversation_id` belongs to `current_user.id` before reading or updating state, rejecting cross-account requests with `404 Not Found` or `409 Conflict`.
+
+---
+
+### Incident Analysis: Cross-Client History Discrepancy & Resolution
+
+#### 1. Problem Statement
+When inspecting the database, conversations created in the **Next.js Web Frontend** were completely missing from the **Streamlit Debug Console**, even when logged into the exact same account (`student@example.edu` or `admin@example.edu`), and vice versa.
+
+#### 2. Root Cause Analysis
+1. **Thread Partitioning Divergence**:
+   - The **Next.js Frontend** generated explicit conversation IDs (`conv_...`) and called `POST /api/v1/chat` with `{ "conversation_id": "conv_..." }`. Checkpoints were saved under `thread_id = "u-student-01:conv_..."`.
+   - The **Streamlit Console** omitted `conversation_id` in its request payload. The backend fell back to `thread_id = "u-student-01"`.
+   - Consequently, PostgreSQL partitioned the sessions into separate checkpoint streams that never intersected.
+2. **Missing Directory Registration**:
+   - The backend's `touch_conversation()` upsert query only ran when `request.conversation_id` was present. Streamlit messages never entered `campus_conversations`, rendering them invisible to the web frontend's conversation sidebar.
+
+#### 3. Bugs & Implementation Challenges Faced
+- **Streamlit Widget State Trap (`key="conv_selector"`)**:
+  When introducing conversation selection into Streamlit via `st.selectbox("Select Conversation", options=conv_ids, key="conv_selector")`, a subtle state-retention bug occurred. In Streamlit's architecture, when a widget defines a `key`, Streamlit stores its value in `st.session_state[key]` and **ignores the `index` parameter on subsequent reruns**.
+  - When a user clicked **"+ New Inquiry"**, a new conversation (`conv-3`) was created and set to `active_conv_id`. However, because `conv_selector` was still stored in `session_state` with the old ID (`conv-1`), the selectbox silently reverted selection to `conv-1` on rerun.
+  - When deleting an active conversation, if `conv_selector` retained the deleted ID that was no longer in `options`, Streamlit threw runtime exceptions (`StreamlitAPIException: The default value must be in options`).
+
+#### 4. How It Was Fixed
+1. **Directory Lifecycle Integration**:
+   Updated `streamlit_app.py` to fetch user conversations via `GET /api/v1/chat/conversations` and pass `"conversation_id": active_id` on all chat invocations and history queries.
+2. **Explicit Widget State Synchronization**:
+   Synchronized `st.session_state.conv_selector` alongside `active_conv_id` across all lifecycle events (login, new conversation, deletion, and dropdown switching).
+3. **Event-Driven Selection (`on_change` Callback)**:
+   Switched selectbox handling to an explicit `on_conversation_change()` callback, eliminating race conditions between widget values and conversational history loading.
+4. **Automated Verification**:
+   Created headless Streamlit test harnesses using `streamlit.testing.v1.AppTest` and end-to-end integration tests verifying bidirectional synchronization between Next.js and Streamlit against live PostgreSQL.
 
 ### `users`
 

@@ -90,12 +90,22 @@ POST /api/v1/auth/register
 
 ### `POST /chat`
 
-**Auth:** authenticated users with `messages:create`. **Request:** `{ "message": "..." }`; message length is 1–4,000 characters. The backend derives the LangGraph `thread_id` from the authenticated user's stable ID; clients do not provide or override it. **Response 200:** the assistant answer, thread ID, routing metadata, citations, retrieved chunks, and any ticket details. **Errors:** `401`, `403`, `502` when the assistant or checkpoint store is unavailable.
+**Auth:** authenticated users with `messages:create`.
+**Request:**
+```json
+{
+  "message": "How do I setup eduroam Wi-Fi?",
+  "conversation_id": "conv-a0096b2e"
+}
+```
+- `message`: string, 1–4,000 characters (required).
+- `conversation_id`: string, max 128 characters (optional). When supplied, checkpoints are partitioned under `thread_id = "{user_id}:{conversation_id}"` and directory metadata is touched in `campus_conversations`. When omitted, falls back to `{user_id}`.
 
+**Response 200:**
 ```json
 {
   "answer": "...",
-  "thread_id": "u-student-01",
+  "thread_id": "u-student-01:conv-a0096b2e",
   "ticket_id": null,
   "ticket": null,
   "detected_domains": ["IT"],
@@ -105,25 +115,84 @@ POST /api/v1/auth/register
 }
 ```
 
+**Errors:** `401 Unauthorized`, `403 Forbidden`, `502 Bad Gateway`.
+
 ### `GET /chat/history`
 
-**Auth:** authenticated users with `messages:create`. Returns the latest persisted LangGraph messages for the authenticated user's stable thread. A new access token or login for the same account loads the same conversation.
+**Auth:** authenticated users with `messages:create`.
+**Query Parameters:**
+- `conversation_id`: string (optional).
+
+Returns persisted messages from `PostgresSaver` for the target thread.
 
 **Response 200:**
-
 ```json
 {
-  "thread_id": "u-student-01",
+  "thread_id": "u-student-01:conv-a0096b2e",
   "messages": [
-    {"role": "user", "content": "How do I reset my password?"},
+    {"role": "user", "content": "How do I setup eduroam Wi-Fi?"},
     {"role": "assistant", "content": "..."}
-  ]
+  ],
+  "conversation": {
+    "id": "conv-a0096b2e",
+    "user_id": "u-student-01",
+    "title": "How do I setup eduroam Wi-Fi?",
+    "domain_key": "it",
+    "status": "open",
+    "pinned": false,
+    "created_at": "2026-10-07T05:30:00Z",
+    "updated_at": "2026-10-07T05:30:15Z"
+  }
 }
 ```
 
-**Errors:** `401`, `403`, `502` when the checkpoint store is unavailable.
+### `GET /chat/conversations`
 
-### `POST /conversations`
+**Auth:** authenticated users with `conversations:own`.
+Returns all persistent conversation sessions for the authenticated user, ordered by `pinned DESC, updated_at DESC`.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "conv-a0096b2e",
+    "user_id": "u-student-01",
+    "title": "How do I setup eduroam Wi-Fi?",
+    "domain_key": "it",
+    "status": "open",
+    "pinned": false,
+    "created_at": "2026-10-07T05:30:00Z",
+    "updated_at": "2026-10-07T05:30:15Z"
+  }
+]
+```
+
+### `POST /chat/conversations`
+
+**Auth:** authenticated users with `conversations:own`.
+Provisions a new conversation record in PostgreSQL.
+
+**Request:**
+```json
+{
+  "id": "optional-custom-id",
+  "title": "New inquiry",
+  "domain_key": "it"
+}
+```
+
+**Response 201:** Created `ConversationSummaryResponse` object.
+**Errors:** `409 Conflict` (if identifier is already claimed by another user account).
+
+### `PATCH /chat/conversations/{conversation_id}`
+
+**Auth:** authenticated users with `conversations:own`.
+Updates metadata (`title`, `pinned`, `status`) on an existing conversation. Returns `404 Not Found` if not owned by the requester.
+
+### `DELETE /chat/conversations/{conversation_id}`
+
+**Auth:** authenticated users with `conversations:own`.
+Deletes the conversation record from PostgreSQL. Returns `404 Not Found` if not owned by the requester.
 
 **Auth:** student/staff. **Request:** `{ "title": "optional", "client_metadata": {} }`; title max 160 and metadata must not contain secrets. **Response 201:** `{ "conversation_id", "status":"open", "resolution_state":"open", "created_at" }`. **Errors:** `401`, `422 invalid_metadata`, `429`. **Example request/response:**
 

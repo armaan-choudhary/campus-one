@@ -124,13 +124,20 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# 3. Print URLs and start frontend
+# 3. Select a frontend port, print URLs, and start frontend
+# Prefer the documented port, but avoid silently letting Next.js choose a
+# different one (which makes it easy to open a stale app on port 3000).
+FRONTEND_PORT=3000
+if curl -sS --max-time 1 http://127.0.0.1:${FRONTEND_PORT} >/dev/null 2>&1; then
+    FRONTEND_PORT=3001
+fi
+
 echo -e "\n${BOLD}${GREEN}=================================================================="
 echo -e "🚀 CampusOne is Live!"
 echo -e "==================================================================${NC}"
-echo -e "  🌐 Web Client     : ${BOLD}${BLUE}http://localhost:3000${NC}"
-echo -e "  🎓 Student Portal : ${BOLD}${CYAN}http://localhost:3000/workspace${NC}"
-echo -e "  🛡️  Admin Console  : ${BOLD}${CYAN}http://localhost:3000/admin${NC}"
+echo -e "  🌐 Web Client     : ${BOLD}${BLUE}http://localhost:${FRONTEND_PORT}${NC}"
+echo -e "  🎓 Student Portal : ${BOLD}${CYAN}http://localhost:${FRONTEND_PORT}/workspace${NC}"
+echo -e "  🛡️  Admin Console  : ${BOLD}${CYAN}http://localhost:${FRONTEND_PORT}/admin${NC}"
 echo -e "  ⚙️  FastAPI Backend: ${BOLD}${BLUE}http://127.0.0.1:8000/api/v1${NC}"
 echo -e "  📖 Swagger Docs   : ${BOLD}${BLUE}http://127.0.0.1:8000/docs${NC}"
 echo -e "  🗄️  PostgreSQL     : ${BOLD}${BLUE}localhost:5432${NC} (db: campus_one)"
@@ -138,4 +145,4 @@ echo -e "------------------------------------------------------------------"
 echo -e "Press ${BOLD}Ctrl+C${NC} to stop services.\n"
 
 cd frontend
-npm run dev
+npm run dev -- --port "${FRONTEND_PORT}"

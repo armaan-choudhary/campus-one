@@ -16,12 +16,12 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Conversational Ticket Escalation:** Detects explicit ticket requests (*"help me raise a ticket for the same"*, *"bro ticket"*, *"ticket"*) and triggers internal ticket creation without thread locks from earlier sessions.
 - **Two-Pass Ticket Flow:** Requests a structured conversation summary, raises the ticket with that summary, and delivers the creation receipt on that single turn.
 - **Synthesized Final Output & Zero-Emoji Contract:** Formats domain agent responses into concise, student-friendly answers with actionable numbered steps. Emojis are strictly prohibited, and inline keycap numbers are deterministically reformatted into clean Markdown lists.
-- **Authenticated Conversations:** Uses the authenticated user's ID as the LangGraph thread ID so conversations reload across logins.
+- **Multi-Session Authenticated Conversations:** Keys LangGraph checkpoint state hierarchically as `thread_id = "{user_id}:{conversation_id}"` with automatic fallback to `{user_id}`, maintaining full isolation between separate inquiries while preventing cross-session message contamination.
 - **Self-Service Student Registration:** Supports new student signup via `POST /api/v1/auth/register`, persisting credentials with PBKDF2-HMAC-SHA256 password hashing in PostgreSQL (`campus_users`).
 - **LangSmith Tracing & Observability:** Automatically instruments LangChain and LangGraph node executions, MMR searches, and LLM calls when `LANGSMITH_TRACING=true`.
-- **FastAPI Chat & Auth API:** Exposes authenticated conversations through `POST /api/v1/chat` and history reload via `GET /api/v1/chat/history`.
-- **Automated Unit Test Suite:** Includes 31 comprehensive unit tests (`tests/test_auth.py`, `tests/test_clarification.py`, `tests/test_ticket_lifecycle.py`).
-- **Streamlit Debug Console:** Provides a developer-only local UI with "Sign in" and "Create account" tabs for smoke-testing authentication, routing, confidence, ticket creation, source metadata, and conversation history reload.
+- **FastAPI Chat & Conversation API:** Exposes authenticated conversations through `POST /api/v1/chat`, streaming via SSE (`/stream`), full directory CRUD via `/chat/conversations`, and history reload via `GET /api/v1/chat/history`.
+- **Automated Unit Test Suite:** Includes 53 unit tests covering conversation persistence, IDOR isolation, auth, streaming, quick replies, routing, and ticket lifecycle.
+- **Synchronized Streamlit Debug Console:** Provides a developer UI with "Sign in" and "Create account" tabs, multi-thread selector, "+ New Inquiry" provisioning, and real-time bidirectional synchronization with the Next.js web application.
 
 ---
 
@@ -168,7 +168,7 @@ The API documentation is available at [http://localhost:8000/docs](http://localh
 
 ### 7. Optional: Start the Streamlit Debug Console
 
-Streamlit is only for local backend debugging and routing smoke tests. It is not the production or user-facing frontend; use the dedicated application in `frontend/` for that.
+Streamlit provides a local developer console for inspecting multi-agent routing, LLM prompts, citations, and conversation state. It is fully synchronized with the user-facing application in `frontend/`.
 
 In a second terminal, from the repository root:
 
@@ -176,7 +176,7 @@ In a second terminal, from the repository root:
 streamlit run backend/streamlit_app.py --server.port 8501
 ```
 
-Open [http://localhost:8501](http://localhost:8501). The console logs in through the API, sends authenticated messages, and displays the selected intent, departments, routing confidence, sources, exact retrieved chunks, ticket summaries, solved state, and thread ID.
+Open [http://localhost:8501](http://localhost:8501). The console logs in through the API, fetches active conversations from `campus_conversations`, allows creating and switching threads, and displays the selected intent, departments, routing confidence, sources, exact retrieved chunks, ticket summaries, solved state, and LangGraph `thread_id` (`u-student-01:conv_...`).
 
 Demo credentials:
 
@@ -199,10 +199,10 @@ Authenticate with `POST /api/v1/auth/login`, then send the access token as a bea
 curl -X POST http://localhost:8000/api/v1/chat \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"message":"My Wi-Fi is not working"}'
+      -d '{"message":"My Wi-Fi is not working", "conversation_id":"conv-a0096b2e"}'
 ```
 
-The server derives the LangGraph `thread_id` from the authenticated user's stable ID. Reusing the same account continues the same conversation across access-token rotation and new logins. Clients do not provide or override the thread ID. `GET /api/v1/chat/history` returns the latest persisted messages for that account.
+The server derives the LangGraph `thread_id` by combining the authenticated user's ID and the session `conversation_id` (`{user_id}:{conversation_id}`). Multiple sessions are completely isolated. `GET /api/v1/chat/history?conversation_id=conv-a0096b2e` returns the persisted messages for that specific thread.
 
 The response includes routing and grounding inspection data:
 

@@ -28,11 +28,13 @@ class AssistantState(TypedDict, total=False):
 ```
 
 ### Stable Thread ID Architecture
-Conversation threads are keyed by the authenticated student's stable user ID:
-$$\text{thread\_id} = \text{current\_user.id}$$
-- **Cross-Login Persistence:** Because `thread_id` is bound to the student ID (e.g., `u-student-01` or generated student IDs like `u-student-3a8f...`), the user can log out, close their browser, log in again (or sign up and log in), and immediately resume their conversation.
-- **Client Non-Overridable:** Clients do not pass or override `thread_id` in requests; the backend derives it strictly from the verified JWT `CurrentUser`. This prevents horizontal thread hijacking and IDOR vulnerabilities.
-- **History Restoration:** Clients query `GET /api/v1/chat/history` upon authentication to restore all prior messages from PostgreSQL into the active UI state.
+Conversation threads are keyed hierarchically by combining the student's stable user ID and an optional session conversation ID:
+$$\text{thread\_id} = \begin{cases} \text{current\_user.id} : \text{conversation\_id} & \text{if } \text{conversation\_id} \text{ is supplied} \\ \text{current\_user.id} & \text{fallback (legacy / unpartitioned)} \end{cases}$$
+
+- **Multi-Session Isolation:** Students can maintain concurrent, distinct support inquiries (e.g. one for "Tuition refund" and one for "Dorm Wi-Fi") without message collisions or cross-contamination.
+- **Cross-Login Persistence:** Because `thread_id` is rooted in the student ID (e.g., `u-student-01`), the user can log out, close their browser, log in again on any client (Web or Streamlit), and immediately resume their conversation.
+- **IDOR Protection:** Clients only specify `conversation_id`. The backend enforces that the target conversation belongs to `current_user.id` before fetching from `PostgresSaver`. Arbitrary thread overrides are blocked.
+- **Directory Synchronization:** Every turn touched through `POST /api/v1/chat` or `/stream` executes `touch_conversation()`, ensuring `campus_conversations` stays in lockstep across both the Next.js sidebar and Streamlit console.
 
 ## 3. Turn state machine
 

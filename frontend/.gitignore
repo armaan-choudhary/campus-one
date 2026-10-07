@@ -33,7 +33,7 @@ yarn-error.log*
 # env files (ignore local overrides, keep defaults and template)
 .env*.local
 .env.local
-!.env
+.env
 !.env.example
 
 # vercel
