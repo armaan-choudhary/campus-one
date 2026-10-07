@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTickets } from '@/context/TicketContext';
+import { useAuth } from '@/context/AuthContext';
 import { HandoffTicket } from '@/types';
 import {
   Search,
   MessageSquare,
   ArrowRight,
   ShieldCheck,
+  CheckCircle2,
   X,
   Inbox,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface StudentTicketsViewProps {
@@ -18,8 +21,17 @@ interface StudentTicketsViewProps {
 }
 
 export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToChat }) => {
-  const { ongoingTickets, resolvedTickets, ongoingCount, resolvedCount, addTicket } = useTickets();
-  const [activeTab, setActiveTab] = useState<'ongoing' | 'resolved'>('ongoing');
+  const {
+    ongoingTickets,
+    resolvedTickets,
+    ongoingCount,
+    resolvedCount,
+    addTicket,
+    refreshTickets,
+    isLoading,
+  } = useTickets();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'all' | 'ongoing' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
 
@@ -28,7 +40,38 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
   const [newReason, setNewReason] = useState('');
   const [newUrgency, setNewUrgency] = useState<'normal' | 'high' | 'urgent'>('normal');
 
-  const currentList = activeTab === 'ongoing' ? ongoingTickets : resolvedTickets;
+  const allTickets = useMemo(() => {
+    const map = new Map<string, HandoffTicket>();
+    [...ongoingTickets, ...resolvedTickets].forEach((t) => map.set(t.ticketId, t));
+    return Array.from(map.values());
+  }, [ongoingTickets, resolvedTickets]);
+
+  const totalCount = allTickets.length;
+
+  const currentList = useMemo(() => {
+    if (activeTab === 'all') return allTickets;
+    if (activeTab === 'ongoing') return ongoingTickets;
+    return resolvedTickets;
+  }, [activeTab, allTickets, ongoingTickets, resolvedTickets]);
+
+  const formatTicketDate = (val?: string) => {
+    if (!val) return 'Recently';
+    if (val.includes('now') || val.includes('ago')) return val;
+    try {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+    } catch {
+      // fallback
+    }
+    return val;
+  };
 
   const filteredTickets = currentList.filter((t) => {
     const q = searchQuery.toLowerCase().trim();
@@ -45,12 +88,15 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
     e.preventDefault();
     if (!newReason.trim()) return;
 
+    const studentDisplayName = user?.displayName ? `${user.displayName} (Student)` : (user?.email ? `${user.email} (Student)` : 'Student Requester');
+
     const newTicket: HandoffTicket = {
       ticketId: `#TKT-${Math.floor(1000 + Math.random() * 9000)}`,
       department: newDepartment,
       reason: newReason.trim(),
       urgency: newUrgency,
-      studentName: 'Alex Rivera (Student)',
+      studentName: studentDisplayName,
+      studentEmail: user?.email,
       createdAt: 'Just now',
       status: 'pending',
       preview: newReason.trim(),
@@ -88,6 +134,16 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => refreshTickets()}
+              disabled={isLoading}
+              title="Refresh My Tickets"
+              aria-label="Refresh My Tickets"
+              className="p-1.5 rounded text-xs font-mono text-[#8D8A83] hover:text-[#F5F3ED] hover:bg-[#1C1E26] border border-[#242531] transition-all cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#FF7A00]' : ''}`} />
+            </button>
+
+            <button
               onClick={() => setShowNewTicketModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono text-[#A1A1AA] hover:text-[#FF7A00] hover:bg-[#FF7A00]/5 border border-[#242531] hover:border-[#FF7A00]/40 transition-all cursor-pointer"
             >
@@ -113,6 +169,21 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
             {/* Minimalist Editorial Tabs */}
             <div className="flex items-center gap-6 border-b sm:border-b-0 border-[#1E1E24] pb-2 sm:pb-0">
               <button
+                onClick={() => setActiveTab('all')}
+                className={`relative flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
+                  activeTab === 'all'
+                    ? 'text-[#F5F3ED] font-semibold'
+                    : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+                }`}
+              >
+                <span>All Cases</span>
+                <span className="text-[10px] text-[#A1A1AA] font-mono font-bold">[{totalCount}]</span>
+                {activeTab === 'all' && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+                )}
+              </button>
+
+              <button
                 onClick={() => setActiveTab('ongoing')}
                 className={`relative flex items-center gap-2 text-xs font-mono uppercase tracking-wider pb-1 transition-all cursor-pointer ${
                   activeTab === 'ongoing'
@@ -136,9 +207,9 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
                 }`}
               >
                 <span>Resolved</span>
-                <span className="text-[10px] text-[#8D8A83] font-mono">[{resolvedCount}]</span>
+                <span className="text-[10px] text-emerald-400 font-mono font-bold">[{resolvedCount}]</span>
                 {activeTab === 'resolved' && (
-                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF7A00]" />
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-emerald-400" />
                 )}
               </button>
             </div>
@@ -165,20 +236,35 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
                 </div>
                 <div className="space-y-1 max-w-sm mx-auto">
                   <div className="font-mono text-xs text-[#FF7A00] uppercase tracking-wider">
-                    — {activeTab === 'ongoing' ? 'NO OPEN ESCALATIONS' : 'NO RESOLVED CASES'} {'//'}
+                    — {activeTab === 'ongoing' ? 'NO OPEN ESCALATIONS' : activeTab === 'resolved' ? 'NO RESOLVED CASES' : 'NO INQUIRIES LOGGED'} {'//'}
                   </div>
                   <h3 className="font-serif text-lg font-bold text-[#F5F3ED]">
                     {activeTab === 'ongoing'
                       ? 'All student matters are clear'
-                      : 'Historical resolutions cataloged here'}
+                      : activeTab === 'resolved'
+                      ? 'Historical resolutions cataloged here'
+                      : 'No support inquiries recorded'}
                   </h3>
                   <p className="text-xs text-[#8D8A83] leading-relaxed font-sans pt-1">
                     {activeTab === 'ongoing'
-                      ? 'Standard campus questions are grounded and answered immediately by CampusOne without escalation.'
-                      : 'Resolved tickets from administrative departments will remain accessible here for your records.'}
+                      ? (resolvedCount > 0
+                          ? `You have ${resolvedCount} resolved case${resolvedCount === 1 ? '' : 's'} available in your historical archive.`
+                          : 'Standard campus questions are grounded and answered immediately by CampusOne without escalation.')
+                      : activeTab === 'resolved'
+                      ? 'Resolved tickets from administrative departments will remain accessible here for your records.'
+                      : 'Inquiries raised directly with specialist units or escalated via chat will be indexed here.'}
                   </p>
                 </div>
-                <div className="pt-2">
+                <div className="pt-2 flex items-center justify-center gap-3">
+                  {activeTab === 'ongoing' && resolvedCount > 0 && (
+                    <button
+                      onClick={() => setActiveTab('resolved')}
+                      className="inline-flex items-center gap-1.5 text-xs font-mono px-3.5 py-1.5 rounded-lg bg-[#16171E] border border-[#2D303E] hover:border-emerald-500/50 text-[#F5F3ED] transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>View {resolvedCount} Resolved {resolvedCount === 1 ? 'Case' : 'Cases'}</span>
+                    </button>
+                  )}
                   <button
                     onClick={onGoToChat}
                     className="inline-flex items-center gap-2 text-xs font-mono px-3.5 py-1.5 rounded-lg bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold transition-all cursor-pointer shadow-[0_0_12px_rgba(255,122,0,0.35)]"
@@ -226,7 +312,7 @@ export const StudentTicketsView: React.FC<StudentTicketsViewProps> = ({ onGoToCh
                       </div>
 
                       <span className="text-xs text-[#8D8A83] font-mono">
-                        {ticket.createdAt}
+                        {formatTicketDate(ticket.createdAt)}
                       </span>
                     </div>
 

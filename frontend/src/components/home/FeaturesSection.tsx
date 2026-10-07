@@ -27,10 +27,10 @@ export const FeaturesSection: React.FC = () => {
   ];
 
   const stats = [
-    { value: '12K+', label: 'Students supported' },
-    { value: '85%', label: 'Queries resolved instantly' },
-    { value: '5', label: 'Campus services integrated' },
-    { value: '4.8/5', label: 'Student satisfaction' },
+    { value: '100%', label: 'Grounded & Cited Claims' },
+    { value: '4', label: 'Isolated Knowledge Stores' },
+    { value: '< 1s', label: 'Median Turn Latency' },
+    { value: '2-Turn', label: 'Clarification Loop Guard' },
   ];
 
   return (

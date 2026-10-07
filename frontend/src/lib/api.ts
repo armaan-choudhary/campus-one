@@ -1,4 +1,4 @@
-import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole, ConversationItem } from '@/types';
+import { AuthTokenResponse, LoginCredentials, AuthUser, UserRole, ConversationItem, HandoffTicket } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
@@ -395,6 +395,13 @@ export async function registerWithApi(payload: RegisterPayload): Promise<AuthTok
 export interface BackendHistoryMessage {
   role: 'user' | 'assistant' | string;
   content: string;
+  intent?: string;
+  detected_domains?: string[];
+  routing_confidence?: number;
+  sources?: string[];
+  retrieved_chunks?: BackendRetrievedChunk[];
+  ticket_id?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface BackendConversationSummary {
@@ -412,6 +419,8 @@ export interface BackendChatHistoryResponse {
   thread_id: string;
   messages: BackendHistoryMessage[];
   conversation?: BackendConversationSummary;
+  metadata?: Record<string, any>;
+  intent?: string;
 }
 
 export function formatTimeAgo(isoString?: string): string {
@@ -591,4 +600,152 @@ export async function fetchQuickRepliesApi(
     source: 'client_fallback',
   };
 }
+
+export interface ResolutionMetrics {
+  total_inquiries: number;
+  autonomous_resolution_rate: number;
+  clarification_rate: number;
+  human_escalation_rate: number;
+  citation_coverage_rate: number;
+  macro_routing_accuracy: number;
+}
+
+export interface LatencyMetrics {
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+}
+
+export interface DepartmentVolume {
+  it: number;
+  fees: number;
+  facilities: number;
+  hr: number;
+  general: number;
+}
+
+export interface OperationalTelemetryEvent {
+  id: string;
+  timestamp: string;
+  type: string;
+  department: string;
+  confidence: number;
+  status: string;
+  summary: string;
+}
+
+export interface AdminAnalyticsResponse {
+  service: string;
+  timestamp: number;
+  resolution_metrics: ResolutionMetrics;
+  latency_metrics: LatencyMetrics;
+  department_volume: DepartmentVolume;
+  active_queues: Record<string, number>;
+  confidence_distribution: Record<string, number>;
+  recent_events: OperationalTelemetryEvent[];
+}
+
+export async function fetchAdminAnalyticsApi(accessToken: string): Promise<AdminAnalyticsResponse> {
+  const res = await fetch(`${API_BASE_URL}/admin/analytics`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to fetch operational analytics (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+export async function fetchTicketsApi(accessToken: string): Promise<HandoffTicket[]> {
+  const res = await fetch(`${API_BASE_URL}/tickets`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to fetch tickets (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+export async function createTicketApi(
+  accessToken: string,
+  ticket: Partial<HandoffTicket>
+): Promise<HandoffTicket> {
+  const res = await fetch(`${API_BASE_URL}/tickets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      ticketId: ticket.ticketId,
+      department: ticket.department,
+      reason: ticket.reason,
+      urgency: ticket.urgency || 'normal',
+      preview: ticket.preview || ticket.reason,
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to create ticket (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+export async function updateTicketStatusApi(
+  accessToken: string,
+  ticketId: string,
+  status: string,
+  resolutionNote?: string,
+  assignedTo?: string
+): Promise<HandoffTicket> {
+  const sanitizedId = ticketId.startsWith('#') ? ticketId.substring(1) : ticketId;
+  const res = await fetch(`${API_BASE_URL}/tickets/${encodeURIComponent(sanitizedId)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      status,
+      resolutionNote,
+      assignedTo,
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Failed to update ticket (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+export async function deleteTicketApi(
+  accessToken: string,
+  ticketId: string
+): Promise<boolean> {
+  const sanitizedId = ticketId.startsWith('#') ? ticketId.substring(1) : ticketId;
+  const res = await fetch(`${API_BASE_URL}/tickets/${encodeURIComponent(sanitizedId)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return res.ok;
+}
+
+
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/types';
+import { registerWithApi } from '@/lib/api';
 import { CampusOneMark } from '@/components/home/CampusOneMark';
 import {
   ShieldCheck,
@@ -13,14 +13,22 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  UserPlus,
+  LogIn,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, switchDemoPersona, isLoading } = useAuth();
-  const [email, setEmail] = useState('student@example.edu');
-  const [password, setPassword] = useState('demo-password');
+  const { login, isLoading } = useAuth();
+  const [authTab, setAuthTab] = useState<'student' | 'admin' | 'register'>('student');
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
@@ -45,33 +53,60 @@ export default function LoginPage() {
     });
   };
 
-  const handleRoleQuickLogin = async (selectedRole: UserRole) => {
+  const handleQuickLogin = async (target: 'student' | 'admin') => {
     setError(null);
+    setSuccessMsg(null);
+    setIsSubmitting(true);
     try {
-      await switchDemoPersona(selectedRole);
-      if (selectedRole === 'admin') {
+      if (target === 'admin') {
+        await login({ email: 'admin@example.edu', password: 'demo-password' });
         router.push('/admin');
       } else {
+        await login({ email: 'student@example.edu', password: 'demo-password' });
         router.push('/workspace');
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Quick authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleCustomLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
+    setIsSubmitting(true);
+
     try {
-      await login({ email, password });
-      const isStaffOrAdmin = email.toLowerCase().includes('admin');
-      if (isStaffOrAdmin) {
-        router.push('/admin');
-      } else {
+      if (authTab === 'register') {
+        if (!displayName.trim()) {
+          throw new Error('Please enter your full name');
+        }
+        await registerWithApi({
+          email: email.trim(),
+          password,
+          display_name: displayName.trim(),
+        });
+        setSuccessMsg('Account created successfully! Signing in...');
+        await login({ email: email.trim(), password });
         router.push('/workspace');
+      } else {
+        await login({ email: email.trim(), password });
+        const isStaffOrAdmin =
+          authTab === 'admin' ||
+          email.toLowerCase().includes('admin') ||
+          email.toLowerCase().includes('agent');
+        if (isStaffOrAdmin) {
+          router.push('/admin');
+        } else {
+          router.push('/workspace');
+        }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Invalid credentials');
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -120,10 +155,19 @@ export default function LoginPage() {
               <span className="text-[#FF7A00] font-semibold">Campus Identity &amp; Access</span>
             </div>
             <h1 className="font-serif font-bold text-3xl sm:text-4xl text-[#F5F3ED] tracking-tight leading-tight">
-              Sign in to your campus portal<span className="text-[#FF7A00]">.</span>
+              {authTab === 'admin'
+                ? 'Staff & Admin Clearance'
+                : authTab === 'register'
+                ? 'Student Registration'
+                : 'Sign in to Campus Portal'}
+              <span className="text-[#FF7A00]">.</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#8D8A83] font-sans max-w-sm mx-auto">
-              Unified portal access for students and central campus administration.
+              {authTab === 'admin'
+                ? 'Restricted incident triage console for university specialists and administration.'
+                : authTab === 'register'
+                ? 'Create a persistent student identity in the university directory.'
+                : 'Unified portal access with conversational AI support and personal ticket index.'}
             </p>
           </div>
 
@@ -133,94 +177,145 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Dual Role Selector Cards matching Chat UI card aesthetics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Student Role Card */}
-            <div className="group relative p-5 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/50 flex flex-col justify-between space-y-4 transition-all duration-200 shadow-md overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          {successMsg && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400 text-center">
+              {successMsg}
+            </div>
+          )}
 
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-[#16171E] border border-[#242531] text-[#FF7A00] flex items-center justify-center transition-transform group-hover:scale-105">
-                  <GraduationCap className="w-5 h-5" />
+          {/* Mode Switcher Tabs (Student vs Admin vs Registration) */}
+          <div className="flex rounded-xl bg-[#121317]/85 border border-[#22232B] p-1 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('student');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                authTab === 'student'
+                  ? 'bg-[#1C1E26] text-[#FF7A00] font-semibold border border-[#2F3240] shadow-xs'
+                  : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Student</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('admin');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                authTab === 'admin'
+                  ? 'bg-[#1C1E26] text-[#FF7A00] font-semibold border border-[#2F3240] shadow-xs'
+                  : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Staff &amp; Admin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthTab('register');
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                authTab === 'register'
+                  ? 'bg-[#1C1E26] text-[#FF7A00] font-semibold border border-[#2F3240] shadow-xs'
+                  : 'text-[#8D8A83] hover:text-[#F5F3ED]'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Sign Up</span>
+            </button>
+          </div>
+
+          {/* 1-Click Fast-Track Clearance for Evaluation & Quick Access */}
+          {authTab !== 'register' && (
+            <div className="p-4 rounded-xl bg-[#0E0F13] border border-[#22232B] space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-mono text-[#8D8A83]">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FF7A00]" />
+                  <span>1-Click Fast-Track Clearance</span>
                 </div>
-                <div>
-                  <span className="font-mono text-[11px] text-[#8D8A83] uppercase block mb-1">
-                    — STUDENT SERVICES //
-                  </span>
-                  <h2 className="text-base font-serif font-bold text-[#F5F3ED]">
-                    Student Portal
-                  </h2>
-                  <p className="text-xs text-[#8D8A83] mt-1 font-sans leading-relaxed">
-                    AI Assistant for university inquiries and personal ticket tracking.
-                  </p>
-                </div>
+                <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Quick Demo Access
+                </span>
               </div>
-
               <button
                 type="button"
-                disabled={isLoading}
-                onClick={() => handleRoleQuickLogin('student')}
-                className="w-full py-2.5 px-3 rounded-lg bg-[#FF7A00] text-black hover:bg-[#FF8A1F] text-xs font-bold font-mono transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-[0_0_12px_rgba(255,122,0,0.3)]"
+                onClick={() => handleQuickLogin(authTab === 'admin' ? 'admin' : 'student')}
+                disabled={isLoading || isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FF7A00] text-black hover:bg-[#FF8A1F] font-bold text-xs shadow-[0_0_12px_rgba(255,122,0,0.35)] transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 font-mono disabled:opacity-50"
               >
-                <span>Enter as Student</span>
+                {authTab === 'admin' ? (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-black" />
+                    <span>
+                      {isSubmitting ? 'Authenticating...' : 'Sign in as System Administrator'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="w-4 h-4 text-black" />
+                    <span>
+                      {isSubmitting ? 'Authenticating...' : 'Sign in as Student (Alex Rivera)'}
+                    </span>
+                  </>
+                )}
                 <ArrowRight className="w-3.5 h-3.5 text-black" />
               </button>
             </div>
+          )}
 
-            {/* Admin Role Card */}
-            <div className="group relative p-5 rounded-xl bg-[#121317]/85 hover:bg-[#15161E] border border-[#22232B] hover:border-[#FF7A00]/50 flex flex-col justify-between space-y-4 transition-all duration-200 shadow-md overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A00]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-[#16171E] border border-[#242531] text-[#FF7A00] flex items-center justify-center transition-transform group-hover:scale-105">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-mono text-[11px] text-[#8D8A83] uppercase block mb-1">
-                    — CENTRAL IT &amp; STAFF //
-                  </span>
-                  <h2 className="text-base font-serif font-bold text-[#F5F3ED]">
-                    Admin Console
-                  </h2>
-                  <p className="text-xs text-[#8D8A83] mt-1 font-sans leading-relaxed">
-                    Dedicated ticket triage console to claim, manage, and resolve work orders.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={() => handleRoleQuickLogin('admin')}
-                className="w-full py-2.5 px-3 rounded-lg bg-[#16171E] hover:bg-[#1F212A] text-[#F5F3ED] border border-[#282A35] hover:border-[#FF7A00]/40 text-xs font-semibold font-mono transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between"
-              >
-                <span>Enter as Admin</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#8D8A83]" />
-              </button>
-            </div>
-          </div>
-
-          {/* Form Login */}
+          {/* Authentication Form */}
           <div className="p-5 sm:p-6 rounded-xl bg-[#121317]/85 border border-[#22232B] space-y-4 shadow-md">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-2 border-b border-[#1C1D24]">
               <span className="text-xs font-mono text-[#8D8A83] uppercase tracking-wider">
-                Direct Credentials
+                {authTab === 'register'
+                  ? 'Self-Service Enrollment'
+                  : authTab === 'admin'
+                  ? 'Administrator Credentials'
+                  : 'Student Account Credentials'}
               </span>
               <span className="text-[10px] font-mono text-[#8D8A83]">
-                Demo pass: <code className="bg-[#16171E] px-1.5 py-0.5 rounded text-[#F5F3ED] border border-[#242531]">demo-password</code>
+                {authTab === 'admin' ? 'Routes to /admin' : 'Routes to /workspace'}
               </span>
             </div>
 
-            <form onSubmit={handleCustomLogin} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              {authTab === 'register' && (
+                <div>
+                  <label className="block text-[11px] font-mono text-[#8D8A83] mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Jordan Smith"
+                    required
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 text-[#F5F3ED] font-mono focus:outline-hidden"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-[11px] font-mono text-[#8D8A83] mb-1">
-                  Email Address
+                  {authTab === 'admin' ? 'Administrator Email' : 'Institutional Email'}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="student@example.edu or admin@example.edu"
+                  placeholder={authTab === 'admin' ? 'admin@example.edu' : 'name@campus.edu'}
                   required
                   className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 text-[#F5F3ED] font-mono focus:outline-hidden"
                 />
@@ -234,7 +329,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   required
                   className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] focus:border-[#FF7A00]/60 text-[#F5F3ED] font-mono focus:outline-hidden"
                 />
@@ -242,13 +337,34 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#F5F3ED] hover:bg-white text-black text-xs font-bold font-mono shadow-xs transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                disabled={isLoading || isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#F5F3ED] hover:bg-white text-black text-xs font-bold font-mono transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 mt-2 shadow-xs"
               >
-                <span>Sign In With Credentials</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <LogIn className="w-3.5 h-3.5 text-black" />
+                <span>
+                  {isSubmitting
+                    ? 'Authenticating...'
+                    : authTab === 'register'
+                    ? 'Create Student Account'
+                    : authTab === 'admin'
+                    ? 'Authenticate as Administrator'
+                    : 'Sign In to Student Portal'}
+                </span>
               </button>
             </form>
+          </div>
+
+          {/* Quick Notice about Access Routing */}
+          <div className="p-3.5 rounded-xl bg-[#0E0F13] border border-[#22232B] text-[11px] font-sans text-[#8D8A83] space-y-1">
+            <div className="font-mono text-[#F5F3ED] text-[11px] font-semibold flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-[#FF7A00]" />
+              <span>Role-Segregated Multi-Tenant Architecture</span>
+            </div>
+            <p className="leading-relaxed">
+              Student accounts open directly to the conversational AI assistant and ticket tracking at{' '}
+              <code className="text-[#FF7A00]">/workspace</code>. Administrator and staff accounts route to the centralized incident triage console at{' '}
+              <code className="text-[#FF7A00]">/admin</code>.
+            </p>
           </div>
 
           <div className="text-center pt-2">

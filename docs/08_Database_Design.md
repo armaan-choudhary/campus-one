@@ -81,7 +81,34 @@ Persists high-level conversation directory metadata so users can manage multiple
 | `status` | varchar(32) | not null default 'open' (open/clarification/resolved) |
 | `pinned` | boolean | not null default false |
 | `created_at` | timestamptz | not null default `now()` |
-| `updated_at` | timestamptz | not null default `now()`; indexed via `(user_id, updated_at desc)` |
+### `campus_tickets` (durable institutional escalation repository)
+
+Persists escalated handoff tickets produced by the conversational multi-agent assistant or submitted directly via the portal.
+
+| Column | Type | Rules |
+|---|---|---|
+| `ticket_id` | varchar(64) | primary key (e.g. `TKT-55A19BE2` or `#TKT-1042`) |
+| `user_id` | varchar(128) | nullable; foreign reference to requester (`campus_users.id`) |
+| `student_name` | varchar(255) | nullable requester display name |
+| `student_email` | varchar(255) | nullable requester institutional email |
+| `department` | varchar(128) | not null (`IT Support`, `HR / Student Life`, `Finance`, `Facilities`) |
+| `reason` | text | not null core inquiry reason |
+| `urgency` | varchar(32) | not null default `'normal'` (`normal`, `high`, `urgent`) |
+| `preview` | text | nullable conversation excerpt or problem summary |
+| `status` | varchar(32) | not null default `'pending'` (`pending`, `in_progress`, `resolved`) |
+| `assigned_to` | varchar(255) | nullable assigned staff or agent name |
+| `resolution_note` | text | nullable resolution feedback or administrative note |
+| `created_at` | timestamptz | not null default `now()` |
+| `resolved_at` | timestamptz | nullable timestamp populated when marked resolved |
+
+Indexes:
+- `idx_tickets_user_id ON campus_tickets(user_id)`
+- `idx_tickets_email ON campus_tickets(student_email)`
+- `idx_tickets_status ON campus_tickets(status)`
+
+Role Scoping & Tenant Security:
+- **Students (`role = 'student'`):** Restricted to viewing tickets where `user_id = current_user.id` or `student_email = current_user.email`.
+- **Administrators & Staff (`role IN ('admin', 'support_agent')`):** Global operational clearance to inspect all campus departments, claim tickets, and append resolution notes.
 
 ### `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` (LangGraph durable thread store)
 

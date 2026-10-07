@@ -11,6 +11,7 @@ import jwt
 from app.core.config import settings
 from app.core.database import get_db_pool
 from app.conversations import conversation_store
+from app.tickets import ticket_store
 from app.auth.schemas import Role, CurrentUser, UserSummary, TokenResponse
 from app.auth.jwt import create_access_token, create_refresh_token, decode_token
 
@@ -227,6 +228,7 @@ class MockAuthProvider:
                 user["password_hash"],
             )
         await conversation_store.init_schema()
+        await ticket_store.init_schema()
         self._schema_initialized = True
 
     async def initialize_schema(self) -> None:

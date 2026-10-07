@@ -2,12 +2,18 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { ConversationItem, Persona } from '@/lib/demoFixtures';
+import { useAuth } from '@/context/AuthContext';
 import {
   PanelLeftClose,
   Search,
   Pin,
   Trash2,
+  LogOut,
+  User,
+  Shield,
+  Plus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -16,9 +22,10 @@ interface SidebarProps {
   onSelectConversation: (id: string) => void;
   isOpen: boolean;
   onToggle: () => void;
-  persona: Persona;
+  persona?: Persona;
   onDeleteConversation?: (id: string) => void;
   onTogglePin?: (id: string) => void;
+  onNewChat?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -30,7 +37,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   persona,
   onDeleteConversation,
   onTogglePin,
+  onNewChat,
 }) => {
+  const { user, role: authRole, logout } = useAuth();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
 
@@ -155,6 +165,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
+        {/* New Inquiry Action Button */}
+        {onNewChat && (
+          <div className="p-2 border-b border-[#292929]">
+            <button
+              onClick={onNewChat}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded bg-[#16171D] hover:bg-[#1E2028] border border-[#2B2D38] hover:border-[#FF7A00]/50 text-xs font-mono text-[#F5F3ED] hover:text-[#FF7A00] transition-colors cursor-pointer"
+              title="Start a new student inquiry"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#FF7A00]" />
+              <span>New inquiry</span>
+            </button>
+          </div>
+        )}
+
         {/* Minimal Search Field */}
         <div className="p-2.5 border-b border-[#292929]">
           <div className="relative">
@@ -215,20 +239,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Minimal Footer Index Item */}
-        <div className="p-3 border-t border-[#292929] flex items-center gap-2.5 text-xs font-mono text-[#8D8A83]">
-          <div className="w-5 h-5 rounded-full overflow-hidden bg-white border border-[#292929] shrink-0 relative">
-            <Image
-              src="/illustrations/wimpy/avatar-1.png"
-              alt={persona.name}
-              fill
-              sizes="20px"
-              className="object-contain"
-            />
-          </div>
-          <span className="truncate text-[#F5F3ED] text-xs">{persona.name}</span>
-          <span className="text-[10px] ml-auto text-[#8D8A83]">Student</span>
-        </div>
+        {/* Dynamic Authenticated User Footer Pill */}
+        {(() => {
+          const displayName = user?.displayName || persona?.name || 'Student';
+          const email = user?.email || (authRole === 'admin' ? 'admin@campus.edu' : 'student@campus.edu');
+          const roleLabel = authRole === 'admin' ? 'Admin' : (user?.role === 'staff' ? 'Staff' : 'Student');
+          const initials = displayName
+            .split(' ')
+            .map((p) => p[0])
+            .filter(Boolean)
+            .slice(0, 2)
+            .join('')
+            .toUpperCase() || 'U';
+
+          const handleLogout = () => {
+            logout();
+            router.push('/login');
+          };
+
+          return (
+            <div className="p-3 border-t border-[#292929] flex items-center justify-between gap-2 text-xs font-mono text-[#8D8A83] bg-[#0E0E12]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-[#1C1E26] border border-[#2D303E] flex items-center justify-center text-[10px] font-bold text-[#FF7A00] shrink-0">
+                  {initials}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate text-[#F5F3ED] text-xs font-medium leading-tight">
+                    {displayName}
+                  </span>
+                  <span className="truncate text-[10px] text-[#8D8A83] leading-tight">
+                    {roleLabel} &bull; {email}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Sign out"
+                aria-label="Sign out"
+                className="p-1 rounded text-[#8D8A83] hover:text-rose-400 hover:bg-[#1A1A22] transition-colors cursor-pointer shrink-0"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          );
+        })()}
       </aside>
     </>
   );

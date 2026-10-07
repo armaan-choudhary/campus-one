@@ -21,15 +21,15 @@ The application strictly models two roles, each mapped to a dedicated page:
 
 | Role Key | Primary Account | Dedicated Page | Key Capabilities |
 |---|---|---|---|
-| `student` | **Alex Rivera** (`student@example.edu`) | [`/workspace`](../frontend/src/app/workspace/page.tsx) | Sleek obsidian dark canvas (`#0A0A0D`), unified header with warm `#FF7A00` accents, common prompt suggestion cards above input, docked bottom composer with voice/attachment support, docked Official Record Inspector side panel, and personal **My Tickets** manager. |
-| `admin` | **System Administrator** (`admin@example.edu`) | [`/admin`](../frontend/src/app/admin/page.tsx) | Centralized ticket triage console, live status indicators (Pending vs Claimed), search & status filtering (`pending`, `in_progress`, `resolved`), ticket claiming, and resolution note submission. Protected by HTTP 403 barrier. |
+| `student` | **Alex Rivera** (`s24cseu1866@bennett.edu.in`) | [`/workspace`](../frontend/src/app/workspace/page.tsx) | Sleek obsidian dark canvas (`#0A0A0D`), unified header with warm `#FF7A00` accents, common prompt suggestion cards above input, docked bottom composer with voice/attachment support, docked Official Record Inspector side panel, and personal **My Tickets** manager with **All Cases**, **Open Cases**, and **Resolved** tabs. |
+| `admin` | **System Administrator** (`admin@campusone.internal`) | [`/admin`](../frontend/src/app/admin/page.tsx) | Centralized ticket triage console, live status indicators (Pending vs Claimed vs Resolved), search & status filtering (`pending`, `in_progress`, `resolved`), ticket claiming, department reassignment, and resolution note submission. Protected by HTTP 403 barrier. |
 
 ### Central Authentication Gateway: `/login`
 
 A unified authentication page ([`/login`](../frontend/src/app/login/page.tsx)) provides:
-1. **Student Portal Card:** 1-click exploration routing directly to `/workspace`.
-2. **Administrative Console Card:** 1-click exploration routing directly to `/admin`.
-3. **Credentials Form:** Email/password input that dynamically resolves role and routes to the appropriate portal.
+1. **3-Way Mode Switcher:** Instant tabs for **Student Access**, **Staff & Admin Gateway**, and **New Account Registration**.
+2. **1-Click Fast-Track Clearance:** Dedicated one-click demo login buttons for Alex Rivera (Student) and System Administrator.
+3. **Dynamic Role Routing:** Directs authenticated administrators to `/admin` and students to `/workspace`.
 
 ---
 
@@ -96,8 +96,9 @@ frontend/
 │   │   │   ├── CampusOneMark.tsx       # Minimal geometric monogram
 │   │   │   └── HandwrittenElements.tsx # Stylized annotations and doodle accents
 │   │   ├── ui/                # Core UI primitives (CampusLoader, Toast)
-│   │   ├── StudentTicketsView.tsx # Student ticket manager (Ongoing / Resolved tabs)
+│   │   ├── StudentTicketsView.tsx # Student ticket manager (All Cases / Open Cases / Resolved tabs)
 │   │   ├── AdminTicketPanel.tsx   # Consolidated admin ticket triage & resolution console
+│   │   ├── AdminAnalyticsPanel.tsx # Operational telemetry, SLA trends, and department loads
 │   │   ├── TopNav.tsx         # Workspace navigation bar (Assistant vs My Tickets tabs)
 │   │   ├── Sidebar.tsx        # Quiet 215px inquiry catalog drawer
 │   │   ├── MessageBubble.tsx  # Message turns, checklists, citations, clarification cards (with deduplicated prompt display), and issue reporting
@@ -107,12 +108,12 @@ frontend/
 │   │       └── LoginModal.tsx # Role-switching and login modal
 │   ├── context/
 │   │   ├── AuthContext.tsx    # Session management, JWT tokens, active role state
-│   │   └── TicketContext.tsx  # Reactive ticket store backed by localStorage
+│   │   └── TicketContext.tsx  # Reactive ticket store backed by PostgreSQL /api/v1/tickets and local cache
 │   ├── hooks/
 │   │   ├── useChat.ts         # Conversational state machine & backend API bridge
 │   │   └── useToast.ts        # Global notification system
 │   ├── lib/
-│   │   ├── api.ts             # FastAPI client (auth, current user, chat)
+│   │   ├── api.ts             # FastAPI client (auth, current user, chat, tickets)
 │   │   ├── demoFixtures.ts    # Personas, suggested questions, and mock fixtures
 │   │   └── utils.ts           # Utility functions and classname merger
 │   └── types/

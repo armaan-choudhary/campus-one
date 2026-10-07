@@ -162,8 +162,8 @@ function AdminNav({ currentTheme, onToggleTheme, activeTab, onSelectTab }: Admin
 
 function AdminAuthBarrier() {
   const { switchDemoPersona, login, isLoading } = useAuth();
-  const [email, setEmail] = useState('admin@example.edu');
-  const [password, setPassword] = useState('demo-password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleAdminQuickLogin = async () => {

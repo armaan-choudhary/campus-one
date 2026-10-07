@@ -74,6 +74,7 @@ export interface ClarificationOption {
 
 export interface HandoffTicket {
   ticketId: string;
+  userId?: string;
   department: string;
   reason: string;
   studentName?: string;

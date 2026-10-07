@@ -151,23 +151,33 @@ function mapBackendResponseToMessage(
   }
 
   let clarification = undefined;
+  const rawOptions =
+    (data as any).clarification_options ||
+    data.metadata?.clarification_options ||
+    (data.metadata as any)?.options;
+  const hasRawOptions = Array.isArray(rawOptions) && rawOptions.length > 0;
   const isClarification =
+    hasRawOptions ||
     data.intent === 'clarify' ||
     data.metadata?.outcome === 'clarification' ||
-    content.toLowerCase().includes('clarify which area');
+    content.toLowerCase().includes('clarify') ||
+    content.toLowerCase().includes('which of the following') ||
+    content.toLowerCase().includes('which area can i help');
 
   if (isClarification) {
-    const rawOptions = (data as any).clarification_options || data.metadata?.clarification_options;
     let options;
-    if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+    if (hasRawOptions) {
       options = rawOptions.map((opt: any) => ({
         id: opt.id || opt.label.toLowerCase().replace(/\s+/g, '_'),
         label: opt.label,
         domain: (opt.department || opt.domain || '').toLowerCase(),
       }));
     } else {
-      options = (data.detected_domains?.length ? data.detected_domains : ['IT', 'HR', 'Fees', 'Facilities']).map((d) => ({
-        id: d.toLowerCase(),
+      const candidates = data.detected_domains?.length
+        ? data.detected_domains
+        : ['Academics', 'IT Support', 'Student Life', 'Finance'];
+      options = candidates.map((d) => ({
+        id: d.toLowerCase().replace(/\s+/g, '_'),
         label: d,
         domain: d.toLowerCase(),
       }));
@@ -191,6 +201,50 @@ function mapBackendResponseToMessage(
     handoff,
     clarification,
     routingCard,
+  };
+}
+
+function mapHistoryMessageToMessage(
+  m: any,
+  idx: number,
+  globalMeta?: Record<string, any>,
+  globalIntent?: string,
+  isLastAssistant = false
+): Message {
+  if (m.role === 'user') {
+    return {
+      id: `backend-msg-user-${idx}`,
+      role: 'user',
+      content: m.content,
+      timestamp: 'Earlier',
+    };
+  }
+
+  const meta = m.metadata || (isLastAssistant ? globalMeta : undefined) || {};
+  const intent = m.intent || (isLastAssistant ? globalIntent : undefined) || meta.outcome;
+  const chunks = m.retrieved_chunks || [];
+  const ticketId = m.ticket_id || meta.ticket_id;
+  const domains = m.detected_domains || (meta.detected_domains as string[]) || [];
+
+  const chatResp: BackendChatResponse = {
+    answer: m.content,
+    thread_id: '',
+    ticket_id: ticketId,
+    ticket: (meta.ticket as Record<string, unknown>) || null,
+    detected_domains: domains,
+    intent,
+    routing_confidence: m.routing_confidence || 0.92,
+    solved: !intent?.includes('clarify') && !ticketId,
+    human_required: !!ticketId,
+    sources: m.sources || [],
+    retrieved_chunks: chunks,
+    metadata: meta,
+  };
+
+  const mapped = mapBackendResponseToMessage(chatResp, 'Earlier');
+  return {
+    ...mapped,
+    id: `backend-msg-asst-${idx}`,
   };
 }
 
@@ -240,15 +294,17 @@ export function useChat({
           try {
             const history = await fetchChatHistoryApi(accessToken, targetActiveId);
             if (isCancelled) return;
-
-            const loadedMessages: Message[] = (history.messages || []).map((m, idx) => ({
-              id: `backend-msg-${idx}`,
-              role: m.role === 'assistant' ? 'assistant' : 'user',
-              content: m.content,
-              timestamp: 'Earlier',
-              domain: 'it',
-              domainLabel: 'CampusOne Assistant',
-            }));
+            const rawMsgs = history.messages || [];
+            const lastAsstIdx = rawMsgs.map((m) => m.role).lastIndexOf('assistant');
+            const loadedMessages: Message[] = rawMsgs.map((m, idx) =>
+              mapHistoryMessageToMessage(
+                m,
+                idx,
+                history.metadata,
+                history.intent,
+                idx === lastAsstIdx
+              )
+            );
 
             setConversations(
               userConvs.map((c) =>
@@ -290,14 +346,17 @@ export function useChat({
         try {
           const history = await fetchChatHistoryApi(accessToken, convId);
           if (history.messages && history.messages.length > 0) {
-            const loadedMessages: Message[] = history.messages.map((m, idx) => ({
-              id: `backend-msg-${idx}`,
-              role: m.role === 'assistant' ? 'assistant' : 'user',
-              content: m.content,
-              timestamp: 'Earlier',
-              domain: 'it',
-              domainLabel: 'CampusOne Assistant',
-            }));
+            const rawMsgs = history.messages;
+            const lastAsstIdx = rawMsgs.map((m) => m.role).lastIndexOf('assistant');
+            const loadedMessages: Message[] = rawMsgs.map((m, idx) =>
+              mapHistoryMessageToMessage(
+                m,
+                idx,
+                history.metadata,
+                history.intent,
+                idx === lastAsstIdx
+              )
+            );
 
             setConversations((prev) =>
               prev.map((c) =>
@@ -359,16 +418,33 @@ export function useChat({
       messages: [],
     };
 
+    // Optimistically prepend new chat while preserving all previous conversations
+    setConversations((prev) => {
+      const filtered = prev.filter(
+        (c) => c.id !== newId && (c.messages.length > 0 || c.title !== 'New inquiry')
+      );
+      return [newConv, ...filtered];
+    });
+    setActiveConvId(newId);
+
     if (accessToken) {
       try {
         await createConversationApi(accessToken, { id: newId, title: 'New inquiry' });
+        const remoteConvs = await fetchUserConversationsApi(accessToken);
+        setConversations((prev) => {
+          const msgMap = new Map(prev.map((c) => [c.id, c.messages]));
+          const remoteIds = new Set(remoteConvs.map((r) => r.id));
+          const localOnly = prev.filter((p) => !remoteIds.has(p.id));
+          const merged = remoteConvs.map((rc) => ({
+            ...rc,
+            messages: msgMap.get(rc.id) || rc.messages || [],
+          }));
+          return [...localOnly, ...merged];
+        });
       } catch (err) {
         console.warn('Initial backend conversation registration notice:', err);
       }
     }
-
-    setConversations((prev) => [newConv, ...prev.filter((c) => c.messages.length > 0)]);
-    setActiveConvId(newId);
   }, [accessToken]);
 
   const handleDeleteConversation = useCallback(
@@ -496,6 +572,21 @@ export function useChat({
         clearTimeout(stageTimer1);
         clearTimeout(stageTimer2);
         updateActiveConversation([...baseMessages, assistantMsg]);
+
+        // Dynamically synchronize the sidebar conversation index with the backend
+        if (token) {
+          fetchUserConversationsApi(token)
+            .then((remoteConvs) => {
+              setConversations((prev) => {
+                const msgMap = new Map(prev.map((c) => [c.id, c.messages]));
+                return remoteConvs.map((rc) => ({
+                  ...rc,
+                  messages: msgMap.get(rc.id) || rc.messages || [],
+                }));
+              });
+            })
+            .catch(() => {});
+        }
       } catch (err) {
         console.error('Failed to generate assistant response', err);
       } finally {

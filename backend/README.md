@@ -20,7 +20,8 @@ The **CampusOne Backend** is a high-performance multi-agent orchestration servic
 - **Self-Service Student Registration:** Supports new student signup via `POST /api/v1/auth/register`, persisting credentials with PBKDF2-HMAC-SHA256 password hashing in PostgreSQL (`campus_users`).
 - **LangSmith Tracing & Observability:** Automatically instruments LangChain and LangGraph node executions, MMR searches, and LLM calls when `LANGSMITH_TRACING=true`.
 - **FastAPI Chat & Conversation API:** Exposes authenticated conversations through `POST /api/v1/chat`, streaming via SSE (`/stream`), full directory CRUD via `/chat/conversations`, and history reload via `GET /api/v1/chat/history`.
-- **Automated Unit Test Suite:** Includes 53 unit tests covering conversation persistence, IDOR isolation, auth, streaming, quick replies, routing, and ticket lifecycle.
+- **PostgreSQL Ticket Lifecycle API (`/api/v1/tickets`):** Full RESTful CRUD endpoints (`GET`, `POST`, `PATCH`, `DELETE`) storing escalations in `campus_tickets`, supporting multi-tenant isolation, department reassignments, and staff resolution notes.
+- **Automated Unit Test Suite:** Includes 54 unit tests covering conversation persistence, IDOR isolation, auth, streaming, quick replies, routing, tickets API, analytics, and ticket lifecycle.
 - **Synchronized Streamlit Debug Console:** Provides a developer UI with "Sign in" and "Create account" tabs, multi-thread selector, "+ New Inquiry" provisioning, and real-time bidirectional synchronization with the Next.js web application.
 
 ---
@@ -41,17 +42,23 @@ backend/
 ├── index_documents.py        # PDF loading, recursive chunking, and PGVector indexing pipeline
 ├── knowledge_retrieval.py    # PGVector connection, HuggingFace embeddings, and MMR retrieval helpers
 ├── Prompts.py                # Departmental prompt templates and system instructions
-├── tests/                    # Automated unit test suite (31 tests)
+├── tests/                    # Automated unit test suite (54 tests passing)
 │   ├── test_auth.py          # Hashing, JWT encoding, student registration, RBAC
 │   ├── test_clarification.py # Option bounds, intra-domain gating, continuation routing
-│   └── test_ticket_lifecycle.py # Ticket flags, conversational triggers, Markdown sanitizer
+│   ├── test_ticket_lifecycle.py # Ticket flags, conversational triggers, Markdown sanitizer
+│   ├── test_tickets_api.py   # PostgreSQL ticket CRUD endpoints and tenant scoping
+│   ├── test_chat_stream.py   # Token streaming and SSE message structure
+│   ├── test_analytics.py     # Analytics summary and routing error endpoints
+│   └── test_hybrid_retrieval.py # Hybrid search retrieval evaluation
 ├── streamlit_app.py          # Developer-only authentication, registration, and routing debug console
 ├── app/
 │   ├── api/v1/endpoints/
 │   │   ├── auth.py           # Login, registration, token refresh, and /me endpoints
-│   │   └── chat.py           # Authenticated chat execution and history retrieval
+│   │   ├── chat.py           # Authenticated chat execution and history retrieval
+│   │   └── tickets.py        # PostgreSQL tickets CRUD and status transition endpoints
 │   ├── auth/                 # Auth provider protocol, PostgreSQL MockAuthProvider, and schemas
 │   ├── core/config.py        # Settings with Groq, Postgres, and LangSmith configuration
+│   ├── tickets.py            # AsyncPG database pool, schema migration, and ticket operations
 │   └── main.py               # FastAPI entrypoint with LangSmith and graph lifespan hooks
 ├── requirements.txt          # Python dependencies (LangChain, LangGraph, Groq, PGVector, etc.)
 ├── test.ipynb                # Interactive notebook for routing & graph evaluation
@@ -231,11 +238,16 @@ The response includes routing and grounding inspection data:
 
 When escalation is triggered, `ticket_id` and `ticket` are populated. The
 ticket contains the structured summary generated from the conversation,
-department, priority, escalation reason, and conversation history. The current
-conversation checkpoints are persisted in PostgreSQL through LangGraph's
-`PostgresSaver`, so conversation state survives process restarts and multiple
-API workers. Ticket records remain process-local until a durable ticket store
-is added.
+department, priority, escalation reason, and conversation history.
+
+Conversation checkpoints are persisted in PostgreSQL through LangGraph's
+`PostgresSaver`, surviving process restarts and multi-worker deployments.
+
+Escalated tickets are persisted durably in PostgreSQL (`campus_tickets`) and managed via the `/api/v1/tickets` endpoints:
+- `GET /api/v1/tickets`: Role-scoped ticket listing (students receive their tickets; administrators receive the institution-wide triage queue).
+- `POST /api/v1/tickets`: Creates a new ticket record associated with the authenticated user ID and student email.
+- `PATCH /api/v1/tickets/{ticket_id}/status`: Transitions status (`pending`, `in_progress`, `resolved`), sets optional resolution notes, and records timestamps.
+- `DELETE /api/v1/tickets/{ticket_id}`: Administrator-only deletion for cleanup and testing.
 
 ---
 

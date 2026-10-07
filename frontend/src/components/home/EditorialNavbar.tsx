@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Menu, X } from 'lucide-react';
+import { Menu, X, LogIn } from 'lucide-react';
 import { CampusOneMark } from './CampusOneMark';
 
 export const EditorialNavbar: React.FC = () => {
@@ -20,8 +20,7 @@ export const EditorialNavbar: React.FC = () => {
   const navLinks = [
     { label: 'How it works', href: '#how-it-works' },
     { label: 'Features', href: '#features' },
-    { label: 'Testimonials', href: '#problem' },
-    { label: 'FAQ', href: '#how-it-works' },
+    { label: 'Problem & Solution', href: '#problem' },
   ];
 
   return (
@@ -61,14 +60,14 @@ export const EditorialNavbar: React.FC = () => {
           ))}
         </nav>
 
-        {/* Right: High-contrast White Launch Portal Button */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* Right: Login / Sign Up CTA */}
+        <div className="hidden md:flex items-center gap-3">
           <Link
-            href="/workspace?role=student"
-            className="inline-flex items-center gap-1.5 bg-white text-[#0E0E0E] hover:bg-[#F2EFEB] active:scale-[0.98] text-xs font-semibold px-3.5 py-1.5 rounded-md transition-all shadow-xs cursor-pointer"
+            href="/login"
+            className="inline-flex items-center gap-1.5 bg-[#FF7A00] text-black hover:bg-[#FF8A1F] active:scale-[0.98] text-xs font-bold font-mono px-4 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(255,122,0,0.3)] cursor-pointer"
           >
-            <span>Launch Portal</span>
-            <ArrowRight className="w-3.5 h-3.5 text-[#0E0E0E]" />
+            <LogIn className="w-3.5 h-3.5 text-black" />
+            <span>Login / Sign Up</span>
           </Link>
         </div>
 
@@ -104,12 +103,12 @@ export const EditorialNavbar: React.FC = () => {
 
           <div className="pb-8 pt-4">
             <Link
-              href="/workspace?role=student"
+              href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full flex items-center justify-center gap-2 bg-white text-[#0E0E0E] hover:bg-zinc-100 text-sm font-semibold py-2.5 px-4 rounded-md transition-all shadow-md cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 bg-[#FF7A00] text-black text-sm font-bold font-mono py-2.5 px-4 rounded-lg transition-all shadow-md cursor-pointer"
             >
-              <span>Launch Portal</span>
-              <ArrowRight className="w-4 h-4 text-[#0E0E0E]" />
+              <LogIn className="w-4 h-4 text-black" />
+              <span>Login / Sign Up</span>
             </Link>
           </div>
         </div>

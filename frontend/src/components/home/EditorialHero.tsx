@@ -33,7 +33,7 @@ export const EditorialHero: React.FC = () => {
             {/* Primary & Secondary Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
-                href="/workspace?role=student"
+                href="/workspace"
                 className="inline-flex items-center gap-2 bg-[#0E0E0E] text-white hover:bg-black/85 active:scale-[0.98] text-xs sm:text-sm font-medium px-5 py-2.5 rounded-lg transition-all shadow-xs cursor-pointer"
               >
                 <span>Ask CampusOne</span>
@@ -81,7 +81,7 @@ export const EditorialHero: React.FC = () => {
                 />
               </div>
               <span className="text-[11px] sm:text-xs text-[#52525B] font-medium">
-                Used by 12,000+ students across 8 campuses
+                Integrated across IT, Finance, Facilities &amp; Campus Services
               </span>
             </div>
           </div>

@@ -276,7 +276,71 @@ data: {"message_id": "m2", "outcome": "answered", "resolution_state": "resolved"
 
 **Auth:** message owner. **Request:** `{ "rating":"positive" | "negative", "reason":"wrong_domain|not_helpful|missing_source|other", "comment":"optional" }`; comment max 1,000 and is redacted. **Response 201:** `{ "feedback_id":"f1","message_id":"m2" }`. **Errors:** `401`, `403`, `404`, `409 feedback_exists`, `422`. Example: request `{ "rating":"negative","reason":"missing_source" }`; response `{ "feedback_id":"f1","message_id":"m2" }`.
 
-## 6. Handoff endpoints
+## 6. Handoff & Ticket endpoints
+
+### `GET /tickets`
+
+**Auth:** authenticated users.
+**Behavior:**
+- Students (`role = 'student'`) receive tickets matching their authenticated `user_id` or `email`.
+- Administrators and Support Agents (`role IN ('admin', 'support_agent')`) receive all tickets across all campus departments.
+**Response 200:** Array of `Ticket` objects:
+```json
+[
+  {
+    "ticket_id": "TKT-55A19BE2",
+    "user_id": "u-student-5982533c80f2",
+    "student_name": "Alex Rivera (Student)",
+    "student_email": "s24cseu1866@bennett.edu.in",
+    "department": "IT Support",
+    "reason": "Hostel Wi-Fi access authentication expired",
+    "urgency": "urgent",
+    "preview": "Wi-Fi credentials fail when connecting to eduroam in block D.",
+    "status": "resolved",
+    "assigned_to": "IT Support Lead",
+    "resolution_note": "Verified by Central Administration. Network credentials refreshed.",
+    "created_at": "2026-10-07T12:28:44.205Z",
+    "resolved_at": "2026-10-07T12:30:12.441Z"
+  }
+]
+```
+
+### `POST /tickets`
+
+**Auth:** authenticated users.
+**Request:**
+```json
+{
+  "ticket_id": "#TKT-4921",
+  "department": "Finance",
+  "reason": "Fee installment receipt not generated after transaction",
+  "urgency": "high",
+  "student_name": "Alex Rivera",
+  "student_email": "s24cseu1866@bennett.edu.in",
+  "preview": "Payment debited yesterday, portal still shows unpaid."
+}
+```
+**Response 200:** created `Ticket` object.
+
+### `PATCH /tickets/{ticket_id}/status`
+
+**Auth:** authenticated staff / administrator.
+**Request:**
+```json
+{
+  "status": "resolved",
+  "resolution_note": "Reconciled against payment gateway. Receipt sent to email.",
+  "assigned_to": "Finance Officer"
+}
+```
+**Response 200:** updated `Ticket` object.
+**Errors:** `404 ticket_not_found`, `401 unauthorized`.
+
+### `DELETE /tickets/{ticket_id}`
+
+**Auth:** administrators only.
+**Response 200:** `{"status": "deleted", "ticket_id": "..."}`.
+**Errors:** `403 forbidden`, `404 ticket_not_found`.
 
 ### `POST /conversations/{conversation_id}/handoff`
 

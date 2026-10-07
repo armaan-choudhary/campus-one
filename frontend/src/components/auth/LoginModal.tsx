@@ -35,8 +35,8 @@ const PRIMARY_ROLES: { role: UserRole; label: string; page: string; icon: React.
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const { user, role, accessToken, switchDemoPersona, login, logout, isLoading } = useAuth();
-  const [email, setEmail] = useState('student@example.edu');
-  const [password, setPassword] = useState('demo-password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
   const [showDevClaims, setShowDevClaims] = useState(false);
@@ -239,7 +239,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 Sign In with Credentials
               </span>
               <span className="font-mono text-[10px] text-[#8D8A83]">
-                Demo pass: <code className="bg-[#16171E] px-1 rounded text-[#F5F3ED] border border-[#242531]">demo-password</code>
+                University Gateway
               </span>
             </div>
 
@@ -252,7 +252,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="student@example.edu or admin@example.edu"
+                  placeholder="name@campus.edu"
                   required
                   className="w-full px-3 py-2 text-xs rounded-xl bg-[#0E0F13] border border-[#22232B] text-[#F5F3ED] placeholder:text-[#6A6965] focus:outline-hidden focus:border-[#FF7A00]/60 font-mono transition-colors"
                 />

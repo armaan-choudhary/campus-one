@@ -54,7 +54,7 @@ stateDiagram-v2
     Resolved --> [*]
 ```
 
-For the hackathon, `Queued` may be a database-backed mock inbox. The UI must not say a real ticket was created unless an integration returns a ticket ID.
+CampusOne implements a fully integrated PostgreSQL ticket engine (`campus_tickets` table and `/api/v1/tickets` endpoints). When an escalation is accepted or triggered conversationally, a deterministic ticket ID is generated (e.g. `TKT-55A19BE2`), persisted with user scoping, and made available immediately in both the student's case history and the administrator's triage queue.
 
 ## 5. Handoff payload
 

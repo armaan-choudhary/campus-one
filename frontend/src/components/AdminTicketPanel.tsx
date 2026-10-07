@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const AdminTicketPanel: React.FC = () => {
-  const { tickets, updateTicketStatus } = useTickets();
+  const { tickets, updateTicketStatus, refreshTickets, isLoading } = useTickets();
   const { accessToken } = useAuth();
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -145,9 +145,20 @@ export const AdminTicketPanel: React.FC = () => {
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121317]/85 border border-[#22232B] text-xs font-mono text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Live Relay Active</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refreshTickets()}
+            disabled={isLoading}
+            title="Refresh Escalation Queue"
+            aria-label="Refresh Escalation Queue"
+            className="p-2 rounded-lg bg-[#121317]/85 border border-[#22232B] hover:border-[#FF7A00]/40 text-[#8D8A83] hover:text-[#F5F3ED] transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#FF7A00]' : ''}`} />
+          </button>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121317]/85 border border-[#22232B] text-xs font-mono text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live Relay Active</span>
+          </div>
         </div>
       </div>
 
@@ -339,7 +350,7 @@ export const AdminTicketPanel: React.FC = () => {
                 {/* Requester & Telemetry Row */}
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1 font-mono text-[#8D8A83]">
                   <div>
-                    Requester: <span className="text-[#F5F3ED] font-semibold">{ticket.studentName || 'Student Alex Rivera'}</span>
+                    Requester: <span className="text-[#F5F3ED] font-semibold">{ticket.studentName || ticket.studentEmail || 'Student Requester'}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px]">
                     <Sparkles className="w-3.5 h-3.5 text-[#FF7A00]" />

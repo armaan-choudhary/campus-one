@@ -43,7 +43,7 @@ function WorkspaceContent() {
       setCurrentTheme('light');
     }
   }, []);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null | 'closed'>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -79,9 +79,14 @@ function WorkspaceContent() {
     const msgs = activeConversation?.messages || [];
     const lastMsg = msgs[msgs.length - 1];
     if (lastMsg?.handoff) {
-      addTicket(lastMsg.handoff);
+      addTicket({
+        ...lastMsg.handoff,
+        studentEmail: lastMsg.handoff.studentEmail || user?.email,
+        studentName: lastMsg.handoff.studentName || user?.displayName || user?.email,
+        userId: lastMsg.handoff.userId || user?.id,
+      });
     }
-  }, [activeConversation?.messages, addTicket]);
+  }, [activeConversation?.messages, addTicket, user]);
 
   // Synchronize theme with html element
   useEffect(() => {
@@ -166,6 +171,7 @@ function WorkspaceContent() {
               persona={activePersona}
               onDeleteConversation={deleteConversation}
               onTogglePin={togglePin}
+              onNewChat={handleNewChat}
             />
 
             {/* Conversational Stream */}

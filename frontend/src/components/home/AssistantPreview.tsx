@@ -23,7 +23,7 @@ export const AssistantPreview: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const query = question.trim() || 'I missed my midterm after being hospitalised. What can I do?';
-    router.push(`/workspace?role=student&q=${encodeURIComponent(query)}`);
+    router.push(`/workspace?q=${encodeURIComponent(query)}`);
   };
 
   const handleSelectDomain = (domainId: string, exampleText: string) => {

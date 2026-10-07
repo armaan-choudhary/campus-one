@@ -9,6 +9,7 @@ from langsmith import traceable
 from app.auth.dependencies import require_permission
 from app.auth.schemas import CurrentUser
 from app.conversations import conversation_store
+from app.tickets import ticket_store
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,8 @@ class ChatHistoryResponse(BaseModel):
     thread_id: str
     messages: List[Dict[str, Any]] = Field(default_factory=list)
     conversation: Optional[ConversationSummaryResponse] = None
+    metadata: Optional[Dict[str, Any]] = None
+    intent: Optional[str] = None
 
 
 @router.get(
@@ -188,10 +191,37 @@ async def chat_history(
             },
         ) from exc
 
+    raw_messages = list((snapshot.values or {}).get("messages", []))
+    snapshot_meta = (snapshot.values or {}).get("metadata", {})
+    snapshot_intent = (snapshot.values or {}).get("intent")
+    snapshot_domains = (snapshot.values or {}).get("detected_domains", [])
+    snapshot_chunks = (snapshot.values or {}).get("retrieved_chunks", [])
+    snapshot_sources = (snapshot.values or {}).get("sources", [])
+    snapshot_ticket_id = (snapshot.values or {}).get("ticket_id")
+
+    # If the last message is an assistant message and lacks metadata, backfill from snapshot values
+    if raw_messages and raw_messages[-1].get("role") == "assistant":
+        last_m = dict(raw_messages[-1])
+        if not last_m.get("metadata"):
+            last_m["metadata"] = snapshot_meta
+        if not last_m.get("intent"):
+            last_m["intent"] = snapshot_intent
+        if not last_m.get("detected_domains"):
+            last_m["detected_domains"] = snapshot_domains
+        if not last_m.get("retrieved_chunks"):
+            last_m["retrieved_chunks"] = snapshot_chunks
+        if not last_m.get("sources"):
+            last_m["sources"] = snapshot_sources
+        if not last_m.get("ticket_id"):
+            last_m["ticket_id"] = snapshot_ticket_id
+        raw_messages[-1] = last_m
+
     return ChatHistoryResponse(
         thread_id=thread_id,
-        messages=(snapshot.values or {}).get("messages", []),
+        messages=raw_messages,
         conversation=conv_meta,
+        metadata=snapshot_meta,
+        intent=snapshot_intent,
     )
 
 
@@ -238,6 +268,33 @@ async def chat(
         ) from exc
 
     is_new_ticket = bool(result.get("metadata", {}).get("ticket_newly_raised", False))
+    ticket_data = result.get("metadata", {}).get("ticket") if is_new_ticket else None
+
+    if is_new_ticket:
+        t_id = result.get("ticket_id") or (ticket_data or {}).get("ticket_id")
+        t_dept = (ticket_data or {}).get("department") or (result.get("detected_domains") or ["IT"])[0]
+        t_reason = (ticket_data or {}).get("escalation_reason") or result.get("handoff_reason") or "Specialist escalation created"
+        t_urgency = "urgent" if ((ticket_data or {}).get("priority") or "").lower() == "urgent" else "high"
+        t_preview = (ticket_data or {}).get("issue_summary") or t_reason
+        student_display = current_user.display_name or f"{current_user.email.split('@')[0]} (Student)"
+        try:
+            persisted = await ticket_store.create_ticket(
+                id=t_id,
+                user_id=current_user.id,
+                student_email=current_user.email,
+                student_name=student_display,
+                department=t_dept,
+                reason=t_reason,
+                urgency=t_urgency,
+                preview=t_preview,
+                status="pending",
+            )
+            if ticket_data:
+                ticket_data["studentEmail"] = current_user.email
+                ticket_data["studentName"] = student_display
+                ticket_data["ticketId"] = persisted["ticketId"]
+        except Exception as t_err:
+            logger.warning("Failed to persist escalated ticket: %s", t_err)
 
     if request.conversation_id:
         detected_domain = (result.get("detected_domains") or ["it"])[0]
@@ -354,11 +411,39 @@ async def chat_stream(
             await asyncio.sleep(0.015)
 
         is_new_ticket = bool(last_state.get("metadata", {}).get("ticket_newly_raised", False))
+        stream_ticket_data = last_state.get("metadata", {}).get("ticket") if is_new_ticket else None
+
+        if is_new_ticket:
+            t_id = last_state.get("ticket_id") or (stream_ticket_data or {}).get("ticket_id")
+            t_dept = (stream_ticket_data or {}).get("department") or (last_state.get("detected_domains") or ["IT"])[0]
+            t_reason = (stream_ticket_data or {}).get("escalation_reason") or last_state.get("handoff_reason") or "Specialist escalation created"
+            t_urgency = "urgent" if ((stream_ticket_data or {}).get("priority") or "").lower() == "urgent" else "high"
+            t_preview = (stream_ticket_data or {}).get("issue_summary") or t_reason
+            student_display = current_user.display_name or f"{current_user.email.split('@')[0]} (Student)"
+            try:
+                persisted = await ticket_store.create_ticket(
+                    id=t_id,
+                    user_id=current_user.id,
+                    student_email=current_user.email,
+                    student_name=student_display,
+                    department=t_dept,
+                    reason=t_reason,
+                    urgency=t_urgency,
+                    preview=t_preview,
+                    status="pending",
+                )
+                if stream_ticket_data:
+                    stream_ticket_data["studentEmail"] = current_user.email
+                    stream_ticket_data["studentName"] = student_display
+                    stream_ticket_data["ticketId"] = persisted["ticketId"]
+            except Exception as t_err:
+                logger.warning("Failed to persist escalated ticket in stream: %s", t_err)
+
         final_response = {
             "answer": final_answer,
             "thread_id": thread_id,
             "ticket_id": last_state.get("ticket_id") if is_new_ticket else None,
-            "ticket": last_state.get("metadata", {}).get("ticket") if is_new_ticket else None,
+            "ticket": stream_ticket_data,
             "detected_domains": last_state.get("detected_domains", []),
             "intent": last_state.get("intent"),
             "routing_confidence": last_state.get("routing_confidence", 0.0),

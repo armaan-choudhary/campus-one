@@ -691,15 +691,24 @@ Detected department:
 
     clean_final_answer = _clean_content(final_answer)
 
+    assistant_msg = {
+        "role": "assistant",
+        "content": clean_final_answer,
+        "intent": state.get("intent"),
+        "detected_domains": state.get("detected_domains", []),
+        "routing_confidence": state.get("routing_confidence"),
+        "sources": state.get("sources", []),
+        "retrieved_chunks": state.get("retrieved_chunks", []),
+        "ticket_id": ticket_id if (ticket_id and ticket_just_created) else state.get("ticket_id"),
+        "metadata": state.get("metadata", {}),
+    }
+
     return {
         "final_answer": clean_final_answer,
         "ticket_just_created": False,
         "messages": [
             *state.get("messages", []),
-            {
-                "role": "assistant",
-                "content": clean_final_answer,
-            },
+            assistant_msg,
         ],
         "metadata": {
             **state.get("metadata", {}),

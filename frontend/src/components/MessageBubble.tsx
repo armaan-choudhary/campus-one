@@ -348,34 +348,54 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       {/* Interactive Clarification Card */}
-      {message.clarification && (
-        <div className="p-4 rounded border border-[#292929] bg-[#111111] space-y-3">
-          {message.clarification.prompt &&
-            message.clarification.prompt.trim() !== message.content?.trim() && (
-              <div className="font-mono text-xs text-[#F5F3ED]">
-                {message.clarification.prompt}
-              </div>
-            )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {message.clarification.options.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => onSelectClarification?.(option)}
-                className="p-3 text-left border border-[#292929] hover:border-[#FF7A00] bg-[#151515] transition-colors rounded group cursor-pointer"
-              >
-                <span className="text-xs font-semibold text-[#F5F3ED] block group-hover:text-[#FF7A00]">
-                  {option.label}
-                </span>
-                {option.domain && (
-                  <span className="text-[11px] font-mono text-[#8D8A83] block pt-0.5 uppercase">
-                    Queue: {option.domain}
+      {(() => {
+        const clarificationData =
+          message.clarification ||
+          (message.content.toLowerCase().includes('which of the following') ||
+          message.content.toLowerCase().includes('which area can i help') ||
+          message.content.toLowerCase().includes('clarify which')
+            ? {
+                prompt: message.content,
+                options: [
+                  { id: 'academics', label: 'Academic Services & Exam Requests', domain: 'academics' },
+                  { id: 'student_affairs', label: 'Medical Documentation & Student Affairs', domain: 'hr' },
+                  { id: 'financial_services', label: 'Tuition & Fee Policy Inquiries', domain: 'fees' },
+                  { id: 'it_support', label: 'Campus IT & Technical Inquiries', domain: 'it' },
+                ],
+              }
+            : null);
+
+        if (!clarificationData || !clarificationData.options?.length) return null;
+
+        return (
+          <div className="p-4 rounded border border-[#292929] bg-[#111111] space-y-3">
+            {clarificationData.prompt &&
+              clarificationData.prompt.trim() !== message.content?.trim() && (
+                <div className="font-mono text-xs text-[#F5F3ED]">
+                  {clarificationData.prompt}
+                </div>
+              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {clarificationData.options.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => onSelectClarification?.(option)}
+                  className="p-3 text-left border border-[#292929] hover:border-[#FF7A00] bg-[#151515] transition-colors rounded group cursor-pointer"
+                >
+                  <span className="text-xs font-semibold text-[#F5F3ED] block group-hover:text-[#FF7A00]">
+                    {option.label}
                   </span>
-                )}
-              </button>
-            ))}
+                  {option.domain && (
+                    <span className="text-[11px] font-mono text-[#8D8A83] block pt-0.5 uppercase">
+                      Queue: {option.domain}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Human Escalation / Handoff State */}
       {message.handoff && (

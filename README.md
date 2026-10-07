@@ -35,10 +35,11 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 - **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
 - **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
 - **Confidence-Gated Resolution:** If routing confidence $\ge 0.75$, routes to domain agents (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`); if confidence $< 0.75$, shifts to dynamic clarification (`clarify()`) or flags human specialist escalation.
-- **Durable Conversation Checkpointing:** Persists LangGraph conversational checkpoints in PostgreSQL using `PostgresSaver` keyed by stable user IDs (`current_user.id`), restoring threads across logins via `GET /api/v1/chat/history`.
+- **Durable Multi-Session Conversation Checkpointing:** Persists LangGraph conversational checkpoints in PostgreSQL using `PostgresSaver` keyed hierarchically by `thread_id = "{user_id}:{conversation_id}"` with automatic fallback, isolating multiple student inquiries across sessions via `GET /api/v1/chat/history`.
+- **PostgreSQL Ticket Lifecycle Engine:** Full multi-tenant ticket persistence in PostgreSQL (`campus_tickets`) with dedicated REST endpoints (`/api/v1/tickets`), real-time status transitions (`pending`, `in_progress`, `resolved`), and staff resolution auditing.
 - **PostgreSQL Authentication & Student Registration:** Persists user credentials in PostgreSQL (`campus_users`) with PBKDF2-HMAC-SHA256 password hashing, supporting self-service student signup (`POST /api/v1/auth/register`).
 - **LangSmith Tracing & Observability:** Instruments full graph executions, node latencies, and LLM token usage via configurable LangSmith integration (`LANGSMITH_TRACING=true`).
-- **Automated Unit Testing:** 31 automated tests verifying auth, clarification schemas, intra-domain routing, ticket lifecycle, and sanitization (`pytest backend/tests/`).
+- **Automated Unit Testing Suite:** 54 automated tests verifying auth, tickets CRUD API, clarification schemas, intra-domain routing, ticket lifecycle, hybrid retrieval, SSE streaming, and analytics (`pytest backend/tests/`).
 - **Synthesis Node (`synthesize()`):** Formats raw domain outputs into clear, actionable advice with numbered checklists before returning to the conversation history.
 
 ---
@@ -48,22 +49,23 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 The frontend (`frontend/`) is built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS v4**, **Inter**, **Playfair Display**, and **Geist Mono**, enforcing clean page separation across two primary roles:
 
 ### 1. Student Portal (`/workspace`)
-- **Primary Audience:** Alex Rivera (`student@example.edu` / `demo-password`)
+- **Primary Audience:** Alex Rivera (`s24cseu1866@bennett.edu.in`) or 1-Click Fast-Track
 - **Campus Intelligence Workspace:** Sleek obsidian dark canvas (`#0A0A0D`) with subtle radial ambient glow, unified header (*"Let’s figure it out."* with glowing `#FF7A00` status indicator), common student prompt suggestion cards positioned cleanly above the input section, and a docked bottom message composer with voice input (`Web Speech API`), document attachments, and amber submit glow.
 - **Docked Official Record Inspector:** Slide-out right inspection drawer with 2x2 metadata grid (Authority, Effective Date, Record ID, Match Score), verbatim subclause formatting, FERPA compliance badge, copy citation utility, and direct form action.
-- **My Tickets:** Real-time tracking of personal inquiries split into **Ongoing** and **Resolved** tabs. Automatically captures escalated handoff tickets produced by the assistant.
+- **My Tickets:** Real-time tracking of personal inquiries split into **All Cases**, **Open Cases**, and **Resolved** tabs. Automatically captures escalated handoff tickets produced by the assistant, displays staff resolution notes, and formats timestamps into clean human-readable times.
 - **Quiet Catalog Drawer:** 215px collapsible history sidebar that recedes into the perimeter to keep focus on active inquiries.
 - **Isolated Context:** Strictly student-focused; administrative panels or controls are completely segregated.
 
 ### 2. Administrator Console (`/admin`)
-- **Primary Audience:** System Administrator (`admin@example.edu` / `demo-password`)
-- **Unified Ticket Management Console:** Centralized triage board with real-time queue counts (Pending vs Claimed), status filtering (`all`, `pending`, `in_progress`, `resolved`), search filter, and detailed inspector.
-- **Lifecycle Management:** One-click ticket claiming, resolution note entry, and resolution actions that instantly synchronize with the student's ticket view via reactive `TicketContext`.
+- **Primary Audience:** System Administrator (`admin@campusone.internal` / `admin1234`) or 1-Click Fast-Track
+- **Unified Ticket Management Console:** Centralized triage board with real-time queue counts (Pending vs Claimed vs Resolved), status filtering (`all`, `pending`, `in_progress`, `resolved`), search filter, and detailed inspector.
+- **Lifecycle Management:** One-click ticket claiming, department reassignment, resolution note entry, and resolution actions that instantly synchronize with the student's ticket view via PostgreSQL and reactive `TicketContext`.
 - **RBAC Security Guard:** Protected by an **HTTP 403 Role Clearance Barrier**; unauthenticated visitors or student sessions cannot access administrative tools without admin authentication.
 
 ### 3. Unified Authentication Gateway (`/login`)
-- **Dual-Card Selection:** Direct 1-click exploration buttons for "Enter as Student" (routes to `/workspace`) and "Enter as Admin" (routes to `/admin`).
-- **Direct Credentials Form:** Authenticates against FastAPI `/api/v1/auth/login` and automatically redirects based on user role.
+- **3-Mode Switcher:** Seamless switching between **Student Access**, **Staff & Admin**, and **New Account Registration**.
+- **1-Click Fast-Track Clearance:** Dedicated instant demo buttons for both Alex Rivera (Student) and System Administrator.
+- **Automated Role Routing:** Dynamically routes staff and administrators to `/admin` and students to `/workspace`.
 
 ---
 
@@ -132,25 +134,31 @@ msInnovateHack/
 │   ├── graph.py                   # LangGraph construction and PostgresSaver checkpointer lifecycle
 │   ├── graph_nodes.py             # Router, domain RAG nodes, clarify, synthesize, respond
 │   ├── graph_state.py             # State graph schemas and Pydantic structured output models
+│   ├── tickets.py                 # PostgreSQL campus_tickets schema, CRUD operations & lifecycle
 │   ├── index_documents.py         # PDF chunking and vector indexing script
 │   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
 │   ├── Prompts.py                 # Domain prompt templates and system instructions
-│   ├── tests/                     # Automated unit test suite (31 tests)
+│   ├── tests/                     # Automated unit test suite (54 tests passing)
 │   │   ├── test_auth.py           # Password hashing, registration, JWT, and RBAC
 │   │   ├── test_clarification.py  # Clarification bounds, intra-domain gating, continuation
-│   │   └── test_ticket_lifecycle.py # Single-turn receipts, conversational ticket commands
-│   ├── streamlit_app.py           # Developer debug console (auth, student signup, chat reload)
+│   │   ├── test_ticket_lifecycle.py # Single-turn receipts, conversational ticket commands
+│   │   ├── test_tickets_api.py    # PostgreSQL ticket CRUD API & multi-tenant isolation
+│   │   ├── test_chat_stream.py    # SSE token streaming & metadata verification
+│   │   ├── test_analytics.py      # Real-time institutional telemetry endpoints
+│   │   └── test_hybrid_retrieval.py # Vector + semantic retrieval validation
+│   ├── streamlit_app.py           # Synchronized developer debug console (auth, chat, threads)
 │   └── requirements.txt           # Python dependencies
 ├── frontend/                      # Next.js 16 App Router application
 │   ├── src/app/
 │   │   ├── page.tsx               # Editorial campus wayfinding landing page
-│   │   ├── login/page.tsx         # Unified dual-role authentication gateway
+│   │   ├── login/page.tsx         # Unified 3-way authentication gateway (Student/Admin/Signup)
 │   │   ├── workspace/page.tsx     # Student workspace (Assistant Chat & My Tickets)
 │   │   └── admin/page.tsx         # Dedicated Administrator Ticket Console (RBAC protected)
 │   ├── src/components/
 │   │   ├── home/                  # Editorial landing sections (Hero, Problem, Features, Footer)
-│   │   ├── StudentTicketsView.tsx # Student ticket list (Ongoing / Resolved tabs)
+│   │   ├── StudentTicketsView.tsx # Student ticket list (All Cases / Open Cases / Resolved tabs)
 │   │   ├── AdminTicketPanel.tsx   # Consolidated ticket triage & resolution console
+│   │   ├── AdminAnalyticsPanel.tsx # Operational telemetry, SLA trends, and department loads
 │   │   ├── TopNav.tsx             # Clean student navigation bar
 │   │   ├── MessageBubble.tsx      # Turns, checklists, citations, deduplicated clarification
 │   │   └── CitationDrawer.tsx     # Docked policy inspection panel

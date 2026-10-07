@@ -31,7 +31,7 @@ export const FinalCtaSection: React.FC = () => {
             {/* Button */}
             <div className="pt-2">
               <Link
-                href="/workspace?role=student"
+                href="/workspace"
                 className="inline-flex items-center gap-2 bg-[#0E0E0E] text-white hover:bg-black/85 active:scale-[0.98] text-xs sm:text-sm font-medium px-5 py-2.5 rounded-lg transition-all shadow-xs cursor-pointer"
               >
                 <span>Ask CampusOne</span>
