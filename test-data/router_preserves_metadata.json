@@ -1,0 +1,42 @@
+{
+  "test_name": "test_router_preserves_existing_metadata",
+  "description": "Verify router node preserves existing metadata keys across turns",
+  "input": {
+    "state": {
+      "messages": [],
+      "current_query": "Reset my password",
+      "detected_domains": [],
+      "routing_confidence": 0.0,
+      "intent": null,
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {
+        "clarification_attempts": 1,
+        "session_source": "web_chat"
+      }
+    },
+    "mock_llm_output": {
+      "route": "IT",
+      "departments": ["IT"],
+      "understood": true,
+      "confidence": 0.95,
+      "reason": "Clear password reset query"
+    }
+  },
+  "expected_output": {
+    "metadata": {
+      "clarification_attempts": 1,
+      "session_source": "web_chat",
+      "reason": "Clear password reset query"
+    }
+  }
+}

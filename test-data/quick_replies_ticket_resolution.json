@@ -1,0 +1,20 @@
+{
+  "test_name": "test_quick_replies_ticket_resolution",
+  "description": "Verify quick replies for ticket resolution returns templates",
+  "input": {
+    "method": "POST",
+    "url": "/api/v1/chat/quick-replies",
+    "headers": {"Authorization": "Bearer <admin_token>"},
+    "json": {
+      "department": "IT",
+      "issue_summary": "Eduroam Wi-Fi authentication certificate expired on student laptop",
+      "target": "ticket_resolution"
+    }
+  },
+  "expected_output": {
+    "status_code": 200,
+    "has_templates": true,
+    "min_templates": 3,
+    "templates_contain_any": ["credential", "certificate", "network", "access"]
+  }
+}

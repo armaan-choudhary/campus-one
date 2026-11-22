@@ -1,0 +1,17 @@
+{
+  "test_name": "test_clarification_schema_valid",
+  "description": "Verify ClarificationOutput validates and parses structured options correctly",
+  "input": {
+    "question": "Are you asking about campus Wi-Fi or tuition fees?",
+    "options": [
+      {"id": "wifi_login", "label": "Campus Wi-Fi & Portal Login", "department": "IT"},
+      {"id": "tuition_fees", "label": "Tuition Fees & Payments", "department": "Fees"}
+    ]
+  },
+  "expected_output": {
+    "question": "Are you asking about campus Wi-Fi or tuition fees?",
+    "options_count": 2,
+    "option_0_department": "IT",
+    "option_1_department": "Fees"
+  }
+}

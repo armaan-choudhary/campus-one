@@ -1,0 +1,20 @@
+{
+  "test_name": "test_clean_content_strips_emojis_and_formats_markdown_lists",
+  "description": "Verify _clean_content formats emoji numbers into standard Markdown lists and strips emojis",
+  "input": {
+    "raw_text": "Sure! To request a reprint of your university ID card, you\u2019ll generally need to: 1\ufe0f\u20e3 Contact the Student Services or ID Office. 2\ufe0f\u20e3 Fill out the ID\u2011card re\u2011issue form. 3\ufe0f\u20e3 Pay any applicable re\u2011issue fee. \ud83d\udca1"
+  },
+  "expected_output": {
+    "contains": [
+      "1. Contact the Student Services",
+      "2. Fill out the ID\u2011card",
+      "3. Pay any applicable"
+    ],
+    "not_contains": [
+      "1\ufe0f\u20e3",
+      "2\ufe0f\u20e3",
+      "3\ufe0f\u20e3",
+      "\ud83d\udca1"
+    ]
+  }
+}

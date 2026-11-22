@@ -1,0 +1,29 @@
+{
+  "test_name": "test_route_by_confidence_routes_high_confidence_coupled_queries_to_multi_domain",
+  "description": "Verify high confidence coupled queries route to multi_domain",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "I paid my hostel fees but portal says unpaid and I cannot register for exams"}],
+      "current_query": "I paid my hostel fees but portal says unpaid and I cannot register for exams",
+      "detected_domains": ["Fees", "IT"],
+      "routing_confidence": 0.92,
+      "intent": "Fees",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "next_node": "multi_domain"
+  }
+}

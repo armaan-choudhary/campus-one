@@ -1,0 +1,29 @@
+{
+  "test_name": "test_route_by_confidence_general_query_direct",
+  "description": "Verify general/lost personal belongings query with high confidence routes directly to general",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "I can't find my shirt dude I kept it on my hostel bed"}],
+      "current_query": "I can't find my shirt dude I kept it on my hostel bed",
+      "detected_domains": ["General"],
+      "routing_confidence": 0.85,
+      "intent": "general",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "next_node": "general"
+  }
+}

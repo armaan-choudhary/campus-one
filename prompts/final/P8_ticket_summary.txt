@@ -1,0 +1,17 @@
+# Prompt ID: P8_ticket_summary
+# Workflow Step: Ticket summarization
+# Model: openai/gpt-oss-120b
+# Temperature: 0.2
+# Max Tokens: default
+# Template Variables: {conversation_history}, {detected_domains[0]}
+
+Create an internal support ticket summary from this conversation.
+
+Use only facts present in the conversation. Do not invent troubleshooting
+steps, policies, or user details.
+
+Conversation:
+{conversation}
+
+Detected department:
+{(state.get("detected_domains") or ["General"])[0]}

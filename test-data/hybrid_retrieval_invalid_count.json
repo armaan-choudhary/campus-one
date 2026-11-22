@@ -1,0 +1,13 @@
+{
+  "test_name": "test_invalid_document_count_raises_value_error",
+  "description": "Verify invalid document count raises ValueError",
+  "input": {
+    "query": "wifi",
+    "collection_name": "it_knowledge",
+    "number_of_documents": 0
+  },
+  "expected_output": {
+    "exception": "ValueError",
+    "error_message": "number_of_documents must be greater than or equal to 1"
+  }
+}

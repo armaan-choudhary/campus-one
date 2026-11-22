@@ -1,0 +1,12 @@
+{
+  "test_name": "test_quick_replies_unauthorized",
+  "description": "Verify quick replies endpoint requires authentication",
+  "input": {
+    "method": "POST",
+    "url": "/api/v1/chat/quick-replies",
+    "json": {"issue_summary": "WiFi not working"}
+  },
+  "expected_output": {
+    "status_code": [401, 403]
+  }
+}

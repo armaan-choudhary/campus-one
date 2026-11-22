@@ -1,0 +1,56 @@
+{
+  "test_name": "test_multi_domain_orchestrator_parallel_execution_and_aggregation",
+  "description": "Verify multi-domain orchestrator executes agents in parallel and aggregates results",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "Coupled finance and IT problem"}],
+      "current_query": "Coupled finance and IT problem",
+      "detected_domains": ["Fees", "IT"],
+      "routing_confidence": 0.88,
+      "intent": "Fees",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    },
+    "mock_fees_response": {
+      "agent_response": "Fees resolution guidance.",
+      "agent_confidence": 0.90,
+      "solved": true,
+      "human_required": false,
+      "handoff_reason": null,
+      "sources": ["finance_policy.pdf, page 1"],
+      "retrieved_chunks": [{"content": "Fee policy", "source": "finance_policy.pdf"}],
+      "metadata": {"agent_domain": "Fees"}
+    },
+    "mock_it_response": {
+      "agent_response": "IT portal guidance.",
+      "agent_confidence": 0.85,
+      "solved": true,
+      "human_required": false,
+      "handoff_reason": null,
+      "sources": ["it_guide.pdf, page 2", "shared_doc.pdf"],
+      "retrieved_chunks": [{"content": "IT manual", "source": "it_guide.pdf"}],
+      "metadata": {"agent_domain": "IT"}
+    }
+  },
+  "expected_output": {
+    "agent_response_contains": ["Fees", "IT"],
+    "sources_contain": ["finance_policy.pdf, page 1", "it_guide.pdf, page 2"],
+    "retrieved_chunks_count": 2,
+    "metadata": {
+      "multi_domain": true,
+      "agent_domain": "Multi-Domain"
+    },
+    "solved": true
+  }
+}

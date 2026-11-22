@@ -1,0 +1,33 @@
+{
+  "test_name": "test_respond_delivers_receipt_on_creation_turn",
+  "description": "Verify respond outputs formal receipt when ticket_just_created is True",
+  "input": {
+    "state": {
+      "messages": [],
+      "current_query": "Escalate this",
+      "detected_domains": ["IT"],
+      "routing_confidence": 0.95,
+      "intent": "human",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": true,
+      "handoff_reason": "Escalated",
+      "ticket_id": "TKT-ABC12345",
+      "ticket_requested": false,
+      "ticket_just_created": true,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "final_answer_contains": "Your issue has been raised as internal support ticket TKT-ABC12345",
+    "ticket_just_created": false,
+    "metadata": {
+      "ticket_newly_raised": true
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "test_name": "test_should_raise_ticket_conversational_ticket_commands",
+  "description": "Verify should_raise_ticket recognizes 'bro ticket', 'help me raise a ticket', etc.",
+  "input": {
+    "base_state": {
+      "messages": [
+        {"role": "user", "content": "How do I reprint my ID?"},
+        {"role": "assistant", "content": "Contact student services to apply."}
+      ],
+      "current_query": "help me raise a ticket for the same",
+      "detected_domains": ["General"],
+      "routing_confidence": 0.85,
+      "intent": "general",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    },
+    "test_queries": [
+      "help me raise a ticket for the same",
+      "bro ticket",
+      "ticket"
+    ]
+  },
+  "expected_output": {
+    "all_true": true
+  }
+}

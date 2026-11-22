@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "CampusOne Multi-Agent Orchestration & RAG Architecture",
+    "output": "campusone-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "entry-and-auth",
+        "label": "Client Entry & Authentication",
+        "focus": ["users", "frontend", "auth_mw", "auth_prov", "fastapi"],
+        "note": "Next.js 14 frontend connects to FastAPI v1 endpoints with JWT/RBAC role-based verification."
+      },
+      {
+        "id": "agent-orchestration",
+        "label": "LangGraph Orchestrator & Specialist Agents",
+        "focus": ["fastapi", "langgraph", "router", "spec_agents", "synth_respond"],
+        "note": "Router evaluates intent confidence; routes query to specialized agents (IT, HR, Fees, Facilities, General) or fallback."
+      },
+      {
+        "id": "rag-and-vector",
+        "label": "RAG Retrieval Pipeline & PGVector",
+        "focus": ["spec_agents", "hf_embed", "pgvector", "llm_engine"],
+        "note": "Specialist agents trigger vector similarity search over MiniLM-L6 embeddings in PostgreSQL/pgvector."
+      }
+    ]
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Campus Users", "sublabel": "Students, Staff, Admin", "pos": [30, 290], "size": [120, 60] },
+    { "id": "frontend", "type": "frontend", "label": "Next.js Frontend", "sublabel": "React 19 / Tailwind", "pos": [200, 290], "size": [135, 60], "tag": "Next.js 14" },
+    { "id": "auth_mw", "type": "security", "label": "Auth Dependencies", "sublabel": "Bearer Token / RBAC", "pos": [380, 140], "size": [135, 60], "tag": "Role Verification" },
+    { "id": "fastapi", "type": "backend", "label": "FastAPI Server", "sublabel": "app.main :8000", "pos": [380, 290], "size": [135, 60], "tag": "ASGI Entrypoint" },
+    { "id": "auth_prov", "type": "security", "label": "Auth Provider", "sublabel": "Mock / OIDC Seam", "pos": [380, 440], "size": [135, 60], "tag": "Identity Provider" },
+    { "id": "langgraph", "type": "backend", "label": "LangGraph Engine", "sublabel": "graph.py StateGraph", "pos": [560, 290], "size": [140, 60], "tag": "MemorySaver" },
+    { "id": "router", "type": "backend", "label": "Intent Router", "sublabel": "route_by_confidence", "pos": [750, 140], "size": [135, 60], "tag": "Classifier" },
+    { "id": "spec_agents", "type": "backend", "label": "Specialist Agents", "sublabel": "IT / HR / Fees / Facilities", "pos": [750, 290], "size": [145, 60], "tag": "Domain Specialists" },
+    { "id": "synth_respond", "type": "backend", "label": "Synthesizer / Response", "sublabel": "synthesize / respond", "pos": [750, 440], "size": [140, 60], "tag": "Response Generator" },
+    { "id": "hf_embed", "type": "cloud", "label": "HuggingFace Embeddings", "sublabel": "all-MiniLM-L6-v2", "pos": [980, 140], "size": [145, 60], "tag": "Sentence Transformers" },
+    { "id": "pgvector", "type": "database", "label": "PostgreSQL / pgvector", "sublabel": "pgvector:pg16 :5432", "pos": [980, 290], "size": [145, 60], "tag": "Knowledge Collections" },
+    { "id": "llm_engine", "type": "cloud", "label": "LLM Provider", "sublabel": "OpenAI / Chat API", "pos": [980, 440], "size": [135, 60], "tag": "Chat API" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "CampusOne System Boundary", "wraps": ["frontend", "auth_mw", "fastapi", "auth_prov", "langgraph", "router", "spec_agents", "synth_respond", "hf_embed", "pgvector", "llm_engine"] },
+    { "kind": "security-group", "label": "FastAPI App & Auth Core", "wraps": ["auth_mw", "fastapi", "auth_prov"] },
+    { "kind": "security-group", "label": "LangGraph Multi-Agent Runtime", "wraps": ["langgraph", "router", "spec_agents", "synth_respond"] }
+  ],
+  "connections": [
+    { "from": "users", "to": "frontend", "label": "HTTPS", "variant": "emphasis" },
+    { "from": "frontend", "to": "fastapi", "label": "REST API / JSON", "variant": "emphasis", "labelAt": [355, 275] },
+    { "from": "fastapi", "to": "auth_mw", "label": "verify role", "variant": "security", "labelAt": [447, 215] },
+    { "from": "fastapi", "to": "auth_prov", "label": "issue/verify JWT", "variant": "security", "labelAt": [447, 395] },
+    { "from": "fastapi", "to": "langgraph", "label": "invoke graph", "variant": "emphasis", "labelAt": [535, 275] },
+    { "from": "langgraph", "to": "router", "fromSide": "top", "toSide": "left", "label": "classify query" },
+    { "from": "router", "to": "spec_agents", "fromSide": "bottom", "toSide": "top", "label": "route by confidence", "labelAt": [817, 215] },
+    { "from": "spec_agents", "to": "synth_respond", "fromSide": "bottom", "toSide": "top", "label": "aggregate context", "labelAt": [820, 375] },
+    { "from": "spec_agents", "to": "hf_embed", "label": "encode query", "variant": "dashed", "via": [[895, 270], [937, 270], [937, 170]] },
+    { "from": "spec_agents", "to": "pgvector", "label": "MMR search" },
+    { "from": "spec_agents", "to": "llm_engine", "label": "prompt invoke", "variant": "dashed" },
+    { "from": "synth_respond", "to": "langgraph", "label": "checkpoint state", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Multi-Agent StateGraph",
+      "items": [
+        "Router node evaluates query confidence across IT, HR, Fees, Facilities, and General domain agents",
+        "Low confidence routes to clarification or ticket creation (Zendesk / Jira handoff)",
+        "MemorySaver checkpointer preserves multi-turn conversation thread state in memory"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Domain Knowledge RAG",
+      "items": [
+        "LangChain PGVector stores domain collections (it_knowledge, hr_knowledge, finance_knowledge, facilities_knowledge)",
+        "HuggingFace sentence-transformers/all-MiniLM-L6-v2 normalizes dense embeddings",
+        "Maximal Marginal Relevance (MMR) search retrieves top k=4 relevant policy documents"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Auth & Security Seam",
+      "items": [
+        "Granular RBAC role permissions (Student, Staff, Support Agent, Knowledge Admin, Analyst, Admin)",
+        "Pluggable AuthProvider architecture supporting Mock in-memory provider and enterprise OIDC seam (ADR-007)",
+        "Signed HMAC SHA-256 JWT access and refresh token pair rotation"
+      ]
+    }
+  ]
+}

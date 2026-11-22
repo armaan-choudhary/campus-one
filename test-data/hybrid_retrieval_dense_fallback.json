@@ -1,0 +1,13 @@
+{
+  "test_name": "test_dense_search_fallback",
+  "description": "Verify dense search fallback works",
+  "input": {
+    "query": "network connectivity",
+    "collection_name": "it_knowledge",
+    "number_of_documents": 2,
+    "search_type": "dense"
+  },
+  "expected_output": {
+    "min_documents": 1
+  }
+}

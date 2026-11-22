@@ -1,0 +1,13 @@
+{
+  "test_name": "test_sparse_bm25_retrieves_exact_keyword_match",
+  "description": "Verify sparse BM25 retrieves exact keyword match",
+  "input": {
+    "query": "eduroam",
+    "collection_name": "it_knowledge",
+    "number_of_documents": 2
+  },
+  "expected_output": {
+    "min_documents": 1,
+    "first_doc_contains": "eduroam"
+  }
+}

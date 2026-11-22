@@ -1,0 +1,1 @@
+Application code lives in backend/ (FastAPI, LangGraph, RAG) and frontend/ (Next.js).

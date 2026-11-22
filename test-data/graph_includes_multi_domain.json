@@ -1,0 +1,8 @@
+{
+  "test_name": "test_build_graph_includes_multi_domain_node",
+  "description": "Verify the compiled graph includes the multi_domain_agent node",
+  "input": {},
+  "expected_output": {
+    "graph_nodes_contain": "multi_domain_agent"
+  }
+}

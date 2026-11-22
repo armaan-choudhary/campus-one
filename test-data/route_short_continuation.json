@@ -1,0 +1,32 @@
+{
+  "test_name": "test_route_by_confidence_short_continuation_preserves_domain",
+  "description": "Verify short continuation answers ('nope', 'no') route to previous active domain rather than clarify",
+  "input": {
+    "state": {
+      "messages": [
+        {"role": "user", "content": "I need help with Wi-Fi login"},
+        {"role": "assistant", "content": "Have you tried resetting your campus password?"},
+        {"role": "user", "content": "nope"}
+      ],
+      "current_query": "nope",
+      "detected_domains": [],
+      "routing_confidence": 0.20,
+      "intent": null,
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {"agent_domain": "IT"}
+    }
+  },
+  "expected_output": {
+    "next_node": "it"
+  }
+}

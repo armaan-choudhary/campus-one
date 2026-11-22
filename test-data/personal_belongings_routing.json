@@ -1,0 +1,29 @@
+{
+  "test_name": "test_personal_belongings_routing_triggers_clarification",
+  "description": "Verify that ambiguous lost personal belongings queries do not score high confidence Facilities",
+  "input": {
+    "state": {
+      "messages": [],
+      "current_query": "I lost my belt bro what do I do?",
+      "detected_domains": ["General", "Facilities"],
+      "routing_confidence": 0.55,
+      "intent": "general",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "next_node": "clarify"
+  }
+}

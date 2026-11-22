@@ -1,0 +1,12 @@
+{
+  "test_name": "test_empty_query_raises_value_error",
+  "description": "Verify empty query raises ValueError",
+  "input": {
+    "query": "   ",
+    "collection_name": "it_knowledge"
+  },
+  "expected_output": {
+    "exception": "ValueError",
+    "error_message": "The query cannot be empty"
+  }
+}

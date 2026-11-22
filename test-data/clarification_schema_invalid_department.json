@@ -1,0 +1,15 @@
+{
+  "test_name": "test_clarification_schema_rejects_unsupported_department",
+  "description": "Verify ClarificationOutput rejects unsupported department values",
+  "input": {
+    "question": "Which department?",
+    "options": [
+      {"id": "opt1", "label": "Option 1", "department": "Astronomy"},
+      {"id": "opt2", "label": "Option 2", "department": "IT"}
+    ]
+  },
+  "expected_output": {
+    "exception": "ValidationError",
+    "error_type": "Unsupported department value"
+  }
+}

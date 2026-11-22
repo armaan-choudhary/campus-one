@@ -1,0 +1,16 @@
+{
+  "test_name": "test_tokenize_basic",
+  "description": "Verify tokenization handles special characters and mixed case",
+  "input": {
+    "text": "Eduroam Wi-Fi (802.11ax) at Campus-Center!"
+  },
+  "expected_output": {
+    "tokens_contain": [
+      "eduroam",
+      "wi",
+      "fi",
+      "campus",
+      "center"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "test_name": "test_route_by_confidence_routes_low_confidence_multi_domain_to_clarify",
+  "description": "Verify low confidence multi-domain queries route to clarify",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "I have an account issue and maybe a card problem"}],
+      "current_query": "I have an account issue and maybe a card problem",
+      "detected_domains": ["Fees", "IT"],
+      "routing_confidence": 0.55,
+      "intent": null,
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "next_node": "clarify"
+  }
+}

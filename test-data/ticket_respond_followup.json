@@ -1,0 +1,36 @@
+{
+  "test_name": "test_respond_delivers_real_answer_on_followup_turn",
+  "description": "Verify respond delivers specialist answer on subsequent turns without repeating receipt",
+  "input": {
+    "state": {
+      "messages": [
+        {"role": "user", "content": "I need help with Wi-Fi"},
+        {"role": "assistant", "content": "Your issue has been raised as internal support ticket TKT-ABC12345."}
+      ],
+      "current_query": "How long will it take for someone to look at my ticket?",
+      "detected_domains": ["IT"],
+      "routing_confidence": 0.90,
+      "intent": "it",
+      "agent_response": "IT technicians typically review submitted tickets within 2 business hours.",
+      "agent_confidence": 0.95,
+      "solved": true,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": "TKT-ABC12345",
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": "IT technicians typically review submitted tickets within 2 business hours.",
+      "metadata": {"active_ticket_id": "TKT-ABC12345"}
+    }
+  },
+  "expected_output": {
+    "final_answer_contains": "IT technicians typically review submitted tickets within 2 business hours",
+    "final_answer_not_contains": "Your issue has been raised as internal support ticket",
+    "metadata": {
+      "ticket_newly_raised": false
+    }
+  }
+}

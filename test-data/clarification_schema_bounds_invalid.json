@@ -1,0 +1,14 @@
+{
+  "test_name": "test_clarification_schema_enforces_bounds",
+  "description": "Verify ClarificationOutput requires at least 2 options",
+  "input": {
+    "question": "Which department?",
+    "options": [
+      {"id": "opt1", "label": "Single Option", "department": "IT"}
+    ]
+  },
+  "expected_output": {
+    "exception": "ValidationError",
+    "error_type": "At least 2 options required"
+  }
+}

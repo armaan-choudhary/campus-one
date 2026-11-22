@@ -1,0 +1,35 @@
+{
+  "test_name": "test_clarify_node_graceful_fallback_on_error",
+  "description": "Verify clarify node falls back to deterministic options if LLM call fails",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "Help me with account"}],
+      "current_query": "Help me with account",
+      "detected_domains": ["IT", "Fees"],
+      "routing_confidence": 0.50,
+      "intent": "clarify",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {"clarification_attempts": 0}
+    },
+    "mock_llm_error": "RuntimeError: Groq API Timeout"
+  },
+  "expected_output": {
+    "intent": "clarify",
+    "final_answer_contains": "Could you clarify which area you need help with",
+    "metadata": {
+      "outcome": "clarification",
+      "clarification_attempts": 1,
+      "clarification_options_count": 2
+    }
+  }
+}

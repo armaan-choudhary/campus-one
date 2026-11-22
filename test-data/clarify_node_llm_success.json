@@ -1,0 +1,43 @@
+{
+  "test_name": "test_clarify_node_invokes_llm_successfully",
+  "description": "Verify clarify node invokes structured LLM and packages output correctly",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "My account has an error"}],
+      "current_query": "My account has an error",
+      "detected_domains": ["IT", "Fees"],
+      "routing_confidence": 0.55,
+      "intent": "clarify",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": false,
+      "handoff_reason": null,
+      "ticket_id": null,
+      "ticket_requested": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {"reason": "Ambiguous between IT and Fees", "clarification_attempts": 0}
+    },
+    "mock_llm_output": {
+      "question": "Which system do you need help accessing?",
+      "options": [
+        {"id": "portal_access", "label": "Student Portal Login", "department": "IT"},
+        {"id": "fee_portal", "label": "Fee Payment Portal", "department": "Fees"}
+      ]
+    }
+  },
+  "expected_output": {
+    "intent": "clarify",
+    "final_answer": "Which system do you need help accessing?",
+    "detected_domains": ["IT", "Fees"],
+    "metadata": {
+      "outcome": "clarification",
+      "clarification_attempts": 1,
+      "clarification_options_count": 2,
+      "first_option_label": "Student Portal Login"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "test_name": "test_create_ticket_sets_receipt_flags",
+  "description": "Verify that create_ticket generates ticket and marks it as newly created",
+  "input": {
+    "state": {
+      "messages": [{"role": "user", "content": "I need a human agent"}],
+      "current_query": "I need a human agent",
+      "detected_domains": ["IT"],
+      "routing_confidence": 0.95,
+      "intent": "human",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": true,
+      "handoff_reason": "Requested person",
+      "ticket_id": null,
+      "ticket_requested": true,
+      "ticket_just_created": false,
+      "ticket_summary": {
+        "subject": "Human agent request",
+        "department": "IT",
+        "issue_summary": "User wants a human",
+        "conversation_summary": "Requested person",
+        "attempted_steps": [],
+        "current_status": "Escalated",
+        "priority": "medium",
+        "escalation_reason": "Explicit user request"
+      },
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "ticket_id_format": "TKT-XXXXXXXX",
+    "ticket_just_created": true,
+    "ticket_requested": false,
+    "metadata": {
+      "ticket_newly_raised": true,
+      "active_ticket_id_matches": true
+    }
+  }
+}

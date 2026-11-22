@@ -1,0 +1,37 @@
+{
+  "test_name": "test_create_ticket_allows_new_ticket_when_prior_ticket_existed",
+  "description": "Verify create_ticket requests fresh summary when new ticket is requested, even if ticket_id was set",
+  "input": {
+    "state": {
+      "messages": [
+        {"role": "user", "content": "Earlier issue"},
+        {"role": "assistant", "content": "Ticket raised"},
+        {"role": "user", "content": "help me raise a ticket for my ID"}
+      ],
+      "current_query": "help me raise a ticket for my ID",
+      "detected_domains": ["General"],
+      "routing_confidence": 0.90,
+      "intent": "human",
+      "agent_response": null,
+      "agent_confidence": 0.0,
+      "solved": false,
+      "human_required": true,
+      "handoff_reason": null,
+      "ticket_id": "TKT-OLD12345",
+      "ticket_requested": false,
+      "ticket_just_created": false,
+      "ticket_summary": null,
+      "sources": [],
+      "retrieved_chunks": [],
+      "final_answer": null,
+      "metadata": {}
+    }
+  },
+  "expected_output": {
+    "ticket_requested": true,
+    "ticket_summary": null,
+    "metadata": {
+      "ticket_summary_requested": true
+    }
+  }
+}

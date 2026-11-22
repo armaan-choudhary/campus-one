@@ -21,6 +21,19 @@ CampusOne replaces disjointed chatbots, confusing portal links, and bouncing ema
 
 ---
 
+## 👥 Team Members
+
+- Kanishk Dhiman
+- Armaan Choudhary
+- Ananya Chatterjee
+- Abhay Chandra
+
+---
+
+**Prototype link: TBD**
+
+---
+
 ## ⚙️ Backend Multi-Agent & Retrieval Engine
 
 The backend (`backend/`) is a LangGraph orchestration service combining Groq high-throughput LLMs and PostgreSQL with `pgvector`:
@@ -32,7 +45,7 @@ The backend (`backend/`) is a LangGraph orchestration service combining Groq hig
 - **Conversational Ticket Triggers & Lifecycle:** Recognizes explicit ticket requests (*"help me raise a ticket for the same"*, *"bro ticket"*, *"ticket"*) and delivers single-turn creation receipts without stale session locks.
 - **Zero-Emoji Markdown Delivery:** Formats domain agent responses into clean, accessible Markdown lists; emojis are strictly prohibited and sanitized.
 - **Isolated PGVector Knowledge Bases:** Dedicated vector stores (`it_knowledge`, `hr_knowledge`, `finance_knowledge`, `facilities_knowledge`) to prevent multi-department cross-contamination.
-- **MMR Search Strategy:** Employs Maximal Marginal Relevance ($k=4, \text{fetch\_k}=16, \lambda=0.7$) over `sentence-transformers/all-MiniLM-L6-v2` embeddings for semantically rich and non-redundant evidence.
+- **Hybrid Retrieval (Default):** Combines Dense (MMR, k=4, fetch_k=16, λ=0.7) + Sparse (BM25Okapi) via Reciprocal Rank Fusion (RRF, k=60, dense_weight=0.6, sparse_weight=0.4). Falls back to dense-only or sparse-only if one side returns no results. Configurable via `search_type` parameter (`hybrid` | `dense` | `sparse`).
 - **Strict Grounded Citations:** Automatically attaches document filenames and page numbers (`RetrievedDocument`) to LLM responses for audited provenance.
 - **Confidence-Gated Resolution:** If routing confidence $\ge 0.75$, routes to domain agents (`it_query`, `hr_agent`, `fees_agent`, `facilities_agent`); if confidence $< 0.75$, shifts to dynamic clarification (`clarify()`) or flags human specialist escalation.
 - **Durable Multi-Session Conversation Checkpointing:** Persists LangGraph conversational checkpoints in PostgreSQL using `PostgresSaver` keyed hierarchically by `thread_id = "{user_id}:{conversation_id}"` with automatic fallback, isolating multiple student inquiries across sessions via `GET /api/v1/chat/history`.
@@ -126,17 +139,17 @@ npm run dev # Launches on http://localhost:3000
 ## 📂 Repository Structure
 
 ```text
-msInnovateHack/
+campus-one/
 ├── backend/                       # Python LangGraph & pgvector orchestration engine
 │   ├── app/                       # FastAPI application (main.py, auth, chat endpoints)
-│   ├── Documents/                 # Institutional policy PDFs (IT, HR, Finance, Facilities)
+│   ├── Documents/                 # (Create locally) Place IT/, HR/, Finance/, Facilities/ PDFs here before running index_documents.py
 │   ├── docker-compose.yml         # PostgreSQL 16 + pgvector container
 │   ├── graph.py                   # LangGraph construction and PostgresSaver checkpointer lifecycle
 │   ├── graph_nodes.py             # Router, domain RAG nodes, clarify, synthesize, respond
 │   ├── graph_state.py             # State graph schemas and Pydantic structured output models
 │   ├── tickets.py                 # PostgreSQL campus_tickets schema, CRUD operations & lifecycle
 │   ├── index_documents.py         # PDF chunking and vector indexing script
-│   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, MMR retriever
+│   ├── knowledge_retrieval.py     # Embeddings, vector store connectors, hybrid retriever (MMR + BM25 + RRF)
 │   ├── Prompts.py                 # Domain prompt templates and system instructions
 │   ├── tests/                     # Automated unit test suite (54 tests passing)
 │   │   ├── test_auth.py           # Password hashing, registration, JWT, and RBAC
@@ -145,9 +158,16 @@ msInnovateHack/
 │   │   ├── test_tickets_api.py    # PostgreSQL ticket CRUD API & multi-tenant isolation
 │   │   ├── test_chat_stream.py    # SSE token streaming & metadata verification
 │   │   ├── test_analytics.py      # Real-time institutional telemetry endpoints
-│   │   └── test_hybrid_retrieval.py # Vector + semantic retrieval validation
+│   │   ├── test_hybrid_retrieval.py # Vector + semantic retrieval validation
+│   │   ├── test_multi_domain_fanout.py # Multi-domain parallel agent execution
+│   │   ├── test_quick_replies.py  # LLM-based quick-reply template generation
+│   │   └── test_conversation_history.py # Conversation persistence and restoration
 │   ├── streamlit_app.py           # Synchronized developer debug console (auth, chat, threads)
 │   └── requirements.txt           # Python dependencies
+├── code/
+│   └── README.md                  # Application code lives in backend/ (FastAPI, LangGraph, RAG) and frontend/ (Next.js)
+├── docs/                          # Architectural specification suite (00-15 & DESIGN_GUIDE)
+│   └── diagrams/                  # Architecture diagrams (HTML, JSON, PNG)
 ├── frontend/                      # Next.js 16 App Router application
 │   ├── src/app/
 │   │   ├── page.tsx               # Editorial campus wayfinding landing page
@@ -165,8 +185,15 @@ msInnovateHack/
 │   ├── src/context/               # AuthContext and reactive TicketContext
 │   ├── src/lib/                   # API client (FastAPI bridge), fixtures, utilities
 │   └── README.md                  # Frontend documentation
-├── docs/                          # Architectural specification suite (00-15 & DESIGN_GUIDE)
+├── prompts/                       # LLM prompt versions and final templates
+│   ├── v1/                        # Initial router prompt (v1)
+│   ├── v2/                        # Router prompt from commit 3b81b6d (2026-09-26)
+│   ├── v3/                        # Router prompt from commit 2e47c27 (2026-09-27)
+│   └── final/                     # All 9 final production prompts (P1-P9)
+├── test-data/                     # Test data fixtures (empty, tracked via .gitkeep)
 ├── assets/                        # Brand marks, vector assets, and design artifacts
+├── scripts/                       # Cross-platform setup and launch scripts
+├── CHANGELOG.md                   # Full commit history grouped by date
 └── README.md                      # Monorepo master documentation
 ```
 
