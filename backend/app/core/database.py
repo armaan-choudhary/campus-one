@@ -18,7 +18,13 @@ async def get_db_pool() -> asyncpg.Pool:
 
     if _pool is None or pool_loop is not current_loop or (pool_loop and pool_loop.is_closed()):
         db_url = settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql://", 1)
-        _pool = await asyncpg.create_pool(db_url, min_size=1, max_size=10)
+        _pool = await asyncpg.create_pool(
+            db_url,
+            min_size=1,
+            max_size=5,
+            timeout=30.0,
+            command_timeout=30.0,
+        )
         logger.info("Initialized shared asyncpg database connection pool")
     return _pool
 
