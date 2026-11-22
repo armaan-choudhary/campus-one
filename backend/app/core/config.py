@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         "http://localhost:3001",
         "http://127.0.0.1:3001",
     ]
+    CORS_ORIGINS_EXTRA: list[str] = []
 
     # Database & Vector DB (for future integration)
     DATABASE_URL: str = "postgresql+psycopg://campus_one:campus_one_secret@localhost:5432/campus_one"
